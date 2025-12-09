@@ -1,9 +1,9 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import TrustedBy from "@/components/TrustedBy";
-import Features from "@/components/Features";
+import CreatorNetwork from "@/components/CreatorNetwork";
 import HowItWorks from "@/components/HowItWorks";
-import Testimonials from "@/components/Testimonials";
+import Features from "@/components/Features";
 import Pricing from "@/components/Pricing";
 import CTA from "@/components/CTA";
 import Footer from "@/components/Footer";
@@ -15,9 +15,9 @@ const Index = () => {
       <main>
         <Hero />
         <TrustedBy />
-        <Features />
+        <CreatorNetwork />
         <HowItWorks />
-        <Testimonials />
+        <Features />
         <Pricing />
         <CTA />
       </main>

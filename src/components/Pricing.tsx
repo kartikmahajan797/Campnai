@@ -5,24 +5,26 @@ const Pricing = () => {
   const plans = [
     {
       name: "Starter",
-      price: "49",
-      description: "Perfect for small teams just getting started with influencer marketing.",
+      price: "99",
+      period: "/month",
+      description: "For small teams starting with influencer marketing.",
       features: [
-        "Up to 50 creator matches/month",
+        "50 creator matches/month",
         "Basic AI outreach",
         "Email support",
         "Campaign analytics",
         "1 team member",
       ],
-      cta: "Start Free Trial",
+      cta: "Start free trial",
       popular: false,
     },
     {
       name: "Growth",
-      price: "149",
-      description: "For growing teams that need more power and automation.",
+      price: "299",
+      period: "/month",
+      description: "For growing teams scaling their campaigns.",
       features: [
-        "Up to 500 creator matches/month",
+        "500 creator matches/month",
         "Advanced AI negotiations",
         "Priority support",
         "Real-time analytics",
@@ -30,38 +32,41 @@ const Pricing = () => {
         "Custom workflows",
         "API access",
       ],
-      cta: "Start Free Trial",
+      cta: "Start free trial",
       popular: true,
     },
     {
       name: "Enterprise",
       price: "Custom",
+      period: "",
       description: "For large organizations with complex needs.",
       features: [
-        "Unlimited creator matches",
-        "Dedicated account manager",
+        "Unlimited matches",
+        "Dedicated manager",
         "24/7 phone support",
         "Custom integrations",
         "Unlimited team members",
         "White-label options",
         "SLA guarantee",
-        "On-premise deployment",
       ],
-      cta: "Contact Sales",
+      cta: "Contact sales",
       popular: false,
     },
   ];
 
   return (
-    <section id="pricing" className="py-24 bg-secondary/20">
+    <section id="pricing" className="py-24 bg-muted/30">
       <div className="container mx-auto px-6">
-        {/* Section Header */}
+        {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="font-display font-bold text-3xl md:text-4xl lg:text-5xl mb-6">
-            Simple, transparent <span className="gradient-text">pricing</span>
+          <div className="badge-primary mb-6">
+            Pricing
+          </div>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
+            Simple, transparent pricing
           </h2>
-          <p className="text-muted-foreground text-lg">
-            Choose the plan that fits your needs. All plans include a 14-day free trial.
+          <p className="text-lg text-muted-foreground">
+            Start free for 14 days. No credit card required.
           </p>
         </div>
 
@@ -70,58 +75,48 @@ const Pricing = () => {
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`relative glass-card p-8 hover-lift flex flex-col ${
-                plan.popular ? "border-primary/50 ring-1 ring-primary/20" : ""
+              className={`relative bg-card rounded-2xl border p-8 ${
+                plan.popular 
+                  ? "border-primary shadow-xl scale-105" 
+                  : "border-border shadow-lg"
               }`}
             >
-              {/* Popular Badge */}
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-primary to-blue-500 text-primary-foreground text-sm font-semibold">
+                  <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold">
                     <Sparkles className="w-4 h-4" />
                     Most Popular
                   </div>
                 </div>
               )}
 
-              {/* Plan Header */}
               <div className="mb-8">
-                <h3 className="font-display font-semibold text-xl mb-2 text-foreground">
-                  {plan.name}
-                </h3>
+                <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
                 <div className="flex items-baseline gap-1 mb-3">
                   {plan.price === "Custom" ? (
-                    <span className="font-display font-bold text-4xl text-foreground">
-                      Custom
-                    </span>
+                    <span className="text-4xl font-bold">Custom</span>
                   ) : (
                     <>
-                      <span className="text-muted-foreground text-lg">$</span>
-                      <span className="font-display font-bold text-4xl text-foreground">
-                        {plan.price}
-                      </span>
-                      <span className="text-muted-foreground">/month</span>
+                      <span className="text-muted-foreground">$</span>
+                      <span className="text-4xl font-bold">{plan.price}</span>
+                      <span className="text-muted-foreground">{plan.period}</span>
                     </>
                   )}
                 </div>
-                <p className="text-muted-foreground text-sm">
-                  {plan.description}
-                </p>
+                <p className="text-muted-foreground text-sm">{plan.description}</p>
               </div>
 
-              {/* Features */}
-              <ul className="space-y-4 mb-8 flex-1">
+              <ul className="space-y-3 mb-8">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-3">
-                    <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                    <span className="text-foreground text-sm">{feature}</span>
+                    <Check className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">{feature}</span>
                   </li>
                 ))}
               </ul>
 
-              {/* CTA */}
               <Button
-                variant={plan.popular ? "hero" : "outline"}
+                variant={plan.popular ? "default" : "outline"}
                 size="lg"
                 className="w-full"
               >

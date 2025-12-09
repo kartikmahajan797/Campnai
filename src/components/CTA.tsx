@@ -1,44 +1,42 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 const CTA = () => {
   return (
-    <section className="py-24 relative overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute inset-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-gradient-to-r from-primary/10 via-blue-500/10 to-purple-500/10 blur-3xl animate-pulse-glow" />
-      </div>
+    <section className="py-24">
+      <div className="container mx-auto px-6">
+        <div className="relative max-w-5xl mx-auto rounded-3xl overflow-hidden">
+          {/* Background */}
+          <div className="absolute inset-0 bg-foreground" />
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,hsl(220,90%,56%,0.15),hsl(260,80%,60%,0.15),hsl(320,70%,55%,0.1))]" />
+          
+          {/* Content */}
+          <div className="relative px-8 py-16 md:px-16 md:py-20 text-center">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6">
+              Ready to automate your{" "}
+              <span className="text-primary">influencer marketing?</span>
+            </h2>
+            <p className="text-lg text-white/70 max-w-2xl mx-auto mb-10">
+              Join thousands of brands using Campnai to run smarter campaigns with less effort and better results.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button variant="light" size="xl" className="group">
+                Get started free
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+              <Button 
+                variant="heroOutline" 
+                size="xl" 
+                className="border-white/20 text-white hover:bg-white/10"
+              >
+                Schedule a demo
+              </Button>
+            </div>
 
-      <div className="container mx-auto px-6 relative z-10">
-        <div className="glass-card p-12 md:p-16 text-center max-w-4xl mx-auto">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">
-              14-day free trial • No credit card required
-            </span>
-          </div>
-
-          {/* Headline */}
-          <h2 className="font-display font-bold text-3xl md:text-4xl lg:text-5xl mb-6">
-            Ready to transform your{" "}
-            <span className="gradient-text">influencer marketing?</span>
-          </h2>
-
-          {/* Description */}
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-10">
-            Join thousands of brands using Campnai to automate their influencer campaigns and drive real results.
-          </p>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button variant="hero" size="xl" className="group">
-              Get Started Free
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <Button variant="glass" size="xl">
-              Schedule a Demo
-            </Button>
+            <p className="text-white/50 text-sm mt-6">
+              14-day free trial • No credit card required • Cancel anytime
+            </p>
           </div>
         </div>
       </div>
