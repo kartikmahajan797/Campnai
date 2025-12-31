@@ -54,6 +54,29 @@ const Campaigns = () => {
         }
     };
 
+    const handleDownloadSample = () => {
+        const headers = [
+            'PROFILE LINK', 'NAME', 'GENDER', 'LOCATION', 'TYPE', 'NICHE',
+            'FOLLOWERS', 'AVERAGE VIEWS', 'ENGAGEMENT RATE', 'COMMERCIALS',
+            'M/F SPLIT', 'INDIA 1/2 SPLIT', 'AGE CONCENTRATION', 'BRAND FIT',
+            'VIBE', 'CONTACT NO.', 'EMAIL'
+        ];
+        const csvContent = headers.join('\t'); // User mentioned tabs in the prompt "PROFILE LINK NAME..." look like tab separated or space but typical "CSV" usually uses commas, however the user input had large spaces. I will use comma as standard for CSV, but join with comma.
+        // Re-reading user request: "PROFILE LINK\tNAME\tGENDER..." - actually it looks like they pasted from a spreadsheet. CSV usually uses commas. 
+        // I will use commas for a standard CSV.
+        const csvString = headers.join(',');
+
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'sample_influencers.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const uploadFile = async (file: File) => {
         setIsUploading(true);
         const formData = new FormData();
@@ -126,13 +149,18 @@ const Campaigns = () => {
                                 <span>Supported columns:</span>
                             </div>
                             <ul className="list-disc pl-5 space-y-1 ml-1">
-                                <li>Influencer Name</li>
-                                <li>Instagram Handle</li>
-                                <li>Phone (optional)</li>
-                                <li>Email (optional)</li>
-                                <li>City</li>
+                                <li>PROFILE LINK</li>
+                                <li>NAME</li>
+                                <li>GENDER</li>
+                                <li>LOCATION</li>
+                                <li>CONTACT NO.</li>
+                                <li>EMAIL</li>
+                                <li className="text-slate-500 italic">...and more</li>
                             </ul>
-                            <button className="flex items-center gap-2 text-slate-400 hover:text-white mt-4 text-xs transition">
+                            <button
+                                onClick={handleDownloadSample}
+                                className="flex items-center gap-2 text-slate-400 hover:text-white mt-4 text-xs transition"
+                            >
                                 <Download size={14} />
                                 Download sample CSV
                             </button>
