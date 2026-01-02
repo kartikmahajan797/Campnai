@@ -1,15 +1,40 @@
 import React, { useState } from 'react';
-import { Upload, Mic, Plus } from 'lucide-react';
+import { Upload, Mic, Plus, Loader2 } from 'lucide-react';
 import DashboardLayout from '../components/DashboardLayout';
 
 const Dashboard = () => {
   const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [response, setResponse] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim()) {
-      console.log('Submitted:', inputValue);
-      // Add your submission logic here
+    if (inputValue.trim() && !isLoading) {
+      setIsLoading(true);
+      setResponse('');
+
+      try {
+        const response = await fetch('http://localhost:3001/api/influencer-search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: inputValue }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to get AI response');
+        }
+
+        const data = await response.json();
+        setResponse(data.response);
+      } catch (error) {
+        console.error('Error:', error);
+        setResponse('Sorry, I encountered an error while processing your request. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+
       setInputValue('');
     }
   };
