@@ -11,24 +11,37 @@ import {
 } from "@/components/ui/table";
 
 const Campaigns = () => {
-
-    const influencers = [
-        { name: 'Aditi Kapoor', handle: '@aditix', phone: 'NoWhatsapp', email: 'No Email', category: 'Beauty', city: 'Mumbai', phoneStatus: 'warning', emailStatus: 'warning' },
-        { name: 'Rahul Verma', handle: '@rahulv', phone: '+91 9823 456789', email: 'rahul@gmail.com', category: 'Fitness', city: 'Delhi', phoneStatus: 'success', emailStatus: 'success' }, // Email hidden in image but assuming success for variety or matching typical data
-        { name: 'Simran Sharma', handle: '@simran.s', phone: 'simran@gmail.com', email: '', category: 'Lifestyle', city: 'Mumbai', phoneStatus: 'warning', emailStatus: 'success' }, // Image shows email in phone column? Let's follow image text.
-
-    ];
-
-    const tableData = [
-        { name: 'Aditi Kapoor', handle: '@aditix', phone: 'NoWhatsapp', phoneColor: 'text-orange-500', email: 'No Email', emailColor: 'text-orange-500', category: 'Beauty', city: 'Mumbai' },
-        { name: 'Rahul Verma', handle: '@rahulv', phone: '+91 9823 456789', phoneColor: 'text-slate-300', email: '-', emailColor: 'text-slate-500', category: 'Fitness', city: 'Delhi' },
-        { name: 'Simran Sharma', handle: '@simran.s', phone: 'simran@gmail.com', phoneColor: 'text-orange-500', email: '-', emailColor: 'text-slate-500', category: 'Lifestyle', city: 'Mumbai' },
-        { name: 'Ankit Yadav', handle: '@ankity_', phone: 'No Email', phoneColor: 'text-orange-500', email: 'No Email', emailColor: 'text-orange-500', category: 'Travel', city: 'Bangalore' },
-        { name: 'Priya Singh', handle: '@priyarg', phone: '+91 9810 123456', phoneColor: 'text-slate-300', email: '-', emailColor: 'text-slate-500', category: 'Delhi', city: 'Delhi' },
-    ];
-
+    const [influencers, setInfluencers] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
+    const [totalCount, setTotalCount] = useState(0);
+    const [page, setPage] = useState(1);
+    const [pageSize] = useState(30);
+    const [totalPages, setTotalPages] = useState(0);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const fetchInfluencers = async (currentPage: number) => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(`http://127.0.0.1:8000/api/v1/influencers?page=${currentPage}&page_size=${pageSize}`);
+            if (response.ok) {
+                const data = await response.json();
+                setInfluencers(data.influencers);
+                setTotalCount(data.total);
+                setTotalPages(data.total_pages);
+            } else {
+                console.error("Failed to fetch influencers");
+            }
+        } catch (error) {
+            console.error("Error fetching influencers:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchInfluencers(page);
+    }, [page]);
 
     const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -97,6 +110,8 @@ const Campaigns = () => {
 
             if (response.ok) {
                 alert(`Success: ${data.uploaded_records} records uploaded!`);
+                fetchInfluencers(1);
+                setPage(1);
             } else {
                 console.error("Server error:", data);
                 alert(`Error: ${data.detail || 'Upload failed'}`);
@@ -177,46 +192,115 @@ const Campaigns = () => {
                 </div>
 
                 {/* Table */}
-                <div className="w-full max-w-4xl border border-slate-800 rounded-xl overflow-hidden bg-slate-900/50 backdrop-blur-sm">
-                    <Table>
-                        <TableHeader className="bg-slate-950/50">
-                            <TableRow className="border-slate-800 hover:bg-transparent">
-                                <TableHead className="text-slate-400">Influencer Name</TableHead>
-                                <TableHead className="text-slate-400">Instagram Handle</TableHead>
-                                <TableHead className="text-slate-400">Phone</TableHead>
-                                <TableHead className="text-slate-400">Email</TableHead>
-                                <TableHead className="text-slate-400">Category</TableHead>
-                                <TableHead className="text-slate-400">City</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {tableData.map((influencer, index) => (
-                                <TableRow key={index} className="border-slate-800 hover:bg-slate-800/50">
-                                    <TableCell className="font-medium text-slate-200">{influencer.name}</TableCell>
-                                    <TableCell className="text-slate-400">{influencer.handle}</TableCell>
-                                    <TableCell className={influencer.phoneColor}>
-                                        <div className="flex items-center gap-2">
-                                            {(influencer.phone === 'NoWhatsapp' || influencer.phone === 'No Email' || influencer.phone.includes('@')) && (
-                                                <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                                            )}
-                                            {influencer.phone}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className={influencer.emailColor}>
-                                        <div className="flex items-center gap-2">
-                                            {influencer.email === 'No Email' && (
-                                                <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                                            )}
-                                            {influencer.email}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-slate-400">{influencer.category}</TableCell>
-                                    <TableCell className="text-slate-400">{influencer.city}</TableCell>
+                <div className="w-full max-w-6xl border border-slate-800 rounded-xl overflow-hidden bg-slate-900/50 backdrop-blur-sm">
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-slate-950/50">
+                                <TableRow className="border-slate-800 hover:bg-transparent whitespace-nowrap">
+                                    <TableHead className="text-slate-400 min-w-[150px]">Profile Link</TableHead>
+                                    <TableHead className="text-slate-400 min-w-[150px]">Name</TableHead>
+                                    <TableHead className="text-slate-400">Gender</TableHead>
+                                    <TableHead className="text-slate-400 min-w-[120px]">Location</TableHead>
+                                    <TableHead className="text-slate-400">Type</TableHead>
+                                    <TableHead className="text-slate-400 min-w-[120px]">Niche</TableHead>
+                                    <TableHead className="text-slate-400">Followers</TableHead>
+                                    <TableHead className="text-slate-400">Avg Views</TableHead>
+                                    <TableHead className="text-slate-400">Engagement</TableHead>
+                                    <TableHead className="text-slate-400">Commercials</TableHead>
+                                    <TableHead className="text-slate-400">M/F Split</TableHead>
+                                    <TableHead className="text-slate-400">India Split</TableHead>
+                                    <TableHead className="text-slate-400">Age Conc.</TableHead>
+                                    <TableHead className="text-slate-400">Brand Fit</TableHead>
+                                    <TableHead className="text-slate-400">Vibe</TableHead>
+                                    <TableHead className="text-slate-400 min-w-[150px]">Contact No.</TableHead>
+                                    <TableHead className="text-slate-400 min-w-[180px]">Email</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={17} className="text-center py-8 text-slate-500">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-500"></div>
+                                                Loading data...
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : influencers.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={17} className="text-center py-8 text-slate-500">
+                                            No influencers found. Upload a CSV to get started.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    influencers.map((influencer, index) => (
+                                        <TableRow key={influencer.id || index} className="border-slate-800 hover:bg-slate-800/50 whitespace-nowrap">
+                                            <TableCell className="text-slate-400">
+                                                {influencer.profile?.link ? (
+                                                    <a href={influencer.profile.link} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                                                        Visit Profile
+                                                    </a>
+                                                ) : '-'}
+                                            </TableCell>
+                                            <TableCell className="font-medium text-slate-200">{influencer.profile?.name || '-'}</TableCell>
+                                            <TableCell className="text-slate-400">{influencer.profile?.gender || '-'}</TableCell>
+                                            <TableCell className="text-slate-400">{influencer.profile?.location || '-'}</TableCell>
+                                            <TableCell className="text-slate-400">{influencer.profile?.type || '-'}</TableCell>
+                                            <TableCell className="text-slate-400">{influencer.brand?.niche || '-'}</TableCell>
+                                            <TableCell className="text-slate-300 font-mono text-xs">{influencer.metrics?.followers?.toLocaleString() || '0'}</TableCell>
+                                            <TableCell className="text-slate-300 font-mono text-xs">{influencer.metrics?.avg_views?.toLocaleString() || '0'}</TableCell>
+                                            <TableCell className="text-slate-300 font-mono text-xs">{influencer.metrics?.engagement_rate ? `${influencer.metrics.engagement_rate}%` : '0%'}</TableCell>
+                                            <TableCell className="text-slate-400">{influencer.commercials || '-'}</TableCell>
+                                            <TableCell className="text-slate-400 text-xs">{influencer.audience?.mf_split || '-'}</TableCell>
+                                            <TableCell className="text-slate-400 text-xs">{influencer.audience?.india_split || '-'}</TableCell>
+                                            <TableCell className="text-slate-400 text-xs">{influencer.audience?.age_concentration || '-'}</TableCell>
+                                            <TableCell className="text-slate-400">{influencer.brand?.brand_fit || '-'}</TableCell>
+                                            <TableCell className="text-slate-400">{influencer.brand?.vibe || '-'}</TableCell>
+                                            <TableCell className="text-slate-300">{influencer.contact?.contact_no || '-'}</TableCell>
+                                            <TableCell className="text-slate-300">{influencer.contact?.email || '-'}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="w-full max-w-4xl flex items-center justify-between mt-6 px-4">
+                        <div className="text-sm text-slate-500">
+                            Showing <span className="text-slate-300">{(page - 1) * pageSize + 1}</span> to <span className="text-slate-300">{Math.min(page * pageSize, totalCount)}</span> of <span className="text-slate-300">{totalCount}</span> records
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                                disabled={page === 1}
+                                className="px-4 py-2 text-sm bg-slate-900 border border-slate-800 rounded-lg text-slate-300 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                            >
+                                Previous
+                            </button>
+                            <div className="flex items-center gap-1">
+                                {[...Array(totalPages)].map((_, i) => (
+                                    <button
+                                        key={i + 1}
+                                        onClick={() => setPage(i + 1)}
+                                        className={`w-8 h-8 text-sm rounded-lg transition ${page === i + 1 ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={page === totalPages}
+                                className="px-4 py-2 text-sm bg-slate-900 border border-slate-800 rounded-lg text-slate-300 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
 
             </div>
         </DashboardLayout>
