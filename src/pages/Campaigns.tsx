@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
-import { Upload, FileText, Download, Check, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Download, Check, AlertCircle, Search } from 'lucide-react';
 import {
     Table,
     TableBody,
@@ -18,12 +18,20 @@ const Campaigns = () => {
     const [page, setPage] = useState(1);
     const [pageSize] = useState(30);
     const [totalPages, setTotalPages] = useState(0);
+    const [searchQuery, setSearchQuery] = useState('');
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-    const fetchInfluencers = async (currentPage: number) => {
+    const fetchInfluencers = async (currentPage: number, search: string = '') => {
         setIsLoading(true);
         try {
-            const response = await fetch(`http://127.0.0.1:8000/api/v1/influencers?page=${currentPage}&page_size=${pageSize}`);
+            const url = new URL(`http://127.0.0.1:8000/api/v1/influencers`);
+            url.searchParams.append('page', currentPage.toString());
+            url.searchParams.append('page_size', pageSize.toString());
+            if (search) {
+                url.searchParams.append('search', search);
+            }
+
+            const response = await fetch(url.toString());
             if (response.ok) {
                 const data = await response.json();
                 setInfluencers(data.influencers);
@@ -40,8 +48,20 @@ const Campaigns = () => {
     };
 
     React.useEffect(() => {
-        fetchInfluencers(page);
+        fetchInfluencers(page, searchQuery);
     }, [page]);
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            if (page === 1) {
+                fetchInfluencers(1, searchQuery);
+            } else {
+                setPage(1); // Changing page will trigger the other effect
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -191,6 +211,20 @@ const Campaigns = () => {
                     </div>
                 </div>
 
+                {/* Search Bar */}
+                <div className="w-full max-w-6xl mb-6 flex justify-between items-center gap-4">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search Profile, Name, Location, Email..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-slate-900/50 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition whitespace-nowrap overflow-hidden text-ellipsis"
+                        />
+                    </div>
+                </div>
+
                 {/* Table */}
                 <div className="w-full max-w-6xl border border-slate-800 rounded-xl overflow-hidden bg-slate-900/50 backdrop-blur-sm">
                     <div className="overflow-x-auto">
@@ -201,7 +235,7 @@ const Campaigns = () => {
                                     <TableHead className="text-slate-400 min-w-[150px]">Name</TableHead>
                                     <TableHead className="text-slate-400">Gender</TableHead>
                                     <TableHead className="text-slate-400 min-w-[120px]">Location</TableHead>
-                                    <TableHead className="text-slate-400">Type</TableHead>
+                                    {/* <TableHead className="text-slate-400">Type</TableHead>
                                     <TableHead className="text-slate-400 min-w-[120px]">Niche</TableHead>
                                     <TableHead className="text-slate-400">Followers</TableHead>
                                     <TableHead className="text-slate-400">Avg Views</TableHead>
@@ -211,7 +245,7 @@ const Campaigns = () => {
                                     <TableHead className="text-slate-400">India Split</TableHead>
                                     <TableHead className="text-slate-400">Age Conc.</TableHead>
                                     <TableHead className="text-slate-400">Brand Fit</TableHead>
-                                    <TableHead className="text-slate-400">Vibe</TableHead>
+                                    <TableHead className="text-slate-400">Vibe</TableHead> */}
                                     <TableHead className="text-slate-400 min-w-[150px]">Contact No.</TableHead>
                                     <TableHead className="text-slate-400 min-w-[180px]">Email</TableHead>
                                 </TableRow>
@@ -219,7 +253,7 @@ const Campaigns = () => {
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={17} className="text-center py-8 text-slate-500">
+                                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                                             <div className="flex items-center justify-center gap-2">
                                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-500"></div>
                                                 Loading data...
@@ -228,7 +262,7 @@ const Campaigns = () => {
                                     </TableRow>
                                 ) : influencers.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={17} className="text-center py-8 text-slate-500">
+                                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                                             No influencers found. Upload a CSV to get started.
                                         </TableCell>
                                     </TableRow>
@@ -245,7 +279,7 @@ const Campaigns = () => {
                                             <TableCell className="font-medium text-slate-200">{influencer.profile?.name || '-'}</TableCell>
                                             <TableCell className="text-slate-400">{influencer.profile?.gender || '-'}</TableCell>
                                             <TableCell className="text-slate-400">{influencer.profile?.location || '-'}</TableCell>
-                                            <TableCell className="text-slate-400">{influencer.profile?.type || '-'}</TableCell>
+                                            {/* <TableCell className="text-slate-400">{influencer.profile?.type || '-'}</TableCell>
                                             <TableCell className="text-slate-400">{influencer.brand?.niche || '-'}</TableCell>
                                             <TableCell className="text-slate-300 font-mono text-xs">{influencer.metrics?.followers?.toLocaleString() || '0'}</TableCell>
                                             <TableCell className="text-slate-300 font-mono text-xs">{influencer.metrics?.avg_views?.toLocaleString() || '0'}</TableCell>
@@ -255,7 +289,7 @@ const Campaigns = () => {
                                             <TableCell className="text-slate-400 text-xs">{influencer.audience?.india_split || '-'}</TableCell>
                                             <TableCell className="text-slate-400 text-xs">{influencer.audience?.age_concentration || '-'}</TableCell>
                                             <TableCell className="text-slate-400">{influencer.brand?.brand_fit || '-'}</TableCell>
-                                            <TableCell className="text-slate-400">{influencer.brand?.vibe || '-'}</TableCell>
+                                            <TableCell className="text-slate-400">{influencer.brand?.vibe || '-'}</TableCell> */}
                                             <TableCell className="text-slate-300">{influencer.contact?.contact_no || '-'}</TableCell>
                                             <TableCell className="text-slate-300">{influencer.contact?.email || '-'}</TableCell>
                                         </TableRow>

@@ -154,9 +154,14 @@ async def upload_csv(file: UploadFile = File(...)):
     }
 
 @router.get("/influencers")
-async def get_influencers(page: int = 1, page_size: int = 10, campaign_id: str = "test_campaign_001"):
+async def get_influencers(
+    page: int = 1, 
+    page_size: int = 10, 
+    search: str = None,
+    campaign_id: str = "test_campaign_001"
+):
     """
-    Fetches influencers from Firestore with pagination.
+    Fetches influencers from Firestore with pagination and optional search filter.
     """
     try:
         if page < 1:
@@ -164,15 +169,55 @@ async def get_influencers(page: int = 1, page_size: int = 10, campaign_id: str =
         
         collection_ref = db.collection("campaigns").document(campaign_id).collection("influencers")
         
-        # Get total count (using aggregation for better performance if possible, but standard count for now)
-        # Note: In production with large datasets, consider maintaining a counter or using Firestore count queries
+        # In a real Firestore app, we would ideally use Search indexers like Algolia or Meilisearch
+        # For simplicity and given the task, we'll fetch more data and filter in Python if search is present,
+        # OR perform limited filtering if possible.
+        # Since we want to search across multiple nested fields, Python filtering is necessary unless we rethink storage.
+        
+        if search:
+            search = search.lower()
+            # If searching, we fetch all (or a large batch) and filter
+            # Optimization: In a real app, you'd use a dedicated search service
+            all_docs = collection_ref.order_by("created_at", direction=firestore.Query.DESCENDING).stream()
+            
+            filtered_influencers = []
+            for doc in all_docs:
+                data = doc.to_dict()
+                
+                # Check fields
+                profile = data.get("profile", {})
+                contact = data.get("contact", {})
+                
+                matches = [
+                    search in profile.get("link", "").lower(),
+                    search in profile.get("name", "").lower(),
+                    search in profile.get("gender", "").lower(),
+                    search in profile.get("location", "").lower(),
+                    search in contact.get("contact_no", "").lower(),
+                    search in contact.get("email", "").lower()
+                ]
+                
+                if any(matches):
+                    data["id"] = doc.id
+                    if "created_at" in data and isinstance(data["created_at"], datetime):
+                        data["created_at"] = data["created_at"].isoformat()
+                    filtered_influencers.append(data)
+            
+            total_docs = len(filtered_influencers)
+            start = (page - 1) * page_size
+            end = start + page_size
+            paginated_influencers = filtered_influencers[start:end]
+            
+            return {
+                "influencers": paginated_influencers,
+                "total": total_docs,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": math.ceil(total_docs / page_size) if total_docs > 0 else 0
+            }
+
+        # Original logic for non-search
         total_docs = collection_ref.count().get()[0][0].value
-        
-        # Query for paginated results
-        # Firestore pagination works with cursor-based pagination (startAfter) or offset (limit/offset)
-        # Offset is easier but less efficient for very large datasets. 
-        # For simplicity and given the usage, we'll use limit/offset or just limit with ordering.
-        
         query = collection_ref.order_by("created_at", direction=firestore.Query.DESCENDING).limit(page_size).offset((page - 1) * page_size)
         docs = query.stream()
         
@@ -180,7 +225,6 @@ async def get_influencers(page: int = 1, page_size: int = 10, campaign_id: str =
         for doc in docs:
             influencer_data = doc.to_dict()
             influencer_data["id"] = doc.id
-            # Convert datetime to string for JSON serialization
             if "created_at" in influencer_data and isinstance(influencer_data["created_at"], datetime):
                 influencer_data["created_at"] = influencer_data["created_at"].isoformat()
             influencers.append(influencer_data)
