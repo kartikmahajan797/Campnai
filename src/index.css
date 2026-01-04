@@ -116,18 +116,30 @@
     @apply bg-[hsl(220,25%,6%)] text-white;
   }
 
+  .glass-card {
+    @apply bg-white/40 backdrop-blur-xl border border-white/20 rounded-2xl shadow-xl;
+  }
+
+  .glass-card-dark {
+    @apply bg-black/20 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl;
+  }
+
   .gradient-text {
-    @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-hero);
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary;
   }
 
   .card-elevated {
-    @apply bg-card rounded-2xl border border-border;
-    box-shadow: var(--shadow-lg);
+    @apply bg-card rounded-2xl border border-border transition-all duration-300;
+    box-shadow: var(--shadow-md);
   }
 
-  .badge-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium;
+  .card-elevated:hover {
+    box-shadow: var(--shadow-lg);
+    @apply -translate-y-1;
+  }
+
+  .badge-premium {
+    @apply inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 border border-white shadow-sm text-sm font-medium text-foreground;
   }
 }
 

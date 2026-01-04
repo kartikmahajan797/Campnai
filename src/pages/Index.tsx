@@ -5,6 +5,7 @@ import CreatorNetwork from "@/components/CreatorNetwork";
 import HowItWorks from "@/components/HowItWorks";
 import Features from "@/components/Features";
 import Pricing from "@/components/Pricing";
+import FAQ from "@/components/FAQ";
 import CTA from "@/components/CTA";
 import Footer from "@/components/Footer";
 
@@ -19,6 +20,7 @@ const Index = () => {
         <HowItWorks />
         <Features />
         <Pricing />
+        <FAQ />
         <CTA />
       </main>
       <Footer />
