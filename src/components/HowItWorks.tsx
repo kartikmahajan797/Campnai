@@ -1,5 +1,6 @@
 import { Check, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
 const HowItWorks = () => {
   const youDoTasks = [
@@ -12,117 +13,132 @@ const HowItWorks = () => {
     "Finding the best-fit influencer",
     "Sending collaboration invitations",
     "Securing reasonable pricing",
-    "Delivering the ready-to-collaborate list",
+    "Delivering ready-to-collaborate list",
     "Managing contract signing",
-    "Monitoring influencer progress",
-    "Protecting campaign safety",
-    "Tracking performance continuously",
+    "Monitoring progress & safety",
+    "Tracking performance 24/7",
   ];
 
   return (
-    <section className="py-24 bg-muted/30">
-      <div className="container mx-auto px-6">
+    <section className="py-32 relative overflow-hidden bg-background">
+      <div className="container mx-auto px-6 relative z-10">
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
-            Work used to take months,{" "}
-            <span className="gradient-text">Campnai makes it happen fast</span>
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            Campnai runs the entire influencer marketing process from start to end, you just need to review and approve like a boss.
-          </p>
+        <div className="text-center max-w-3xl mx-auto mb-20">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-8 tracking-tight"
+          >
+            Work used to take months, <br />
+            <span className="gradient-text">Neo makes it happen in hours</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-lg md:text-xl text-muted-foreground leading-relaxed"
+          >
+            Campnai runs the entire influencer marketing process. You simply review and approve like a visionary leader.
+          </motion.p>
         </div>
 
         {/* Comparison Cards */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-16">
+        <div className="grid lg:grid-cols-2 gap-12 max-w-6xl mx-auto mb-20">
           {/* You Do */}
-          <div className="bg-card rounded-2xl border border-border p-8 shadow-lg">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-6">
-              <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">3</span>
-              You only need to do
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="glass-card border-white/40 p-10 flex flex-col"
+          >
+            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-bold mb-8 w-fit">
+              <span className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs">3</span>
+              Steps for you
             </div>
-            
-            <ul className="space-y-4">
+
+            <ul className="space-y-6 flex-grow">
               {youDoTasks.map((task, index) => (
-                <li key={task} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <motion.li
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  key={task}
+                  className="flex items-start gap-4"
+                >
+                  <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-1">
                     <Check className="w-4 h-4 text-accent" />
                   </div>
-                  <span className="text-foreground font-medium">{task}</span>
-                </li>
+                  <span className="text-xl font-semibold text-foreground">{task}</span>
+                </motion.li>
               ))}
             </ul>
-          </div>
+          </motion.div>
 
           {/* AI Handles */}
-          <div className="bg-foreground text-background rounded-2xl p-8 shadow-xl">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-6">
-              <Zap className="w-4 h-4" />
-              AI Employee Handles
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="bg-foreground text-background rounded-3xl p-10 shadow-2xl relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-[60px]" />
+
+            <div className="relative z-10 flex flex-col h-full">
+              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-bold mb-8 w-fit">
+                <Zap className="w-4 h-4 text-accent" />
+                AI Agent Handles Everything Else
+              </div>
+
+              <ul className="grid sm:grid-cols-1 gap-4">
+                {aiHandlesTasks.map((task, index) => (
+                  <motion.li
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.05 }}
+                    key={task}
+                    className="flex items-center gap-4 group"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-accent">
+                      <Check className="w-3 h-3 transition-transform group-hover:scale-125" />
+                    </div>
+                    <span className="text-white/80 text-lg">{task}</span>
+                  </motion.li>
+                ))}
+              </ul>
             </div>
-            
-            <ul className="space-y-3">
-              {aiHandlesTasks.map((task) => (
-                <li key={task} className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Check className="w-3 h-3 text-accent" />
-                  </div>
-                  <span className="text-white/90 text-sm">{task}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          </motion.div>
         </div>
 
-        {/* Features */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {/* AI Matching */}
-          <div className="bg-card rounded-2xl border border-border p-8 shadow-lg">
-            <h3 className="text-2xl font-bold mb-4">AI-powered matching</h3>
-            <p className="text-muted-foreground mb-6">
-              Campnai has built the industry's first influencer matching system powered by LLMs. It allows AI to act like a marketing expert, evaluating content and understanding influencer audiences.
+        {/* Global Reach Feature */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="glass-card border-white/40 p-12 max-w-6xl mx-auto text-center"
+        >
+          <div className="max-w-3xl mx-auto">
+            <h3 className="text-3xl font-bold mb-6">Scale reach globally with AI</h3>
+            <p className="text-muted-foreground text-lg mb-10 leading-relaxed">
+              Our LLM-powered matching system evaluates content across 140+ countries, overcoming language barriers and cultural nuances automatically.
             </p>
-            
-            <div className="flex gap-8 mb-6">
-              <div>
-                <div className="text-3xl font-bold text-primary">5M+</div>
-                <div className="text-sm text-muted-foreground">influencers</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-primary">140+</div>
-                <div className="text-sm text-muted-foreground">countries</div>
-              </div>
-            </div>
 
-            <div className="flex flex-wrap gap-2">
-              {["Low-quality accounts Filtering", "Real-time risk detection", "Dynamic penalty system"].map((feature) => (
-                <span key={feature} className="px-3 py-1.5 rounded-full bg-muted text-sm text-muted-foreground">
-                  {feature}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Scale Reach */}
-          <div className="bg-card rounded-2xl border border-border p-8 shadow-lg">
-            <h3 className="text-2xl font-bold mb-4">Scale reach globally</h3>
-            <p className="text-muted-foreground mb-6">
-              Launch campaigns across every continent. Our AI handles language barriers, cultural nuances, and platform differences automatically.
-            </p>
-            
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              {["YouTube", "Instagram", "TikTok", "Twitter", "Twitch", "LinkedIn"].map((platform) => (
-                <div key={platform} className="flex items-center justify-center h-12 rounded-lg bg-muted text-sm font-medium">
+            <div className="flex flex-wrap justify-center gap-4 mb-10">
+              {["Instagram", "YouTube", "TikTok", "LinkedIn", "Twitter"].map((platform) => (
+                <div key={platform} className="px-6 py-3 rounded-2xl bg-white/50 border border-border font-bold text-foreground shadow-sm hover:scale-105 transition-transform">
                   {platform}
                 </div>
               ))}
             </div>
 
-            <Button variant="default" className="w-full">
-              Book a demo
+            <Button variant="default" size="lg" className="h-14 px-10 rounded-full text-base font-bold">
+              Explore Global Network
             </Button>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );
