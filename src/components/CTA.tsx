@@ -7,7 +7,7 @@ const CTA = () => {
       <div className="container mx-auto px-6">
         <div className="relative max-w-5xl mx-auto rounded-3xl overflow-hidden">
           {/* Background */}
-          <div className="absolute inset-0 bg-foreground" />
+          <div className="absolute inset-0 bg-[hsl(220,25%,6%)]" />
           <div className="absolute inset-0 bg-[linear-gradient(135deg,hsl(220,90%,56%,0.15),hsl(260,80%,60%,0.15),hsl(320,70%,55%,0.1))]" />
 
           {/* Content */}
