@@ -32,7 +32,7 @@ const Hero = () => {
             className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.05] mb-8"
           >
             Meet Neo, your <br />
-            <span className="gradient-text">Agentic Marketing Partner</span>
+            <span className="gradient-text">Influencer Marketing Partner</span>
           </motion.h1>
 
           <motion.p

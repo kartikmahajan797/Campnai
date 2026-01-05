@@ -82,7 +82,7 @@ const HowItWorks = () => {
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="bg-foreground text-background rounded-3xl p-10 shadow-2xl relative overflow-hidden"
+            className="bg-[hsl(220,25%,6%)] text-white rounded-3xl p-10 shadow-2xl relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-[60px]" />
 
