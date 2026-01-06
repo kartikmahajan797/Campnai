@@ -1,92 +1,144 @@
-import { Button } from "@/components/ui/button";
-import creator1 from "@/assets/creator-1.jpg";
-import creator2 from "@/assets/creator-2.jpg";
-import creator3 from "@/assets/creator-3.jpg";
-import creator4 from "@/assets/creator-4.jpg";
-import creator5 from "@/assets/creator-5.jpg";
-import creator6 from "@/assets/creator-6.jpg";
+import { motion } from "framer-motion";
+import { ClipboardList, User, Mail, BarChart2, CheckCircle2 } from "lucide-react";
 
 const CreatorNetwork = () => {
-  const creators = [
-    { name: "@emma_lifestyle", followers: "1.2M+", image: creator1, platform: "Instagram" },
-    { name: "@alex_tech", followers: "856K+", image: creator2, platform: "YouTube" },
-    { name: "@fitness_sarah", followers: "2.1M+", image: creator3, platform: "TikTok" },
-    { name: "@travel_mike", followers: "1.8M+", image: creator4, platform: "YouTube" },
-    { name: "@beauty_sophia", followers: "3.2M+", image: creator5, platform: "Instagram" },
-    { name: "@gamer_ryan", followers: "945K+", image: creator6, platform: "Twitch" },
-  ];
-
-  const stats = [
-    { value: "5M+", label: "Verified Creators" },
-    { value: "140+", label: "Countries" },
-    { value: "6+", label: "Major Platforms" },
-  ];
-
   return (
-    <section id="creators" className="py-24 section-dark">
-      <div className="container mx-auto px-6">
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-block px-4 py-1.5 rounded-full bg-white/10 text-white/80 text-sm font-medium mb-6">
-            Creator Network
-          </div>
+    <section className="py-24 bg-[#030014] relative overflow-hidden">
+      {/* Background Decorative Elements */}
+      {/* Repeating the space theme but with different positioning/colors to flow from previous section */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+        <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[800px] h-[300px] bg-purple-600/10 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="container mx-auto px-6 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-20"
+        >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
-            Trusted Vetted Creators
+            One agent. One system.<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-300">One campaign flow.</span>
           </h2>
-          <p className="text-3xl md:text-4xl lg:text-5xl font-bold text-white/60 mb-6">
-            Reach Across The Globe
-          </p>
-          <p className="text-lg text-white/60">
-            Campnai connects your brand with verified influencers across every major platform and market, so you can launch campaigns instantly and scale them anywhere.
-          </p>
-        </div>
+        </motion.div>
 
-        {/* Stats */}
-        <div className="flex flex-wrap justify-center gap-12 md:gap-20 mb-16">
-          {stats.map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-white mb-2">
-                {stat.value}
-              </div>
-              <div className="text-white/60">{stat.label}</div>
-            </div>
-          ))}
-        </div>
+        <div className="relative max-w-6xl mx-auto">
+          {/* Connecting Line (Desktop) */}
+          <div className="hidden md:block absolute top-[60px] left-0 w-full h-[2px] bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-30"></div>
+          <div className="hidden md:block absolute top-[60px] left-0 w-full h-[2px] bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 blur-sm"></div>
 
-        {/* Creator Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
-          {creators.map((creator, index) => (
-            <div
-              key={creator.name}
-              className="group relative rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-white/20 transition-all duration-300 hover:-translate-y-1"
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 relative">
+
+            {/* Step 1 */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="flex flex-col items-center text-center relative group"
             >
-              <div className="aspect-square">
-                <img
-                  src={creator.image}
-                  alt={creator.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <div className="text-white font-semibold text-sm truncate">{creator.name}</div>
-                <div className="text-white/60 text-xs">{creator.followers} Followers</div>
-                <div className="mt-2 inline-block px-2 py-0.5 rounded-full bg-white/10 text-white/80 text-xs">
-                  {creator.platform}
+              <div className="relative mb-8">
+                <div className="w-32 h-24 rounded-xl bg-gradient-to-b from-blue-900/40 to-slate-900/40 border border-blue-500/30 flex items-center justify-center p-4 backdrop-blur-sm shadow-[0_0_20px_rgba(59,130,246,0.2)] group-hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] transition-all">
+                  <ClipboardList className="w-10 h-10 text-blue-400" />
+                  <div className="absolute -bottom-3 -right-3 bg-blue-500 rounded-full p-1 border-4 border-[#030014]">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#030014] border-2 border-blue-500 flex items-center justify-center z-10">
+                  <span className="text-blue-400 font-bold text-sm">1</span>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+              <div className="mt-8">
+                <h3 className="text-xl font-bold text-white mb-3">Understands<br />your brief</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Brand tone, goals,<br />audience — context first.
+                </p>
+              </div>
+            </motion.div>
 
-        {/* CTA */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button variant="light" size="lg">
-            Sign up
-          </Button>
-          <Button variant="heroOutline" size="lg" className="border-white/20 text-white hover:bg-white/10">
-            Book a demo
-          </Button>
+            {/* Step 2 */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-col items-center text-center relative group"
+            >
+              <div className="relative mb-8">
+                <div className="w-32 h-24 rounded-xl bg-gradient-to-b from-purple-900/40 to-slate-900/40 border border-purple-500/30 flex items-center justify-center p-4 backdrop-blur-sm shadow-[0_0_20px_rgba(168,85,247,0.2)] group-hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-all">
+                  <User className="w-10 h-10 text-purple-400" />
+                  <div className="absolute top-2 right-2 text-yellow-400">
+                    ★
+                  </div>
+                </div>
+                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#030014] border-2 border-purple-500 flex items-center justify-center z-10">
+                  <span className="text-purple-400 font-bold text-sm">2</span>
+                </div>
+              </div>
+              <div className="mt-8">
+                <h3 className="text-xl font-bold text-white mb-3">Finds the right<br />creators</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Based on vibe, content<br />style, and fit — not just<br />numbers.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Step 3 */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              className="flex flex-col items-center text-center relative group"
+            >
+              <div className="relative mb-8">
+                <div className="w-32 h-24 rounded-xl bg-gradient-to-b from-pink-900/40 to-slate-900/40 border border-pink-500/30 flex items-center justify-center p-4 backdrop-blur-sm shadow-[0_0_20px_rgba(236,72,153,0.2)] group-hover:shadow-[0_0_30px_rgba(236,72,153,0.4)] transition-all">
+                  <Mail className="w-10 h-10 text-pink-400" />
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center text-white text-xs font-bold border-4 border-[#030014]">
+                    3
+                  </div>
+                </div>
+                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#030014] border-2 border-pink-500 flex items-center justify-center z-10">
+                  <span className="text-pink-400 font-bold text-sm">3</span>
+                </div>
+              </div>
+              <div className="mt-8">
+                <h3 className="text-xl font-bold text-white mb-3">Runs outreach<br />& follow-ups</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Negotiation, reminders,<br />coordination — automated.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Step 4 */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.4 }}
+              className="flex flex-col items-center text-center relative group"
+            >
+              <div className="relative mb-8">
+                <div className="w-32 h-24 rounded-xl bg-gradient-to-b from-red-900/40 to-slate-900/40 border border-red-500/30 flex items-center justify-center p-4 backdrop-blur-sm shadow-[0_0_20px_rgba(239,68,68,0.2)] group-hover:shadow-[0_0_30px_rgba(239,68,68,0.4)] transition-all">
+                  <BarChart2 className="w-10 h-10 text-red-400" />
+                  <div className="absolute bottom-2 right-2 rounded-full border border-red-400/50 p-0.5">
+                    <CheckCircle2 className="w-3 h-3 text-red-400" />
+                  </div>
+                </div>
+                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#030014] border-2 border-red-500 flex items-center justify-center z-10">
+                  <span className="text-red-400 font-bold text-sm">4</span>
+                </div>
+              </div>
+              <div className="mt-8">
+                <h3 className="text-xl font-bold text-white mb-3">Manages the<br />campaign</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Live tracking, insights,<br />and outcomes in one place.
+                </p>
+              </div>
+            </motion.div>
+
+          </div>
         </div>
       </div>
     </section>

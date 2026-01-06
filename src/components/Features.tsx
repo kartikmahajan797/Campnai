@@ -1,137 +1,91 @@
 import { motion } from "framer-motion";
-import {
-  Search,
-  MessageSquare,
-  DollarSign,
-  FileCheck,
-  Eye,
-  BarChart3
-} from "lucide-react";
+import { Star } from "lucide-react";
 
 const Features = () => {
-  const features = [
+  const testimonials = [
     {
-      icon: Search,
-      title: "Smart Discovery",
-      description: "LLM-powered search finds creators who truly match your brand, not just keywords.",
+      quote: "Reduced campaign setup time by 70%.",
+      rating: 4,
       color: "blue",
+      borderColor: "border-blue-500",
+      glowColor: "shadow-[0_0_30px_rgba(59,130,246,0.3)]"
     },
     {
-      icon: MessageSquare,
-      title: "Automated Outreach",
-      description: "AI crafts personalized invites that get responses. Scale without losing the human touch.",
-      color: "green",
-    },
-    {
-      icon: DollarSign,
-      title: "Smart Negotiation",
-      description: "Get fair pricing automatically. Our AI benchmarks rates across your industry.",
-      color: "amber",
-    },
-    {
-      icon: FileCheck,
-      title: "Contract Management",
-      description: "Auto-generated contracts with all terms. E-signatures make it official in minutes.",
+      quote: "Finally stopped juggling 6 tools for one campaign.",
+      rating: 4,
       color: "purple",
+      borderColor: "border-purple-500",
+      glowColor: "shadow-[0_0_30px_rgba(168,85,247,0.3)]"
     },
     {
-      icon: Eye,
-      title: "Content Review",
-      description: "AI monitors posts for brand safety. Get alerts before anything goes live.",
+      quote: "Neo feels like a silent operator running things in the background.",
+      rating: 4,
       color: "pink",
-    },
-    {
-      icon: BarChart3,
-      title: "Performance Tracking",
-      description: "Real-time analytics across all campaigns. Know your ROI as it happens.",
-      color: "cyan",
-    },
+      borderColor: "border-pink-500",
+      glowColor: "shadow-[0_0_30px_rgba(236,72,153,0.3)]"
+    }
   ];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5,
-      },
-    },
-  };
-
   return (
-    <section id="features" className="py-32 relative overflow-hidden bg-background">
-      {/* Subtle Background Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none -z-10">
-        <div className="absolute top-[20%] left-[10%] w-[30%] h-[30%] bg-primary/5 rounded-full blur-[100px]" />
-        <div className="absolute bottom-[20%] right-[10%] w-[30%] h-[30%] bg-accent/5 rounded-full blur-[100px]" />
+    <section className="py-32 bg-[#030014] relative overflow-hidden flex flex-col items-center justify-center">
+      {/* Background Decorative Elements */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+        <div className="absolute top-[30%] left-[20%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px]" />
+        <div className="absolute top-[10%] right-[20%] w-[400px] h-[400px] bg-pink-600/10 rounded-full blur-[100px]" />
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-20">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="badge-premium mb-6"
-          >
-            Core Capabilities
-          </motion.div>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-8 tracking-tight"
-          >
-            Everything automated,{" "}
-            <span className="gradient-text whitespace-nowrap">end-to-end</span>
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-lg md:text-xl text-muted-foreground leading-relaxed"
-          >
-            From finding creators to tracking ROI, Campnai handles every step of your influencer marketing workflow with agentic precision.
-          </motion.p>
-        </div>
 
-        {/* Features Grid */}
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto"
+          className="text-center mb-24"
         >
-          {features.map((feature, index) => (
+          <h2 className="text-3xl md:text-5xl lg:text-5xl font-bold text-white mb-2 leading-tight">
+            Built with real campaigns in mind
+          </h2>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {testimonials.map((item, index) => (
             <motion.div
-              key={feature.title}
-              variants={itemVariants}
-              whileHover={{ y: -8, transition: { duration: 0.2 } }}
-              className="group glass-card border-white/40 p-10 hover:border-primary/30 transition-all duration-300"
+              key={index}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.1 }}
+              className={`relative p-8 rounded-xl bg-white/5 border ${item.borderColor} ${item.glowColor} backdrop-blur-sm flex flex-col justify-between min-h-[250px] overflow-hidden group`}
             >
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-8 border border-border group-hover:scale-110 transition-transform bg-white/50 shadow-sm`}>
-                <feature.icon className={`w-8 h-8 text-foreground`} />
+              <div className="relative z-10 flex-grow flex items-center justify-center text-center">
+                <p className="text-xl md:text-2xl font-medium text-white leading-relaxed">
+                  "{item.quote}"
+                </p>
               </div>
-              <h3 className="text-2xl font-bold mb-4">{feature.title}</h3>
-              <p className="text-muted-foreground text-lg leading-relaxed">{feature.description}</p>
+
+              <div className="relative z-10 flex flex-col items-center mt-8 gap-2">
+                {/* Blurred Avatar/Logo Placeholder */}
+                <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-white/20 to-transparent blur-sm mb-2 opacity-70 group-hover:opacity-100 transition-opacity`}></div>
+
+                <div className="flex gap-1">
+                  {[...Array(item.rating)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 text-purple-400 fill-purple-400" />
+                  ))}
+                </div>
+              </div>
+
+              {/* Inner subtle gradient */}
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/40 pointer-events-none" />
             </motion.div>
           ))}
-        </motion.div>
+        </div>
+
+        <div className="mt-16 text-center">
+          <p className="text-slate-400 text-sm">
+            Early access users • Agencies & SMB brands
+          </p>
+        </div>
+
       </div>
     </section>
   );
