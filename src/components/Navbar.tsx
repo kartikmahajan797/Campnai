@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ModeToggle } from "@/components/mode-toggle";
-import logo2 from "@/assets/logo2.png";
+import logo from "@/assets/campnai-logo.png";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -39,9 +39,9 @@ const Navbar = () => {
         >
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <img src={logo2} alt="Campnai Logo" className="w-9 h-9 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300" />
-              <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full scale-0 group-hover:scale-150 transition-transform duration-500" />
+            <div className="relative group/logo">
+              <img src={logo} alt="Campnai Logo" className="w-10 h-10 object-contain group-hover/logo:scale-110 transition-transform duration-500 ease-out" />
+              <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-0 group-hover/logo:scale-150 transition-transform duration-700 opacity-0 group-hover/logo:opacity-100" />
             </div>
             <span className={`font-black text-2xl tracking-tighter transition-colors ${scrolled ? "text-foreground" : "text-foreground"}`}>
               Campnai
