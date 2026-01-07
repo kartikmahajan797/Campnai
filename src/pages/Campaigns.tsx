@@ -10,7 +10,10 @@ import {
     TableRow,
 } from "@/components/ui/table";
 
+import { useNavigate } from 'react-router-dom';
+
 const Campaigns = () => {
+    const navigate = useNavigate();
     const [influencers, setInfluencers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
@@ -207,6 +210,14 @@ const Campaigns = () => {
                             className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-medium transition shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isUploading ? 'Uploading...' : 'Upload CSV'}
+                        </button>
+
+                        {/* Temporary Navigation Code as per user request */}
+                        <button
+                            onClick={() => navigate('/campaigns/new/success')}
+                            className="text-slate-500 hover:text-indigo-400 text-sm font-medium underline underline-offset-4"
+                        >
+                            View Success Screen
                         </button>
                     </div>
                 </div>
