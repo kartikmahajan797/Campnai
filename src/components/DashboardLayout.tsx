@@ -7,9 +7,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
+    title?: React.ReactNode;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
@@ -139,7 +140,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                         </button>
 
                         <div className="flex items-center gap-2">
-                            <span className="text-white font-medium">CampnAI</span>
+                            {title ? (
+                                <span className="text-slate-400 text-sm font-medium">{title}</span>
+                            ) : (
+                                <span className="text-white font-medium">CampnAI</span>
+                            )}
                         </div>
                     </div>
 

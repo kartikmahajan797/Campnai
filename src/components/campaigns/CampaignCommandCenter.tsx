@@ -1,0 +1,172 @@
+import React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import DashboardLayout from '../DashboardLayout';
+import AgentActivitySidebar from './AgentActivitySidebar';
+import { SidebarProvider } from "@/components/ui/sidebar";
+import {
+    ChevronRight,
+    MoreHorizontal,
+    MessageCircle,
+    Mail,
+    CheckCircle2,
+} from 'lucide-react';
+
+const CampaignCommandCenter = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const decodedId = decodeURIComponent(id || 'Campaign');
+
+    // Mock Kanban Data
+    const columns = [
+        {
+            id: 'imported',
+            title: 'Imported',
+            count: 3,
+            total: 3,
+            accent: 'border-blue-500/50',
+            bgAccent: 'bg-blue-500/10',
+            items: [
+                { id: 101, name: 'Aditi Kapoor', handle: '@aditix', city: 'Mumbai', niche: 'Beauty', status: 'ready', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d' },
+                { id: 102, name: 'Rahul Verma', handle: '@rahulv', city: 'Delhi', niche: 'Tech', status: 'ready', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', lastActivity: '1m', activityDetails: 'WhatsApp delivered' },
+                { id: 103, name: 'Simran Sharma', handle: '@simran.s', city: 'Mumbai', niche: 'Fashion', status: 'pending', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026302d', lastActivity: '3m', activityDetails: 'WhatsApp pending' },
+                { id: 104, name: 'Priya Singh', handle: '@priyarg', city: 'Bangalore', niche: 'Lifestyle', status: 'sent', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026702d', lastActivity: '7m', activityDetails: 'Email sent' },
+            ]
+        },
+        {
+            id: 'outreach',
+            title: 'Outreach Sent',
+            count: 7,
+            total: 7,
+            accent: 'border-indigo-500/50',
+            bgAccent: 'bg-indigo-500/10',
+            items: [
+                { id: 201, name: 'Reh Yadav', handle: '@ankity_', city: 'Goa', niche: 'Travel', subNiche: 'Food', status: 'sent', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026708c' },
+                { id: 202, name: 'Ravi Patel', handle: '@raviskin', city: 'Ahmedabad', niche: 'Skincare', status: 'replied', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', lastActivity: '6m', activityDetails: 'Replied on WhatsApp' },
+                { id: 203, name: 'Monica Das', handle: '@monica.delhi', city: 'Delhi', niche: 'Fashion', status: 'replied', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026302d', lastActivity: '15m', activityDetails: 'Replied via Email' },
+            ]
+        },
+        {
+            id: 'replied',
+            title: 'Replied',
+            count: 5,
+            total: 5,
+            accent: 'border-purple-500/50',
+            bgAccent: 'bg-purple-500/10',
+            items: [
+                { id: 301, name: 'Miyo singh', handle: '@desii', city: 'Pune', niche: 'Fashion', subNiche: 'Beauty', status: 'negotiating', avatar: 'https://i.pravatar.cc/150?u=a04258a2462d826712d' },
+                { id: 302, name: 'Nina Mehta', handle: '@glamnina', city: 'Mumbai', niche: 'Beauty', status: 'deal_confirmed', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', lastActivity: '52m', activityDetails: 'Deal confirmed' },
+            ]
+        },
+        {
+            id: 'content',
+            title: 'Content Live',
+            count: 2,
+            total: 2,
+            accent: 'border-green-500/50',
+            bgAccent: 'bg-green-500/10',
+            items: [
+                { id: 401, name: 'Tarun Soni', handle: '@tarun.fit', city: 'Mumbai', niche: 'Fitness', status: 'live', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', lastActivity: '1h', activityDetails: 'Deal confirmed' },
+            ]
+        }
+    ];
+
+    return (
+        <DashboardLayout
+            title={
+                <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <span onClick={() => navigate('/campaigns')} className="cursor-pointer hover:text-white transition">Campaigns</span>
+                    <ChevronRight size={14} />
+                    <span onClick={() => navigate(`/campaigns/${encodeURIComponent(decodedId)}`)} className="cursor-pointer hover:text-white transition">{decodedId}</span>
+                    <ChevronRight size={14} />
+                    <span className="text-white">Command Center</span>
+                </div>
+            }
+        >
+            <div className="flex h-[calc(100vh-64px)] bg-[#030014] overflow-hidden">
+                <SidebarProvider className="w-full h-full min-h-0">
+                    {/* Main Board Area */}
+                    <div className="flex-1 overflow-x-auto p-6 h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-8 shrink-0">
+                            <div>
+                                <div className="flex items-center gap-3">
+                                    <h1 className="text-2xl font-semibold text-white tracking-tight">Campaign Command Center</h1>
+                                    <div className="bg-[#1f2937] px-2.5 py-1 rounded-full flex items-center gap-2 text-[10px] text-slate-300 border border-slate-700 font-medium">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                        LIVE EXECUTION
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <p className="text-slate-400 text-sm">Real-time campaign status for</p>
+                                    <div className="bg-[#1e1b4b] text-indigo-300 px-2 py-0.5 rounded text-xs border border-indigo-500/20 font-medium">
+                                        {decodedId}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Kanban Board */}
+                        <div className="flex gap-4 min-w-max pb-4 flex-1 h-full">
+                            {columns.map(column => (
+                                <div key={column.id} className="w-72 flex-shrink-0 flex flex-col h-full">
+                                    {/* Tab-like Header */}
+                                    <div className={`flex items-center justify-between mb-4 bg-[#0F111A] border border-slate-800 p-4 rounded-xl border-t-2 ${column.accent} shadow-sm shrink-0`}>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-semibold text-slate-200 text-sm">{column.title}</h3>
+                                            <span className="text-xs text-slate-500 font-medium">({column.count})</span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 font-mono bg-[#1a1d2d] px-2 py-1 rounded-md border border-slate-800/50">{column.total}</span>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                                        {column.items.map(item => (
+                                            <div key={item.id} className="bg-[#0F111A]/80 backdrop-blur-sm border border-slate-800/80 rounded-xl p-4 hover:border-indigo-500/30 hover:shadow-indigo-500/5 transition-all group cursor-pointer shadow-sm relative overflow-hidden">
+                                                {/* Hover Glow Effect */}
+                                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-indigo-500/5 to-indigo-500/0 opacity-0 group-hover:opacity-100 transition duration-500 -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%]"></div>
+
+                                                <div className="flex items-start gap-3 mb-3 relative z-10">
+                                                    <div className="relative">
+                                                        <img src={item.avatar} alt={item.name} className="w-10 h-10 rounded-full object-cover border border-slate-700/50 shadow-inner" />
+                                                        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#0F111A] ${item.status === 'ready' || item.status === 'live' ? 'bg-green-500' : 'bg-slate-500'}`}></div>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="text-slate-200 font-medium text-sm truncate group-hover:text-indigo-300 transition">{item.name}</h4>
+                                                        <p className="text-slate-500 text-xs truncate font-mono">{item.handle}</p>
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-600 font-medium">{item.lastActivity ? item.lastActivity : 'Now'}</span>
+                                                </div>
+
+                                                {/* Status/Tags */}
+                                                <div className="flex flex-wrap gap-2 mb-3 relative z-10">
+                                                    {item.activityDetails && (
+                                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-800/30 border border-slate-800/50 px-2 py-1 rounded-md">
+                                                            {item.activityDetails.includes('WhatsApp') && <MessageCircle size={10} className="text-green-500" />}
+                                                            {item.activityDetails.includes('Email') && <Mail size={10} className="text-blue-500" />}
+                                                            <span className="truncate max-w-[140px]">{item.activityDetails}</span>
+                                                        </div>
+                                                    )}
+                                                    {!item.activityDetails && (
+                                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-800/30 border border-slate-800/50 px-2 py-1 rounded-md">
+                                                            {item.city}
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-800/30 border border-slate-800/50 px-2 py-1 rounded-md">
+                                                        {item.niche}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Sidebar - Agent Activity (Using Reusable Sidebar) */}
+                    <AgentActivitySidebar />
+                </SidebarProvider>
+            </div>
+        </DashboardLayout>
+    );
+};
+
+export default CampaignCommandCenter;
