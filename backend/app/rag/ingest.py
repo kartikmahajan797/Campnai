@@ -39,6 +39,33 @@ class Chunk(BaseModel):
 class ChunkList(BaseModel):
     chunks: List[Chunk]
 
+def influencer_to_text(doc: dict) -> str:
+        profile = doc.get("profile", {})
+        metrics = doc.get("metrics", {})
+        audience = doc.get("audience", {})
+        brand = doc.get("brand", {})
+
+        return f"""
+    Influencer Name: {profile.get('name', '')}
+    Instagram Profile: {profile.get('link', '')}
+    Gender: {profile.get('gender', '')}
+    Location: {profile.get('location', '')}
+
+    Followers: {metrics.get('followers', 0)}
+    Average Views: {metrics.get('avg_views', 0)}
+    Engagement Rate: {metrics.get('engagement_rate', 0)}
+
+    Audience:
+    - Age Concentration: {audience.get('age_concentration', '')}
+    - Gender Split: {audience.get('mf_split', '')}
+    - India Split: {audience.get('india_split', '')}
+
+    Brand Fit:
+    - Niche: {brand.get('niche', '')}
+    - Vibe: {brand.get('vibe', '')}
+    - Brand Fit Score: {brand.get('brand_fit', '')}
+    """.strip()
+
 
 # ---------- Ingestion Pipeline ----------
 
@@ -53,54 +80,66 @@ class Ingestor:
         self.vector_store = vector_store
         self.average_chunk_size = average_chunk_size
 
-    def fetch_documents(self) -> List[Dict]:
-        """
-        Fetch raw documents from Firestore.
-        Expected Firestore document fields:
-        - content (str): main document text
-        - type (optional): document category
-        """
-        raw_docs = get_collection_documents(self.collection_name)
+    def fetch_documents(self):
+        raw_docs = get_collection_documents("test_campaign_001")
+
 
         print("RAW DOCS FROM FIRESTORE:")
         print(raw_docs)
 
-
         documents = []
-        for doc in raw_docs:
-            if "content" not in doc:
+
+        for idx, doc in enumerate(raw_docs):
+            text = influencer_to_text(doc)
+
+            if not text.strip():
                 continue
 
-            documents.append(
-                {
-                    "id": doc["id"],
-                    "type": doc.get("type", "general"),
-                    "source": doc.get("source", doc["id"]),
-                    "text": doc["content"],
-                }
-            )
+            documents.append({
+                "id": str(idx),
+                "source": f"firestore:{self.collection_name}",
+                "type": "influencer",
+                "text": text,
+            })
 
         return documents
 
+
     def _build_chunking_prompt(self, document: Dict) -> str:
-        estimated_chunks = max(1, len(document["text"]) // self.average_chunk_size)
+        text = document["text"]
 
-        return CHUNKING_PROMPT.format(
-            doc_type=document["type"],
-            source=document["source"],
-            estimated_chunks=estimated_chunks,
-            text=document["text"],
-        )
+        return f"""
+    You are an expert document chunker.
 
-    def chunk_document(self, document: Dict) -> List[Chunk]:
-        """
-        Uses LLM to chunk + rewrite a document.
-        """
-        prompt = self._build_chunking_prompt(document)
-        response = generate_answer(prompt)
+    Split the following document into semantically meaningful chunks.
+    Each chunk must include:
+    - a short headline
+    - a concise summary
+    - the original text of the chunk
 
-        chunk_list = ChunkList.model_validate_json(response)
-        return chunk_list.chunks
+    Document:
+    {text}
+
+    Respond ONLY in valid JSON that matches this schema:
+    {{
+    "chunks": [
+        {{
+        "headline": "...",
+        "summary": "...",
+        "original_text": "..."
+        }}
+    ]
+    }}
+    """
+
+
+    def chunk_document(self, document: Dict):
+        # TEMP: one chunk per document
+        return [{
+            "text": document["text"]
+        }]
+
+    
 
     def ingest(self):
         """
@@ -115,7 +154,7 @@ class Ingestor:
                 chunks = self.chunk_document(document)
 
                 for chunk in chunks:
-                    text = chunk.as_text()
+                    text = chunk["text"]
                     embedding = embed_text(text)
 
                     self.vector_store.add(

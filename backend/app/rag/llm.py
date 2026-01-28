@@ -9,7 +9,7 @@ import requests
 from typing import List
 
 OLLAMA_BASE_URL = "http://localhost:11434"
-LLM_MODEL = "llama3"
+LLM_MODEL = "llama3.2"
 EMBED_MODEL = "nomic-embed-text"
 
 
