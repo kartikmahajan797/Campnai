@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
-import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,34 +14,29 @@ const Login = () => {
   });
 
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Handle redirect result from Google Sign-In
+  // Listen for Auth State Changes - handles both persistence and OAuth completion
   useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          console.log('Google Login successful:', result.user);
-          navigate('/dashboard');
-        }
-      } catch (error: any) {
-        console.error('Google Login error:', error);
-        if (error.code !== 'auth/popup-closed-by-user') {
-          alert(`Google Login failed: ${error.message}`);
-        }
-      }
-    };
-    handleRedirectResult();
-  }, [navigate]);
+    let mounted = true;
 
-  // Redirect away if already signed in
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!mounted) return;
+
+      console.log('[Login] Auth state changed:', user ? user.uid : 'No user');
+
       if (user) {
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
+      } else {
+        setIsCheckingAuth(false);
       }
     });
-    return () => unsub();
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, [navigate]);
 
   const handleSubmit = async () => {
@@ -57,7 +52,7 @@ const Login = () => {
       console.log('Login successful:', userCredential.user);
       alert('Login successful!');
       // client-side navigate to dashboard
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (error: any) {
       console.error('Login error:', error);
       const message = error?.message || 'Login failed';
@@ -65,19 +60,31 @@ const Login = () => {
     }
   };
 
+  // Handle Google Login
   const handleGoogleLogin = async () => {
     try {
       setIsGoogleLoading(true);
+      setAuthError(null);
+
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');
 
-      // Use redirect instead of popup - more reliable
-      await signInWithRedirect(auth, provider);
+      console.log('[Auth Debug] Starting Google Popup...');
+
+      const result = await signInWithPopup(auth, provider);
+      console.log('Google login valid:', result.user.uid);
+      navigate('/dashboard', { replace: true });
+
     } catch (error: any) {
-      console.error('Google Login error:', error);
+      console.error('[Auth Debug] Popup error:', error);
       setIsGoogleLoading(false);
-      alert(`Google Login failed: ${error.message}`);
+
+      if (error.code === 'auth/popup-closed-by-user') {
+        return;
+      }
+
+      setAuthError(error.message);
     }
   };
 
@@ -88,8 +95,36 @@ const Login = () => {
     });
   };
 
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-slate-800">Checking authentication...</h2>
+          <p className="text-slate-500 mt-2">Please wait while we secure your session</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
+      {/* Error Banner */}
+      {authError && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 max-w-md w-full z-50 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg shadow-lg flex items-start gap-3">
+          <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+          <div className="flex-1">
+            <p className="text-sm font-medium">{authError}</p>
+          </div>
+          <button onClick={() => setAuthError(null)} className="text-red-600 hover:text-red-800">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      )}
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
