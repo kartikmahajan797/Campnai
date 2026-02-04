@@ -40,7 +40,7 @@ class Retriever:
     def __init__(
         self,
         vector_store: VectorStore,
-        retrieval_k: int = 10,
+        retrieval_k: int = 3,
     ):
         self.vector_store = vector_store
         self.retrieval_k = retrieval_k
@@ -79,26 +79,42 @@ class Retriever:
         user_prompt = f"The user question is:\n{question}\n\nHere are the chunks:\n\n"
 
         for idx, chunk in enumerate(chunks):
-            user_prompt += f"# CHUNK {idx + 1}:\n{chunk.text}\n\n"
+            MAX_CHARS = 600  # 👈 very important
+
+            text = chunk.text[:MAX_CHARS]
+
+            user_prompt += f"# CHUNK {idx + 1}:\n{text}\n\n"
 
         messages = f"""
-{RERANK_SYSTEM_PROMPT}
+You are a ranking engine.
+Rank chunks by relevance to the question.
+Return ONLY JSON. No explanation.
 
+Question:
+{question}
+
+Chunks:
 {user_prompt}
 
-Respond ONLY with JSON in the following format:
-{{ "order": [1, 2, 3] }}
+Return format:
+{{"order":[1,2,3]}}
 """
 
-        response = generate_answer(messages)
+
+        response = generate_rerank(messages)
         order = RankOrder.model_validate_json(response).order
 
         # Convert 1-based index to 0-based
         return [chunks[i - 1] for i in order]
 
     # ---- Full retrieval pipeline ----
-    def retrieve(self, question: str, history: List[dict]) -> List[RetrievedChunk]:
-        rewritten_query = self.rewrite_query(question, history)
-        candidates = self.similarity_search(rewritten_query)
-        reranked = self.rerank(question, candidates)
-        return reranked
+    # def retrieve(self, question: str, history: List[dict]) -> List[RetrievedChunk]:
+    #     rewritten_query = self.rewrite_query(question, history)
+    #     candidates = self.similarity_search(rewritten_query)
+    #     reranked = self.rerank(question, candidates)
+    #     return reranked
+try:
+    order = RankOrder.model_validate_json(response).order
+    return [chunks[i - 1] for i in order]
+except Exception:
+    return chunks
