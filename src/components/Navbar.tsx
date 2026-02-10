@@ -40,7 +40,7 @@ const Navbar = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className="relative group/logo">
-              <img src={campnaiLogo} alt="Campnai Logo" className="w-20 h-20 object-contain group-hover/logo:scale-110 transition-transform duration-500 ease-out" />
+              <img src={campnaiLogo} alt="Campnai Logo" className="w-20 h-21 object-contain group-hover/logo:scale-110 transition-transform duration-500 ease-out" />
               <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-0 group-hover/logo:scale-150 transition-transform duration-700 opacity-0 group-hover/logo:opacity-100" />
             </div>
             <span className="font-black text-2xl tracking-tighter bg-gradient-to-r from-[#E879F9] via-[#C084FC] to-[#A855F7] bg-clip-text text-transparent">
