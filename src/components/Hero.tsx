@@ -6,26 +6,26 @@ import accountantImg from "../assets/accountant.jpeg";
 
 const employees = [
   {
-    name: "Scout",
-    role: "Influencer Discovery",
+    // name: "Scout",
+    // role: "Influencer Discovery",
     image: scoutImg,
     color: "text-white",
   },
   {
-    name: "Closer",
-    role: "Outreach & Deals",
+    // name: "Closer",
+    // role: "Outreach & Deals",
     image: closerImg,
     color: "text-white",
   },
   {
-    name: "Producer",
-    role: "Campaign Control",
+    // name: "Producer",
+    // role: "Campaign Control",
     image: producerImg,
     color: "text-white",
   },
   {
-    name: "Accountant",
-    role: "Payments & ROI",
+    // name: "Accountant",
+    // role: "Payments & ROI",
     image: accountantImg,
     color: "text-white",
   }
@@ -69,7 +69,7 @@ const Hero = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 w-full max-w-6xl mx-auto">
           {employees.map((employee, index) => (
             <motion.div
-              key={employee.name}
+              // key={employee.name}
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -79,7 +79,7 @@ const Hero = () => {
               <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden mb-6 border border-white/5 shadow-2xl transition-transform duration-300 group-hover:-translate-y-2">
                 <img
                   src={employee.image}
-                  alt={employee.name}
+                  // alt={employee.name}
                   className="w-full h-full object-cover"
                 />
 
@@ -88,14 +88,14 @@ const Hero = () => {
               </div>
 
               {/* Text Below Image */}
-              <div className="text-center">
+              {/* <div className="text-center">
                 <h3 className="text-2xl font-bold text-white mb-1">
                   {employee.name}
                 </h3>
                 <p className="text-sm text-gray-400 font-medium">
                   {employee.role}
                 </p>
-              </div>
+              </div> */}
             </motion.div>
           ))}
         </div>
