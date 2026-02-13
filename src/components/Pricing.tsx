@@ -12,7 +12,7 @@ const Pricing = () => {
         <div className="absolute bottom-0 left-0 w-[50%] h-[70%] bg-gradient-to-t from-blue-600/10 via-indigo-600/10 to-transparent blur-[100px]" />
 
         {/* Star dust effect */}
-        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.05] mix-blend-overlay"></div>
+
       </div>
 
       <div className="container mx-auto px-6 relative z-10 text-center">

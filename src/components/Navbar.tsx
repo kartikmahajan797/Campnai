@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ModeToggle } from "@/components/mode-toggle";
-import campnaiLogo from "@/assets/campnaiLogo.png";
+import campnaiLogo from "@/assets/campnailogo.png";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);

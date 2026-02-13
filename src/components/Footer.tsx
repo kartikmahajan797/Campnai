@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import campnaiLogo from "@/assets/campnaiLogo.png";
+import campnaiLogo from "@/assets/campnailogo.png";
 
 
 const Footer = () => {
@@ -13,7 +13,7 @@ const Footer = () => {
   return (
     <footer className="py-20 bg-[#030014] border-t border-white/10 relative overflow-hidden">
       {/* Background Effects */}
-      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none"></div>
+
       <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="container mx-auto px-6 relative z-10">
