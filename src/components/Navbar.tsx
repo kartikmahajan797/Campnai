@@ -43,7 +43,7 @@ const Navbar = () => {
               <img src={campnaiLogo} alt="Campnai Logo" className="w-20 h-21 object-contain group-hover/logo:scale-110 transition-transform duration-500 ease-out" />
               <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-0 group-hover/logo:scale-150 transition-transform duration-700 opacity-0 group-hover/logo:opacity-100" />
             </div>
-            <span className="font-black text-2xl tracking-tighter bg-gradient-to-r from-[#E879F9] via-[#C084FC] to-[#A855F7] bg-clip-text text-transparent">
+            <span className="font-black text-2xl tracking-tighter text-white">
               Campnai
             </span>
           </Link>
@@ -54,7 +54,7 @@ const Navbar = () => {
               <a
                 key={link.name}
                 href={link.href}
-                className={`text-sm font-bold transition-all hover:text-primary ${scrolled ? "text-white/70" : "text-muted-foreground"
+                className={`text-sm font-bold transition-all hover:text-white ${scrolled ? "text-white" : "text-white/90"
                   }`}
               >
                 {link.name}
@@ -69,14 +69,13 @@ const Navbar = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className={`font-bold transition-colors ${scrolled ? "text-white/80 hover:text-white" : "text-muted-foreground"}`}
+                className={`font-bold transition-colors ${scrolled ? "text-white hover:text-white/80" : "text-white/90 hover:text-white"}`}
               >
                 Sign in
               </Button>
             </Link>
             <Button
-              className="rounded-full px-6 font-bold shadow-xl shadow-primary/20 hover:scale-105 transition-all"
-              variant="default"
+              className="rounded-full px-6 font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] transition-all transform hover:scale-105"
               size="sm"
             >
               Start Building
@@ -87,7 +86,7 @@ const Navbar = () => {
           <div className="flex items-center gap-2 md:hidden">
             <ModeToggle />
             <button
-              className={`p-2 transition-colors ${scrolled ? "text-white" : "text-foreground"}`}
+              className={`p-2 transition-colors ${scrolled ? "text-white" : "text-white"}`}
               onClick={() => setIsOpen(!isOpen)}
             >
               {isOpen ? <X size={28} /> : <Menu size={28} />}
@@ -109,7 +108,7 @@ const Navbar = () => {
                   <a
                     key={link.name}
                     href={link.href}
-                    className="text-foreground/80 hover:text-foreground transition-colors text-lg font-bold"
+                    className="text-white/90 hover:text-white transition-colors text-lg font-bold"
                     onClick={() => setIsOpen(false)}
                   >
                     {link.name}
@@ -117,7 +116,7 @@ const Navbar = () => {
                 ))}
                 <div className="flex flex-col gap-4 pt-6 border-t border-border">
                   <Link to="/login" onClick={() => setIsOpen(false)}>
-                    <Button variant="ghost" className="w-full text-foreground/80 font-bold">Sign in</Button>
+                    <Button variant="ghost" className="w-full text-white/90 hover:text-white font-bold">Sign in</Button>
                   </Link>
                   <Button className="w-full rounded-2xl font-bold" onClick={() => setIsOpen(false)}>Start Building</Button>
                 </div>

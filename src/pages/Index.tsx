@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
+import ManagerShowcase from "@/components/ManagerShowcase";
 import TrustedBy from "@/components/TrustedBy";
 import CreatorNetwork from "@/components/CreatorNetwork";
 import HowItWorks from "@/components/HowItWorks";
@@ -15,6 +16,7 @@ const Index = () => {
       <Navbar />
       <main>
         <Hero />
+        <ManagerShowcase />
         <TrustedBy />
         <CreatorNetwork />
         <HowItWorks />
