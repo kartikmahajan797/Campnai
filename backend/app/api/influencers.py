@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, status
-import pandas as pd
+import csv
 import io
 import uuid
 from datetime import datetime
@@ -15,7 +15,7 @@ REQUIRED_COLUMNS = [
 
 def clean_float(value):
     """Safely convert value to float, handling diverse formats."""
-    if pd.isna(value) or value == "":
+    if value is None or value == "":
         return 0.0
     if isinstance(value, (int, float)):
         return float(value)
@@ -30,7 +30,7 @@ def clean_float(value):
 
 def clean_str(value):
     """Safely clean string values."""
-    if pd.isna(value) or value is None:
+    if value is None:
         return ""
     return str(value).strip()
 
@@ -46,52 +46,44 @@ async def upload_csv(file: UploadFile = File(...)):
         contents = await file.read()
         # Decode contents to handle various encodings
         content_str = contents.decode('utf-8-sig') # handle BOM if present
+        f = io.StringIO(content_str)
         
-        # Try different delimiters
-        def try_parse(sep):
-            return pd.read_csv(io.StringIO(content_str), sep=sep)
-
+        # Sniff delimiter
         try:
-            # First try default comma
-            df = try_parse(',')
-            # If only one column, try tab (common when copy-pasting from Sheets/Excel)
-            if len(df.columns) <= 1:
-                df = try_parse('\t')
+            dialect = csv.Sniffer().sniff(f.read(1024), delimiters=',\t;')
+            f.seek(0)
+            reader = csv.DictReader(f, dialect=dialect)
         except:
-             # Fallback
-             df = pd.read_csv(io.StringIO(content_str))
+            # Fallback to comma if sniffing fails
+            f.seek(0)
+            reader = csv.DictReader(f)
 
-        # Normalize column names: strip whitespace and convert to upper case
-        # This fixes issues where " NAME" or "name" wouldn't match "NAME"
-        df.columns = [col.strip().upper() for col in df.columns]
-        print(f"Detected columns: {df.columns.tolist()}")
+        # Normalize fieldnames: strip whitespace and convert to upper case
+        if reader.fieldnames:
+            reader.fieldnames = [col.strip().upper() for col in reader.fieldnames]
+            print(f"Detected columns: {reader.fieldnames}")
+        else:
+            raise HTTPException(status_code=400, detail="CSV file appears to be empty or missing headers.")
 
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error parsing CSV: {str(e)}")
+        # Validate Columns
+        available_cols = reader.fieldnames
+        missing_cols = [col for col in REQUIRED_COLUMNS if col not in available_cols]
+        if missing_cols:
+            raise HTTPException(status_code=400, detail=f"Missing required columns: {', '.join(missing_cols)}. Available: {', '.join(available_cols[:5])}...")
 
-    # Validate Columns (using normalized list)
-    # Check if we have at least the critical ones
-    available_cols = df.columns.tolist()
-    missing_cols = [col for col in REQUIRED_COLUMNS if col not in available_cols]
-    if missing_cols:
-        # If headers are totally weird, let's provide more info
-        raise HTTPException(status_code=400, detail=f"Missing required columns: {', '.join(missing_cols)}. Available: {', '.join(available_cols[:5])}...")
-
-    created_at = datetime.utcnow()
-    campaign_id = "test_campaign_001"
-    collection_ref = db.collection("campaigns").document(campaign_id).collection("influencers")
-    
-    count = 0
-    batch = db.batch()
-    
-    try:
+        created_at = datetime.utcnow()
+        campaign_id = "test_campaign_001"
+        collection_ref = db.collection("campaigns").document(campaign_id).collection("influencers")
+        
+        count = 0
+        batch = db.batch()
+        
         # Iterate through rows
-        for _, row in df.iterrows():
+        for row in reader:
             influencer_id = str(uuid.uuid4())
             
-            # safely access columns (keys are now normalized upper case)
+            # safely access columns
             def get_val(col):
-                # Ensure we also search with upper/stripped
                 return row.get(col, None)
 
             record = {

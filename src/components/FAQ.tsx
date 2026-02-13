@@ -83,7 +83,7 @@ const FAQ = () => {
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
                 <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px]" />
                 <div className="absolute bottom-[20%] right-[10%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
-                <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay"></div>
+
             </div>
 
             <div className="container mx-auto px-6 max-w-4xl relative z-10">

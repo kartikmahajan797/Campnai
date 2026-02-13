@@ -7,7 +7,7 @@ const CTA = () => {
       {/* Space Background Effects */}
       <div className="absolute inset-0 w-full h-full pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-blue-600/10 rounded-full blur-[120px]" />
-        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.05] mix-blend-overlay"></div>
+
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
