@@ -33,17 +33,17 @@ const employees = [
 
 const Hero = () => {
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[#0a0514] pt-24 pb-20">
+    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background pt-24 pb-20">
 
       {/* Background Gradient Effects */}
       <div className="absolute inset-0 w-full h-full pointer-events-none">
         {/* Left Blue Glow */}
-        <div className="absolute top-[20%] left-[-10%] w-[60%] h-[60%] bg-blue-700/20 rounded-full blur-[140px]" />
+        <div className="absolute top-[20%] left-[-10%] w-[60%] h-[60%] bg-white/5 rounded-full blur-[140px]" />
         {/* Right Red/Orange Glow */}
-        <div className="absolute top-[20%] right-[-10%] w-[60%] h-[60%] bg-orange-600/20 rounded-full blur-[140px]" />
+        <div className="absolute top-[20%] right-[-10%] w-[60%] h-[60%] bg-white/10 rounded-full blur-[140px]" />
 
         {/* Deep Overlay for contrast */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#050210]/0 via-[#050210]/50 to-[#050210] z-0" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/50 to-background z-0" />
       </div>
 
       <div className="container relative mx-auto px-4 z-10 flex flex-col items-center text-center mt-20">
@@ -55,12 +55,12 @@ const Hero = () => {
           transition={{ duration: 0.8 }}
           className="max-w-5xl mx-auto mb-12"
         >
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.1]">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground leading-[1.1]">
             Meet Your AI Employees<br />
             for Influencer Marketing
           </h1>
 
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto font-light mt-10">
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-light mt-10">
             From discovery to payouts, CampnAI runs your entire influencer workflow autonomously.
           </p>
         </motion.div>
@@ -69,14 +69,14 @@ const Hero = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 w-full max-w-6xl mx-auto">
           {employees.map((employee, index) => (
             <motion.div
-              // key={employee.name}
+              key={index}
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className="flex flex-col items-center group cursor-pointer"
             >
               {/* Image Container */}
-              <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden mb-6 border border-white/5 shadow-2xl transition-transform duration-300 group-hover:-translate-y-2">
+              <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden mb-6 border border-border shadow-2xl transition-transform duration-300 group-hover:-translate-y-2">
                 <img
                   src={employee.image}
                   // alt={employee.name}
@@ -84,7 +84,7 @@ const Hero = () => {
                 />
 
                 {/* Subtle Inner Border/Glow */}
-                <div className="absolute inset-0 ring-1 ring-white/10 rounded-2xl" />
+                <div className="absolute inset-0 ring-1 ring-border/10 rounded-2xl" />
               </div>
 
               {/* Text Below Image */}

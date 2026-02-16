@@ -17,40 +17,40 @@ const NewCampaignSuccess = () => {
 
     const breadcrumbs = (
         <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-400 hover:text-slate-300 cursor-pointer" onClick={() => navigate('/campaigns')}>Campaigns</span>
-            <ChevronRight className="w-4 h-4 text-slate-600" />
-            <span className="text-white font-medium">New Campaign</span>
+            <span className="text-muted-foreground hover:text-foreground cursor-pointer" onClick={() => navigate('/campaigns')}>Campaigns</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="text-foreground font-medium">New Campaign</span>
         </div>
     );
 
     return (
         <DashboardLayout title={breadcrumbs}>
             <div className="flex items-center justify-center h-full w-full p-6">
-                <div className="bg-[#0f111a] border border-slate-800 rounded-2xl p-8 max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
+                <div className="bg-card border border-border rounded-2xl p-8 max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
                     {/* Decorative Background Elements */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
                     <div className="relative z-10">
-                        <h2 className="text-2xl md:text-3xl font-semibold text-white mb-3 flex items-center justify-center gap-3">
+                        <h2 className="text-2xl md:text-3xl font-semibold text-foreground mb-3 flex items-center justify-center gap-3">
                             Your campaign is almost ready <Sparkles className="text-yellow-400 w-6 h-6" />
                         </h2>
 
-                        <p className="text-slate-400 text-lg mb-8">
+                        <p className="text-muted-foreground text-lg mb-8">
                             Add a name and start outreach.
                         </p>
 
                         {!isNaming ? (
                             <>
                                 <Button
-                                    className="bg-[#6366f1] hover:bg-[#5558e6] text-white px-8 py-6 rounded-xl text-lg font-medium w-full shadow-lg shadow-indigo-500/20 mb-6"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-6 rounded-xl text-lg font-medium w-full shadow-lg shadow-primary/20 mb-6"
                                     onClick={() => setIsNaming(true)}
                                 >
                                     Name Campaign
                                 </Button>
 
                                 <button
-                                    className="text-slate-500 hover:text-slate-300 text-sm font-medium transition-colors"
+                                    className="text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
                                     onClick={() => navigate('/campaigns')}
                                 >
                                     &lt; Back to Campaigns
@@ -63,7 +63,7 @@ const NewCampaignSuccess = () => {
                                     value={campaignName}
                                     onChange={(e) => setCampaignName(e.target.value)}
                                     placeholder="Enter campaign name (e.g. 'June Skincare Push')"
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition"
+                                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition"
                                     autoFocus
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') handleSave();
@@ -73,14 +73,14 @@ const NewCampaignSuccess = () => {
                                     <Button
                                         variant="ghost"
                                         onClick={() => setIsNaming(false)}
-                                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-6 rounded-xl transition"
+                                        className="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground font-medium py-6 rounded-xl transition"
                                     >
                                         Cancel
                                     </Button>
                                     <Button
                                         onClick={handleSave}
                                         disabled={!campaignName.trim()}
-                                        className="flex-1 bg-[#6366f1] hover:bg-[#5558e6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-6 rounded-xl transition shadow-lg shadow-indigo-500/20"
+                                        className="flex-1 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground font-medium py-6 rounded-xl transition shadow-lg shadow-primary/20"
                                     >
                                         Save & Continue
                                     </Button>

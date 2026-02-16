@@ -37,8 +37,8 @@ const CampaignCommandCenter = () => {
             title: 'Outreach Sent',
             count: 7,
             total: 7,
-            accent: 'border-indigo-500/50',
-            bgAccent: 'bg-indigo-500/10',
+            accent: 'border-primary/50',
+            bgAccent: 'bg-primary/10',
             items: [
                 { id: 201, name: 'Reh Yadav', handle: '@ankity_', city: 'Goa', niche: 'Travel', subNiche: 'Food', status: 'sent', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026708c' },
                 { id: 202, name: 'Ravi Patel', handle: '@raviskin', city: 'Ahmedabad', niche: 'Skincare', status: 'replied', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', lastActivity: '6m', activityDetails: 'Replied on WhatsApp' },
@@ -73,31 +73,31 @@ const CampaignCommandCenter = () => {
     return (
         <DashboardLayout
             title={
-                <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <span onClick={() => navigate('/campaigns')} className="cursor-pointer hover:text-white transition">Campaigns</span>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span onClick={() => navigate('/campaigns')} className="cursor-pointer hover:text-foreground transition">Campaigns</span>
                     <ChevronRight size={14} />
-                    <span onClick={() => navigate(`/campaigns/${encodeURIComponent(decodedId)}`)} className="cursor-pointer hover:text-white transition">{decodedId}</span>
+                    <span onClick={() => navigate(`/campaigns/${encodeURIComponent(decodedId)}`)} className="cursor-pointer hover:text-foreground transition">{decodedId}</span>
                     <ChevronRight size={14} />
-                    <span className="text-white">Command Center</span>
+                    <span className="text-foreground">Command Center</span>
                 </div>
             }
         >
-            <div className="flex h-[calc(100vh-64px)] bg-[#030014] overflow-hidden">
+            <div className="flex h-[calc(100vh-64px)] bg-background overflow-hidden">
                 <SidebarProvider className="w-full h-full min-h-0">
                     {/* Main Board Area */}
                     <div className="flex-1 overflow-x-auto p-6 h-full flex flex-col">
                         <div className="flex items-center justify-between mb-8 shrink-0">
                             <div>
                                 <div className="flex items-center gap-3">
-                                    <h1 className="text-2xl font-semibold text-white tracking-tight">Campaign Command Center</h1>
-                                    <div className="bg-[#1f2937] px-2.5 py-1 rounded-full flex items-center gap-2 text-[10px] text-slate-300 border border-slate-700 font-medium">
+                                    <h1 className="text-2xl font-semibold text-foreground tracking-tight">Campaign Command Center</h1>
+                                    <div className="bg-card px-2.5 py-1 rounded-full flex items-center gap-2 text-[10px] text-muted-foreground border border-border font-medium">
                                         <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                                         LIVE EXECUTION
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 mt-2">
-                                    <p className="text-slate-400 text-sm">Real-time campaign status for</p>
-                                    <div className="bg-[#1e1b4b] text-indigo-300 px-2 py-0.5 rounded text-xs border border-indigo-500/20 font-medium">
+                                    <p className="text-muted-foreground text-sm">Real-time campaign status for</p>
+                                    <div className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs border border-primary/20 font-medium">
                                         {decodedId}
                                     </div>
                                 </div>
@@ -109,28 +109,28 @@ const CampaignCommandCenter = () => {
                             {columns.map(column => (
                                 <div key={column.id} className="w-72 flex-shrink-0 flex flex-col h-full">
                                     {/* Tab-like Header */}
-                                    <div className={`flex items-center justify-between mb-4 bg-[#0F111A] border border-slate-800 p-4 rounded-xl border-t-2 ${column.accent} shadow-sm shrink-0`}>
+                                    <div className={`flex items-center justify-between mb-4 bg-card border border-border p-4 rounded-xl border-t-2 ${column.accent} shadow-sm shrink-0`}>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="font-semibold text-slate-200 text-sm">{column.title}</h3>
-                                            <span className="text-xs text-slate-500 font-medium">({column.count})</span>
+                                            <h3 className="font-semibold text-foreground text-sm">{column.title}</h3>
+                                            <span className="text-xs text-muted-foreground font-medium">({column.count})</span>
                                         </div>
-                                        <span className="text-[10px] text-slate-400 font-mono bg-[#1a1d2d] px-2 py-1 rounded-md border border-slate-800/50">{column.total}</span>
+                                        <span className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-2 py-1 rounded-md border border-border/50">{column.total}</span>
                                     </div>
 
                                     <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                                         {column.items.map(item => (
-                                            <div key={item.id} className="bg-[#0F111A]/80 backdrop-blur-sm border border-slate-800/80 rounded-xl p-4 hover:border-indigo-500/30 hover:shadow-indigo-500/5 transition-all group cursor-pointer shadow-sm relative overflow-hidden">
+                                            <div key={item.id} className="bg-card/80 backdrop-blur-sm border border-border/80 rounded-xl p-4 hover:border-primary/30 hover:shadow-primary/5 transition-all group cursor-pointer shadow-sm relative overflow-hidden">
                                                 {/* Hover Glow Effect */}
-                                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-indigo-500/5 to-indigo-500/0 opacity-0 group-hover:opacity-100 transition duration-500 -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%]"></div>
+                                                <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition duration-500 -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%]"></div>
 
                                                 <div className="flex items-start gap-3 mb-3 relative z-10">
                                                     <div className="relative">
-                                                        <img src={item.avatar} alt={item.name} className="w-10 h-10 rounded-full object-cover border border-slate-700/50 shadow-inner" />
-                                                        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#0F111A] ${item.status === 'ready' || item.status === 'live' ? 'bg-green-500' : 'bg-slate-500'}`}></div>
+                                                        <img src={item.avatar} alt={item.name} className="w-10 h-10 rounded-full object-cover border border-border/50 shadow-inner" />
+                                                        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-background ${item.status === 'ready' || item.status === 'live' ? 'bg-green-500' : 'bg-muted-foreground'}`}></div>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <h4 className="text-slate-200 font-medium text-sm truncate group-hover:text-indigo-300 transition">{item.name}</h4>
-                                                        <p className="text-slate-500 text-xs truncate font-mono">{item.handle}</p>
+                                                        <h4 className="text-foreground font-medium text-sm truncate group-hover:text-primary transition">{item.name}</h4>
+                                                        <p className="text-muted-foreground text-xs truncate font-mono">{item.handle}</p>
                                                     </div>
                                                     <span className="text-[10px] text-slate-600 font-medium">{item.lastActivity ? item.lastActivity : 'Now'}</span>
                                                 </div>
@@ -138,18 +138,18 @@ const CampaignCommandCenter = () => {
                                                 {/* Status/Tags */}
                                                 <div className="flex flex-wrap gap-2 mb-3 relative z-10">
                                                     {item.activityDetails && (
-                                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-800/30 border border-slate-800/50 px-2 py-1 rounded-md">
+                                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/30 border border-border/50 px-2 py-1 rounded-md">
                                                             {item.activityDetails.includes('WhatsApp') && <MessageCircle size={10} className="text-green-500" />}
                                                             {item.activityDetails.includes('Email') && <Mail size={10} className="text-blue-500" />}
                                                             <span className="truncate max-w-[140px]">{item.activityDetails}</span>
                                                         </div>
                                                     )}
                                                     {!item.activityDetails && (
-                                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-800/30 border border-slate-800/50 px-2 py-1 rounded-md">
+                                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/30 border border-border/50 px-2 py-1 rounded-md">
                                                             {item.city}
                                                         </div>
                                                     )}
-                                                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-800/30 border border-slate-800/50 px-2 py-1 rounded-md">
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/30 border border-border/50 px-2 py-1 rounded-md">
                                                         {item.niche}
                                                     </div>
                                                 </div>

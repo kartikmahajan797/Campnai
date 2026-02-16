@@ -10,11 +10,11 @@ const HowItWorks = () => {
   ];
 
   return (
-    <section className="py-32 bg-[#030014] relative overflow-hidden flex items-center justify-center">
+    <section className="py-32 bg-background relative overflow-hidden flex items-center justify-center">
       {/* Background Decorative Elements */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-        <div className="absolute top-[20%] right-[30%] w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[100px]" />
-        <div className="absolute -bottom-[10%] -left-[10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px]" />
+        <div className="absolute top-[20%] right-[30%] w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px]" />
+        <div className="absolute -bottom-[10%] -left-[10%] w-[500px] h-[500px] bg-secondary/10 rounded-full blur-[100px]" />
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
@@ -25,7 +25,7 @@ const HowItWorks = () => {
           viewport={{ once: true }}
           className="text-center mb-24"
         >
-          <h2 className="text-3xl md:text-5xl lg:text-5xl font-bold text-white mb-2 leading-tight">
+          <h2 className="text-3xl md:text-5xl lg:text-5xl font-bold text-foreground mb-2 leading-tight">
             What you get when<br />
             Neo runs your campaigns
           </h2>
@@ -44,10 +44,10 @@ const HowItWorks = () => {
                 transition={{ delay: index * 0.1 }}
                 className="flex items-center gap-6 group cursor-default"
               >
-                <div className={`p-3 rounded-xl bg-white/5 border border-white/10 group-hover:bg-white/10 transition-colors ${item.shadow}`}>
+                <div className={`p-3 rounded-xl bg-card border border-border/50 group-hover:bg-muted/50 transition-colors ${item.shadow}`}>
                   <item.icon className={`w-8 h-8 ${item.color}`} />
                 </div>
-                <span className="text-xl md:text-2xl text-slate-200 font-medium group-hover:text-white transition-colors">
+                <span className="text-xl md:text-2xl text-muted-foreground font-medium group-hover:text-foreground transition-colors">
                   {item.text}
                 </span>
               </motion.div>
@@ -63,24 +63,24 @@ const HowItWorks = () => {
             className="relative"
           >
             {/* Glow Effect */}
-            <div className="absolute -inset-1 bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 rounded-2xl blur opacity-30 animate-pulse"></div>
+            <div className="absolute -inset-1 bg-gradient-to-br from-primary/30 via-secondary/30 to-primary/30 rounded-2xl blur opacity-30 animate-pulse"></div>
 
-            <div className="relative p-10 rounded-2xl bg-gradient-to-br from-[#1a103c]/90 to-[#030014]/90 border border-purple-500/50 shadow-[0_0_50px_rgba(236,72,153,0.15)] flex flex-col justify-center h-full backdrop-blur-xl">
+            <div className="relative p-10 rounded-2xl bg-card border border-primary/20 shadow-xl flex flex-col justify-center h-full backdrop-blur-xl">
               <div className="mb-6">
-                <p className="text-3xl md:text-4xl font-bold text-white leading-tight">
+                <p className="text-3xl md:text-4xl font-bold text-foreground leading-tight">
                   "What took weeks<br />
                   now takes days."
                 </p>
               </div>
               <div>
-                <p className="text-lg text-slate-400 leading-relaxed">
+                <p className="text-lg text-muted-foreground leading-relaxed">
                   Neo doesn't assist your workflow.<br />
                   It replaces it.
                 </p>
               </div>
 
               {/* Decorative reflection */}
-              <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-white/5 to-transparent rounded-2xl pointer-events-none"></div>
+              <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-primary/5 to-transparent rounded-2xl pointer-events-none"></div>
             </div>
           </motion.div>
 

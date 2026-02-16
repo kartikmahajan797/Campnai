@@ -32,18 +32,22 @@ const Navbar = () => {
     >
       <div className="container mx-auto px-6">
         <div
-          className={`mx-auto max-w-7xl px-6 h-16 rounded-2xl flex items-center justify-between transition-all duration-300 ${scrolled
-            ? "glass-card border-white/10 shadow-2xl shadow-primary/10"
-            : "bg-transparent border-transparent"
+          className={`mx-auto rounded-full flex items-center justify-between transition-all duration-500 ease-in-out ${scrolled
+            ? "max-w-2xl bg-background/80 backdrop-blur-md border border-border/50 shadow-lg shadow-primary/5 py-2 px-6 mt-4" // Tighter width (2xl), slightly more margin top
+            : "max-w-7xl bg-transparent border-transparent py-0 px-6 mt-0"
             }`}
         >
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className="relative group/logo">
-              <img src={campnaiLogo} alt="Campnai Logo" className="w-20 h-21 object-contain group-hover/logo:scale-110 transition-transform duration-500 ease-out" />
+              <img 
+                src={campnaiLogo} 
+                alt="Campnai Logo" 
+                className={`object-contain transition-all duration-500 ease-out ${scrolled ? "w-10 h-10" : "w-20 h-21 group-hover/logo:scale-110"}`} 
+              />
               <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-0 group-hover/logo:scale-150 transition-transform duration-700 opacity-0 group-hover/logo:opacity-100" />
             </div>
-            <span className="font-black text-2xl tracking-tighter text-white">
+            <span className={`font-black tracking-tighter text-foreground transition-all duration-500 ${scrolled ? "w-0 opacity-0 overflow-hidden text-[0px]" : "w-auto opacity-100 text-2xl"}`}>
               Campnai
             </span>
           </Link>
@@ -54,7 +58,7 @@ const Navbar = () => {
               <a
                 key={link.name}
                 href={link.href}
-                className={`text-sm font-bold transition-all hover:text-white ${scrolled ? "text-white" : "text-white/90"
+                className={`text-sm font-bold transition-all hover:text-primary ${scrolled ? "text-foreground" : "text-foreground/90"
                   }`}
               >
                 {link.name}
@@ -65,17 +69,17 @@ const Navbar = () => {
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-4">
             <ModeToggle />
-            <Link to="/login">
+            <Link to="/login" className={`transition-all duration-500 ${scrolled ? "hidden w-0 opacity-0" : "block w-auto opacity-100"}`}>
               <Button
                 variant="ghost"
                 size="sm"
-                className={`font-bold transition-colors ${scrolled ? "text-white hover:text-white/80" : "text-white/90 hover:text-white"}`}
+                className={`font-bold transition-colors ${scrolled ? "text-foreground hover:text-foreground/80" : "text-foreground/90 hover:text-foreground"}`}
               >
                 Sign in
               </Button>
             </Link>
             <Button
-              className="rounded-full px-6 font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] transition-all transform hover:scale-105"
+              className="rounded-full px-6 font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
               size="sm"
             >
               Start Building
@@ -86,7 +90,7 @@ const Navbar = () => {
           <div className="flex items-center gap-2 md:hidden">
             <ModeToggle />
             <button
-              className={`p-2 transition-colors ${scrolled ? "text-white" : "text-white"}`}
+              className={`p-2 transition-colors ${scrolled ? "text-foreground" : "text-foreground"}`}
               onClick={() => setIsOpen(!isOpen)}
             >
               {isOpen ? <X size={28} /> : <Menu size={28} />}
@@ -101,14 +105,14 @@ const Navbar = () => {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="md:hidden absolute top-24 left-6 right-6 p-6 rounded-[2rem] glass-card border-white/10 shadow-2xl z-50"
+              className="md:hidden absolute top-24 left-6 right-6 p-6 rounded-[2rem] glass-card border-border shadow-2xl z-50"
             >
               <div className="flex flex-col gap-6">
                 {navLinks.map((link) => (
                   <a
                     key={link.name}
                     href={link.href}
-                    className="text-white/90 hover:text-white transition-colors text-lg font-bold"
+                    className="text-foreground/90 hover:text-foreground transition-colors text-lg font-bold"
                     onClick={() => setIsOpen(false)}
                   >
                     {link.name}
@@ -116,7 +120,7 @@ const Navbar = () => {
                 ))}
                 <div className="flex flex-col gap-4 pt-6 border-t border-border">
                   <Link to="/login" onClick={() => setIsOpen(false)}>
-                    <Button variant="ghost" className="w-full text-white/90 hover:text-white font-bold">Sign in</Button>
+                    <Button variant="ghost" className="w-full text-foreground/90 hover:text-foreground font-bold">Sign in</Button>
                   </Link>
                   <Button className="w-full rounded-2xl font-bold" onClick={() => setIsOpen(false)}>Start Building</Button>
                 </div>
