@@ -35,15 +35,19 @@ const Hero = () => {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background pt-24 pb-20">
 
-      {/* Background Gradient Effects */}
-      <div className="absolute inset-0 w-full h-full pointer-events-none">
-        {/* Left Blue Glow */}
-        <div className="absolute top-[20%] left-[-10%] w-[60%] h-[60%] bg-white/5 rounded-full blur-[140px]" />
-        {/* Right Red/Orange Glow */}
-        <div className="absolute top-[20%] right-[-10%] w-[60%] h-[60%] bg-white/10 rounded-full blur-[140px]" />
+      {/* Background Gradient Effects - Neon Style */}
+      <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden">
+        {/* Purple Neon Glow - Top Right */}
+        <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-purple-600/30 rounded-full blur-[150px]" />
 
-        {/* Deep Overlay for contrast */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/50 to-background z-0" />
+        {/* Blue Neon Glow - Bottom Left */}
+        <div className="absolute bottom-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-600/25 rounded-full blur-[140px]" />
+
+        {/* Pink/Magenta Accent - Center */}
+        <div className="absolute top-[30%] left-[50%] -translate-x-1/2 w-[50%] h-[50%] bg-fuchsia-600/20 rounded-full blur-[120px]" />
+
+        {/* Subtle overlay for depth */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background z-0" />
       </div>
 
       <div className="container relative mx-auto px-4 z-10 flex flex-col items-center text-center mt-20">

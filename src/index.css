@@ -6,54 +6,59 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    /* Dark neon theme - matching screenshot */
+    --background: 250 50% 8%; /* Deep purple-blue background */
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card: 250 40% 12%; /* Slightly lighter purple for cards */
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
+    --popover: 250 40% 10%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 0 0% 9%;
+    --primary: 270 80% 65%; /* Vibrant purple */
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary: 250 30% 20%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 250 30% 15%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --accent: 270 80% 60%; /* Neon purple accent */
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --border: 250 30% 20%;
+    --input: 250 30% 18%;
+    --ring: 270 80% 65%;
 
     --radius: 0.75rem;
 
-    /* Custom tokens */
-    --gradient-hero: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(0 0% 90%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(0 0% 10%) 0%, hsl(0 0% 0%) 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(0 0% 0%) 0%, hsl(0 0% 5%) 100%);
+    /* Custom tokens - Neon gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(250 50% 8%) 0%, hsl(270 40% 12%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(270 80% 40%) 0%, hsl(290 70% 50%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(250 50% 8%) 0%, hsl(260 45% 10%) 100%);
+    --gradient-neon: radial-gradient(ellipse at top, hsl(270 80% 30% / 0.3) 0%, transparent 50%);
+    --gradient-neon-blue: radial-gradient(ellipse at bottom left, hsl(220 80% 40% / 0.2) 0%, transparent 50%);
+    --gradient-neon-purple: radial-gradient(ellipse at top right, hsl(280 80% 40% / 0.25) 0%, transparent 50%);
 
-    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.05);
-    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.08);
-    --shadow-lg: 0 12px 40px hsl(0 0% 0% / 0.12);
-    --shadow-xl: 0 25px 60px hsl(0 0% 0% / 0.15);
+    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 12px hsl(270 80% 50% / 0.15);
+    --shadow-lg: 0 12px 40px hsl(270 80% 50% / 0.25);
+    --shadow-xl: 0 25px 60px hsl(270 80% 50% / 0.35);
+    --shadow-neon: 0 0 30px hsl(270 80% 60% / 0.4), 0 0 60px hsl(270 80% 60% / 0.2);
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 40%;
-    --sidebar-primary: 0 0% 9%;
+    --sidebar-background: 250 40% 10%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 270 80% 65%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 96.1%;
-    --sidebar-accent-foreground: 0 0% 9%;
-    --sidebar-border: 0 0% 89.8%;
-    --sidebar-ring: 0 0% 3.9%;
+    --sidebar-accent: 250 30% 18%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 250 30% 20%;
+    --sidebar-ring: 270 80% 65%;
   }
 
   .dark {
