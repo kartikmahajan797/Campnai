@@ -22,7 +22,7 @@ const EMBED_CHUNK   = 90;
 const EMBED_DELAY   = 200;
 const CHUNK_PAUSE   = 62_000;
 
-// ─── Compute follower tier ────────────────────────────────────────────
+
 function getFollowerTier(followers) {
     if (!followers || followers <= 0) return "unknown";
     if (followers < 10000) return "nano";
