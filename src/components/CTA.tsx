@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react";
 const CTA = () => {
   return (
     <section className="py-24 bg-background relative overflow-hidden">
-      {/* Space Background Effects */}
       <div className="absolute inset-0 w-full h-full pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-primary/5 rounded-full blur-[120px]" />
 
