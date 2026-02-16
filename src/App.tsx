@@ -12,6 +12,7 @@ import Campaigns from "./pages/Campaigns";
 import NewCampaignSuccess from "./components/campaigns/NewCampaignSuccess";
 import CampaignDetails from "./components/campaigns/CampaignDetails";
 import CampaignCommandCenter from "./components/campaigns/CampaignCommandCenter";
+import CampaignFlowPage from "./pages/CampaignFlowPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,7 +34,7 @@ const App = () => (
             <Route path="/campaigns/new/success" element={<NewCampaignSuccess />} />
             <Route path="/campaigns/:id" element={<CampaignDetails />} />
             <Route path="/campaigns/:id/track" element={<CampaignCommandCenter />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/campaign/new" element={<CampaignFlowPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
