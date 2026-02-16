@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { useAuth } from '../lib/useAuth';
-import { Plus, Search, User, Briefcase, MessageSquare, Menu, X, LogOut, Sparkles, Trash2 } from 'lucide-react';
+import { Plus, Search, User, Briefcase, MessageSquare, Menu, X, LogOut, Sparkles, Trash2, Rocket } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   AlertDialog,
@@ -90,10 +90,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Sidebar */}
             <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} bg-card border-r border-border transition-all duration-300 flex flex-col overflow-hidden`}>
 
-                {/* Logo */}
                 <Link 
                     to="/dashboard" 
                     onClick={() => onNewChat?.()}
@@ -103,7 +101,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <span className="text-foreground font-semibold text-xl tracking-tight">CampnAI</span>
                 </Link>
 
-                {/* Navigation (Fixed) */}
                 <nav className="p-3 space-y-1">
                     <button
                         onClick={() => { onNewChat?.(); navigate('/dashboard'); }}
@@ -135,9 +132,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         <MessageSquare size={18} />
                         <span className="text-sm">Influencer Profiles</span>
                     </button>
+
+                    <button
+                        onClick={() => navigate('/campaign/new')}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition mt-1"
+                    >
+                        <Rocket size={18} />
+                        <span className="text-sm font-medium">Create Campaign</span>
+                    </button>
                 </nav>
 
-                {/* Chat History (Scrollable) */}
                 <div className="flex-1 overflow-y-auto min-h-0 border-t border-border mx-3 mt-2  overflow-y-scroll [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     <div className="flex items-center justify-between px-3 py-3 sticky top-0 bg-card/95 backdrop-blur z-10">
                         <span className="text-xs text-muted-foreground uppercase font-medium">Your chats</span>
@@ -177,7 +181,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </div>
                 </div>
 
-                {/* User Profile */}
                 <div className="p-3 border-t border-border">
                     {isLoading ? (
                         <div className="flex items-center gap-3 px-3 py-2">
@@ -205,10 +208,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
             </aside>
 
-            {/* Main Content */}
             <main className="flex-1 flex flex-col relative">
 
-                {/* Header */}
                 <header className="h-16 flex items-center justify-between px-6 border-b border-border bg-card/80 backdrop-blur sticky top-0 z-20">
                     <div className="flex items-center gap-4">
                         <button
@@ -241,7 +242,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </div>
                 </header>
 
-                {/* Content Area */}
                 <div className="flex-1 overflow-auto">
                     {children}
                 </div>
