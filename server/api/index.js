@@ -13,22 +13,31 @@ import influencersRouter from "../src/api/influencers.js";
 
 const app = express();
 
-// Security
 app.use(helmet());
 app.use(hpp());
-app.use(
-    cors({
-        origin: [
-            "http://localhost:5173",
-            "http://localhost:8080",
-            "https://campnai.com",
-            "https://www.campnai.com"
-        ],
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-Session-Id"],
-    })
-);
+const allowedOrigins = [
+    "https://campnai.com",
+    "https://www.campnai.com",
+  "http://localhost:5173",
+  "http://localhost:8080",
+];
+
+const corsOptions = {
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Session-Id"],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000,
@@ -43,12 +52,10 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.disable("x-powered-by");
 
-// Routes
 app.use("/", healthRouter);
 app.use("/api/v1", chatRouter);
 app.use("/api/v1", influencersRouter);
 
-// Error handlers
 app.use((err, _req, res, _next) => {
     if (err.code === "LIMIT_FILE_SIZE") {
         return res.status(413).json({ detail: "File too large. Max 10 MB." });
