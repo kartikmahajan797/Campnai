@@ -1,8 +1,3 @@
-/**
- * Download all influencer data from Firebase to a JSON file.
- * Usage: node server/src/scripts/downloadInfluencers.js
- */
-
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
@@ -12,29 +7,45 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ─── Initialize Firebase ─────────────────────────────────────────────
-const keyPaths = [
-    path.resolve(__dirname, "../../serviceAccountKey.json"),
-    path.resolve(__dirname, "../../../serviceAccountKey.json"),
-];
+import dotenv from "dotenv";
+dotenv.config();
 
-let serviceAccountPath = null;
-for (const p of keyPaths) {
-    if (fs.existsSync(p)) {
-        serviceAccountPath = p;
-        break;
+let serviceAccount;
+
+if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    try {
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+        console.log("✅ Loaded Firebase credentials from FIREBASE_SERVICE_ACCOUNT_JSON");
+    } catch (e) {
+        console.error("❌ Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:", e.message);
+        process.exit(1);
     }
+} else {
+    const keyPaths = [
+        path.resolve(__dirname, "../../serviceAccountKey.json"),
+        path.resolve(__dirname, "../../../serviceAccountKey.json"),
+    ];
+
+    let serviceAccountPath = null;
+    for (const p of keyPaths) {
+        if (fs.existsSync(p)) {
+            serviceAccountPath = p;
+            break;
+        }
+    }
+
+    if (!serviceAccountPath) {
+        console.error("❌ serviceAccountKey.json not found and FIREBASE_SERVICE_ACCOUNT_JSON not set!");
+        process.exit(1);
+    }
+    
+    serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf-8"));
 }
 
-if (!serviceAccountPath) {
-    console.error("❌ serviceAccountKey.json not found!");
-    process.exit(1);
-}
-
-const app = initializeApp({ credential: cert(JSON.parse(fs.readFileSync(serviceAccountPath, "utf-8"))) });
+const app = initializeApp({ credential: cert(serviceAccount) });
 const db = getFirestore(app);
 
-// ─── Download all influencers ────────────────────────────────────────
+
 async function downloadInfluencers() {
     const campaignId = "test_campaign_001";
     console.log(`📥 Fetching influencers from campaigns/${campaignId}/influencers...`);
@@ -58,7 +69,6 @@ async function downloadInfluencers() {
         });
     });
 
-    // Save to JSON
     const outputPath = path.resolve(__dirname, "../../influencers_data.json");
     fs.writeFileSync(outputPath, JSON.stringify(influencers, null, 2), "utf-8");
 
