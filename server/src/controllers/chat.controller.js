@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { db, geminiModel, firebaseAdmin } from "../core/config.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NEO_SYSTEM_PROMPT } from "../prompts/neo.prompt.js";
-import { searchInfluencers, formatSearchResults } from "../services/influencerSearch.js";
+import { searchInfluencers, formatSearchResults, getDynamicTopK } from "../services/influencerSearch.js";
 
 const FieldValue = firebaseAdmin.firestore.FieldValue;
 
@@ -39,15 +39,22 @@ export const sendMessage = async (req, res) => {
             });
         });
 
-        // ─── RAG: Search Pinecone for matching influencers ───────
-        const allText = (message + " " + conversationHistory.map(h => h.parts[0].text).join(" ")).toLowerCase();
-        const needsInfluencerData = /influencer|creator|brand|campaign|promote|collab|niche|fashion|clothing|beauty|fitness|lifestyle|recommend|suggest|find|show|discover|partner/i.test(allText);
+        // ─── RAG: Dynamic Pinecone search for matching influencers ───────
+        // Build full conversation context for smarter searching
+        const conversationContext = conversationHistory.map(h => h.parts[0].text).join(" ");
+        const allText = (message + " " + conversationContext).toLowerCase();
+
+        // Expanded keyword detection — triggers on campaign, brand, or influencer-related terms
+        const needsInfluencerData = /influencer|creator|brand|campaign|promote|collab|niche|fashion|clothing|beauty|fitness|lifestyle|recommend|suggest|find|show|discover|partner|skincare|haircare|food|tech|travel|gaming|budget|audience|followers|engagement|shortlist|match|hire|outreach|pricing/i.test(allText);
 
         let enhancedPrompt = NEO_SYSTEM_PROMPT;
 
         if (needsInfluencerData) {
-            // Vector search — only returns top 5 relevant matches
-            const searchResults = await searchInfluencers(message, 5);
+            // Dynamic topK based on query specificity
+            const topK = getDynamicTopK(message, conversationContext);
+
+            // Vector search with conversation context for better matching
+            const searchResults = await searchInfluencers(message, topK, conversationContext);
             const influencerContext = formatSearchResults(searchResults);
 
             enhancedPrompt += `
@@ -68,10 +75,11 @@ Keep this message SHORT and conversational, not a boring form. Use 3-4 lines max
 STEP 2 — SHORTLISTING (once you have enough info OR user provides details):
 Once you know the brand's needs, show the shortlisted influencers. Rules:
 1. ONLY use the influencer data provided below in the "MATCHING INFLUENCERS" section. NEVER invent, fabricate, or hallucinate influencer names, handles, emails, or stats.
-2. If the data below says "[No matching influencers found in the database.]" or is empty, tell the user honestly: "We're still setting up our creator database. We'll have recommendations for you soon!"
-3. Do NOT make up fake names like "Riya Sen" or "@the_skincare_guy" if they don't appear in the data below.
-4. Be concise. Let the data speak.
-5. NEVER say "database" or "vector search" to the user.
+2. **CRITICAL**: If influencer data IS provided below (i.e., you see "MATCHING INFLUENCERS FROM DATABASE" with actual profiles), you MUST present those creators. Even if their niche isn't an exact match, explain how they could work for the brand's campaign. NEVER ignore available data.
+3. ONLY say "We're still building our creator database for this niche" if the context LITERALLY contains the exact text "[No matching influencers found in the database.]". If you see ANY influencer profiles below, present them.
+4. Do NOT make up fake names like "Riya Sen" or "@the_skincare_guy" if they don't appear in the data below.
+5. Be concise. Let the data speak.
+6. NEVER say "database" or "vector search" to the user.
 
 SHORTLISTING & SCORING (ACT LIKE A PROFESSIONAL INFLUENCER MARKETING AGENT):
 When presenting creators, you MUST analyze and include:
@@ -187,7 +195,7 @@ ${influencerContext}`;
                 ...conversationHistory,
                 { role: "user", parts: [{ text: message }] },
             ],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+            generationConfig: { temperature: 0.7, maxOutputTokens: 16384 },
             safetySettings: [
                 { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
                 { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
