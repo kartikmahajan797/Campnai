@@ -11,16 +11,20 @@ interface FAQItemProps {
 
 const FAQItem = ({ question, answer, isOpen, onClick }: FAQItemProps) => {
     return (
-        <div className={`border-b border-white/10 overflow-hidden transition-all duration-300 ${isOpen ? "bg-white/5" : "bg-transparent"}`}>
+        <div className={`border-b border-border overflow-hidden transition-all duration-300 ${isOpen ? "bg-muted/50" : "bg-transparent"}`}>
             <button
                 onClick={onClick}
-                className="w-full py-6 md:py-8 px-6 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
+                className="w-full py-6 md:py-8 px-6 flex items-center justify-center md:justify-between text-left hover:bg-muted/30 transition-colors"
+                // Note: justify-center on mobile might need to remain justify-between if that was intended, 
+                // but original code had justify-between. Keeping justify-between.
             >
-                <h3 className={`text-lg md:text-xl font-medium tracking-tight pr-8 transition-colors ${isOpen ? "text-white" : "text-slate-200"}`}>
-                    {question}
-                </h3>
+                <div className="flex-1 pr-4">
+                    <h3 className={`text-lg md:text-xl font-medium tracking-tight transition-colors ${isOpen ? "text-foreground" : "text-muted-foreground"}`}>
+                        {question}
+                    </h3>
+                </div>
                 <div className="flex-shrink-0">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${isOpen ? "border-purple-500 bg-purple-500/20 text-purple-400" : "border-white/20 text-slate-400"}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${isOpen ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
                         {isOpen ? (
                             <Minus className="w-4 h-4" />
                         ) : (
@@ -37,7 +41,7 @@ const FAQItem = ({ question, answer, isOpen, onClick }: FAQItemProps) => {
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.3, ease: "easeInOut" }}
                     >
-                        <div className="px-6 pb-8 pt-2 text-base md:text-lg text-slate-400 leading-relaxed max-w-3xl">
+                        <div className="px-6 pb-8 pt-2 text-base md:text-lg text-muted-foreground leading-relaxed max-w-3xl">
                             {answer}
                         </div>
                     </motion.div>
@@ -78,11 +82,11 @@ const FAQ = () => {
     ];
 
     return (
-        <section id="faq" className="py-32 relative overflow-hidden bg-[#030014]">
+        <section id="faq" className="py-32 relative overflow-hidden bg-background">
             {/* Background Effects */}
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px]" />
-                <div className="absolute bottom-[20%] right-[10%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
+                <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
+                <div className="absolute bottom-[20%] right-[10%] w-[500px] h-[500px] bg-secondary/10 rounded-full blur-[120px]" />
 
             </div>
 
@@ -93,7 +97,7 @@ const FAQ = () => {
                         initial={{ opacity: 0, y: 10 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="inline-block mb-4 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium"
+                        className="inline-block mb-4 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-sm font-medium"
                     >
                         Questions & Answers
                     </motion.div>
@@ -102,7 +106,7 @@ const FAQ = () => {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-100 to-white mb-6"
+                        className="text-4xl md:text-5xl font-bold text-foreground mb-6"
                     >
                         Frequently Asked Questions
                     </motion.h2>
@@ -111,7 +115,7 @@ const FAQ = () => {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: 0.1 }}
-                        className="text-lg text-slate-400 max-w-xl mx-auto"
+                        className="text-lg text-muted-foreground max-w-xl mx-auto"
                     >
                         Everything you need to know about starting your first campaign with Neo.
                     </motion.p>
@@ -123,7 +127,7 @@ const FAQ = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: 0.2 }}
-                    className="border-t border-white/10 rounded-2xl overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+                    className="border-t border-border rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm border border-border shadow-xl"
                 >
                     {faqs.map((faq, index) => (
                         <FAQItem

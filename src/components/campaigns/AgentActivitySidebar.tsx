@@ -40,13 +40,13 @@ const defaultActivities: ActivityItem[] = [
 
 const AgentActivitySidebar = ({ activities = defaultActivities }: { activities?: ActivityItem[] }) => {
     return (
-        <Sidebar side="right" variant="sidebar" collapsible="none" className="border-l border-slate-800 bg-[#0B0D15]">
-            <SidebarHeader className="border-b border-slate-800/50 p-4">
+        <Sidebar side="right" variant="sidebar" collapsible="none" className="border-l border-border bg-card">
+            <SidebarHeader className="border-b border-border/50 p-4">
                 <div className="flex items-center gap-2">
-                    <Activity size={16} className="text-indigo-400" />
-                    <h2 className="text-sm font-semibold text-slate-200">Agent Activity</h2>
+                    <Activity size={16} className="text-primary" />
+                    <h2 className="text-sm font-semibold text-foreground">Agent Activity</h2>
                 </div>
-                <p className="text-xs text-slate-500">Live execution log</p>
+                <p className="text-xs text-muted-foreground">Live execution log</p>
             </SidebarHeader>
 
             <SidebarContent className="p-0">
@@ -56,20 +56,20 @@ const AgentActivitySidebar = ({ activities = defaultActivities }: { activities?:
                             {activities.map(activity => (
                                 <div key={activity.id} className="relative pl-6 pb-2 last:pb-0 group">
                                     {/* Timeline line */}
-                                    <div className="absolute left-[5px] top-2 bottom-0 w-px bg-slate-800 last:hidden group-hover:bg-slate-700 transition-colors"></div>
-                                    <div className="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full bg-[#0B0D15] border border-slate-700 z-10 group-hover:border-indigo-500 transition-colors"></div>
+                                    <div className="absolute left-[5px] top-2 bottom-0 w-px bg-border last:hidden group-hover:bg-primary/50 transition-colors"></div>
+                                    <div className="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full bg-background border border-border z-10 group-hover:border-primary transition-colors"></div>
 
-                                    <div className="bg-[#131620] border border-slate-800/50 rounded-lg p-3 hover:border-slate-700 transition-all shadow-sm">
+                                    <div className="bg-muted/30 border border-border/50 rounded-lg p-3 hover:border-primary/50 transition-all shadow-sm">
                                         <div className="flex items-start gap-2 mb-1">
                                             <div className="mt-0.5">{activity.icon}</div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm text-slate-300 leading-tight">
-                                                    {activity.action} <span className="font-medium text-white">{activity.user}</span>
+                                                <p className="text-sm text-foreground leading-tight">
+                                                    {activity.action} <span className="font-medium text-primary">{activity.user}</span>
                                                 </p>
-                                                {activity.detail && <p className="text-xs text-slate-500 mt-1 break-words">{activity.detail}</p>}
+                                                {activity.detail && <p className="text-xs text-muted-foreground mt-1 break-words">{activity.detail}</p>}
                                             </div>
                                         </div>
-                                        <p className="text-[10px] text-slate-600 pl-6">{activity.time}</p>
+                                        <p className="text-[10px] text-muted-foreground pl-6">{activity.time}</p>
                                     </div>
                                 </div>
                             ))}
@@ -78,11 +78,11 @@ const AgentActivitySidebar = ({ activities = defaultActivities }: { activities?:
                 </SidebarGroup>
             </SidebarContent>
 
-            <SidebarFooter className="border-t border-slate-800/50 p-4 bg-[#0B0D15]">
+            <SidebarFooter className="border-t border-border/50 p-4 bg-card">
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton
-                            className="w-full justify-center bg-slate-800/50 hover:bg-slate-800 text-slate-300 transition-colors h-9 shadow-sm border border-slate-800"
+                            className="w-full justify-center bg-muted/50 hover:bg-muted text-muted-foreground transition-colors h-9 shadow-sm border border-border"
                         >
                             <PauseCircle size={14} />
                             <span>Pause Agent</span>
@@ -90,7 +90,7 @@ const AgentActivitySidebar = ({ activities = defaultActivities }: { activities?:
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                         <SidebarMenuButton
-                            className="w-full justify-center text-slate-500 hover:text-indigo-400 transition-colors h-9"
+                            className="w-full justify-center text-muted-foreground hover:text-primary transition-colors h-9"
                         >
                             <Settings size={14} />
                             <span>Rate Limits</span>
@@ -99,7 +99,7 @@ const AgentActivitySidebar = ({ activities = defaultActivities }: { activities?:
                 </SidebarMenu>
 
                 <div className="text-center mt-2">
-                    <span className="text-[10px] text-indigo-500 hover:text-indigo-400 cursor-pointer flex items-center justify-center gap-1 transition-colors">
+                    <span className="text-[10px] text-primary hover:text-primary/80 cursor-pointer flex items-center justify-center gap-1 transition-colors">
                         View full execution log <ChevronRight size={10} />
                     </span>
                 </div>
