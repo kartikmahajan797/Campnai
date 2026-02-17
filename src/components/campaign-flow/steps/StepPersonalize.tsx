@@ -1,7 +1,7 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useCampaign } from '../CampaignContext';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, X } from 'lucide-react';
 
 const GOALS = ['Awareness', 'Sales / Conversions', 'Product Launch', 'App Installs', 'Creator Seeding'];
 const BUDGETS = ['Under ₹1 Lakh', '₹1-5 Lakh', '₹5-10 Lakh'];
@@ -36,7 +36,8 @@ const ChipGroup: React.FC<{
 );
 
 const StepPersonalize: React.FC = () => {
-  const { preferences, setPreferences, nextStep } = useCampaign();
+  const { preferences, setPreferences, nextStep, analysisResult } = useCampaign();
+  const [showAnalysisModal, setShowAnalysisModal] = React.useState(false);
 
   const isComplete = preferences.primaryGoal && preferences.budgetRange && preferences.timeline;
 
@@ -57,11 +58,32 @@ const StepPersonalize: React.FC = () => {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="relative z-10">
+        <div className="relative z-10 max-h-[85vh] overflow-y-auto custom-scrollbar pr-2">
           <h2 className="text-2xl md:text-3xl font-extrabold text-black dark:text-white mb-2 tracking-tight transition-colors">Let's refine your campaign.</h2>
-          <p className="text-black/50 dark:text-white/50 text-sm mb-8 transition-colors font-medium">
+          
+          <p className="text-black/50 dark:text-white/50 text-sm mb-6 transition-colors font-medium">
             We've analyzed your document. Help us tailor the strategy.
           </p>
+
+          {analysisResult && (
+            <motion.button
+              onClick={() => setShowAnalysisModal(true)}
+              className="w-full mb-8 p-4 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl flex items-center justify-between group hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-black dark:bg-white rounded-lg">
+                  <Sparkles className="w-4 h-4 text-white dark:text-black" />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">AI Brand Analysis</p>
+                  <p className="text-[10px] text-black/50 dark:text-white/50 font-medium">Click to view full insights</p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-black/30 dark:text-white/30 group-hover:text-black dark:group-hover:text-white transition-colors" />
+            </motion.button>
+          )}
 
           <ChipGroup
             label="PRIMARY GOAL"
@@ -103,6 +125,91 @@ const StepPersonalize: React.FC = () => {
           </div>
         </div>
       </motion.div>
+
+
+      <AnimatePresence>
+        {showAnalysisModal && analysisResult && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+             <motion.div 
+               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               onClick={() => setShowAnalysisModal(false)}
+             />
+             <motion.div
+               className="w-full max-w-2xl bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-3xl p-6 md:p-8 relative z-10 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar"
+               initial={{ opacity: 0, scale: 0.9, y: 20 }}
+               animate={{ opacity: 1, scale: 1, y: 0 }}
+               exit={{ opacity: 0, scale: 0.9, y: 20 }}
+             >
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h3 className="text-2xl font-extrabold text-black dark:text-white tracking-tight">AI Brand Analysis</h3>
+                    <p className="text-sm text-black/50 dark:text-white/50 font-medium">Based on your uploaded brief</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowAnalysisModal(false)}
+                    className="p-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-black dark:text-white" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                   <div className="p-5 bg-black/5 dark:bg-white/5 rounded-2xl">
+                      <p className="text-xs font-bold text-black/40 dark:text-white/40 uppercase tracking-widest mb-2">About the Brand</p>
+                      <div className="space-y-3">
+                         <div>
+                            <span className="text-xs text-black/50 dark:text-white/50 font-semibold block mb-0.5">Industry</span>
+                            <span className="text-sm font-bold text-black dark:text-white">{analysisResult.industry}</span>
+                         </div>
+                         <div>
+                            <span className="text-xs text-black/50 dark:text-white/50 font-semibold block mb-0.5">Brand Tone</span>
+                            <span className="text-sm font-bold text-black dark:text-white">{analysisResult.brand_tone}</span>
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="p-5 bg-black/5 dark:bg-white/5 rounded-2xl">
+                      <p className="text-xs font-bold text-black/40 dark:text-white/40 uppercase tracking-widest mb-2">Target Audience</p>
+                      <div className="space-y-3">
+                         <div>
+                            <span className="text-xs text-black/50 dark:text-white/50 font-semibold block mb-0.5">Demographics</span>
+                            <span className="text-sm font-bold text-black dark:text-white">{analysisResult.target_audience?.age_range || 'General'}</span>
+                         </div>
+                         <div>
+                            <span className="text-xs text-black/50 dark:text-white/50 font-semibold block mb-0.5">Lifestyle</span>
+                            <span className="text-sm font-bold text-black dark:text-white">{analysisResult.target_audience?.lifestyle || 'General'}</span>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="mb-8">
+                  <p className="text-xs font-bold text-black/40 dark:text-white/40 uppercase tracking-widest mb-4">Strategic Insights</p>
+                  <div className="space-y-3">
+                     {analysisResult.campaign_hooks?.slice(0, 3).map((hook, i) => (
+                        <div key={i} className="flex gap-3 text-sm text-black/70 dark:text-white/70 font-medium">
+                           <span className="w-5 h-5 flex items-center justify-center bg-black/5 dark:bg-white/5 rounded-full text-[10px] font-bold shrink-0">{i+1}</span>
+                           <span>{hook}</span>
+                        </div>
+                     ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                   <button
+                     onClick={() => setShowAnalysisModal(false)}
+                     className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold text-sm hover:opacity-90 transition-opacity"
+                   >
+                     Done
+                   </button>
+                </div>
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

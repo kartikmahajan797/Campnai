@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useCampaign } from '../CampaignContext';
 import { Upload, FileText, X, Loader2, ArrowRight, Shield } from 'lucide-react';
+import { API_BASE_URL } from '../../../config/api';
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -13,11 +14,12 @@ const ALLOWED_TYPES = [
 ];
 
 const StepUpload: React.FC = () => {
-  const { nextStep, uploadedFile, setUploadedFile, setIsAnalyzing } = useCampaign();
+  const { nextStep, uploadedFile, setUploadedFile, setIsAnalyzing, setAnalysisResult, setPreferences, setSuggestions } = useCampaign();
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
+  const [urlInput, setUrlInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((file: File) => {
@@ -62,29 +64,55 @@ const StepUpload: React.FC = () => {
   };
 
   const handleAnalyze = async () => {
-    if (!uploadedFile) return;
+    if (!uploadedFile && !urlInput) return;
     setIsUploading(true);
     setUploadProgress(0);
+    setError('');
 
     // Simulate upload progress
     const interval = setInterval(() => {
       setUploadProgress(prev => {
-        if (prev >= 95) {
-          clearInterval(interval);
-          return 95;
-        }
-        return prev + Math.random() * 15;
+        if (prev >= 90) return 90;
+        return prev + Math.random() * 10;
       });
     }, 200);
 
-    await new Promise(r => setTimeout(r, 1500));
-    clearInterval(interval);
-    setUploadProgress(100);
+    try {
+      const formData = new FormData();
+      if (uploadedFile) formData.append('file', uploadedFile);
+      if (urlInput) formData.append('link', urlInput);
 
-    await new Promise(r => setTimeout(r, 300));
-    setIsUploading(false);
-    setIsAnalyzing(true);
-    nextStep();
+      const res = await fetch(`${API_BASE_URL}/analyze-brand`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Analysis failed');
+
+      const data = await res.json();
+      
+      setAnalysisResult(data.analysis);
+      setSuggestions(data.suggestions);
+      setPreferences({
+        primaryGoal: data.analysis.marketing_goal || '',
+        budgetRange: data.analysis.price_segment || '',
+        timeline: '30 Days',
+      });
+
+      clearInterval(interval);
+      setUploadProgress(100);
+      
+      await new Promise(r => setTimeout(r, 500));
+      setIsUploading(false);
+      setIsAnalyzing(true);
+      nextStep();
+
+    } catch (err) {
+      clearInterval(interval);
+      setIsUploading(false);
+      setError('Failed to analyze. Please try again.');
+      console.error(err);
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -113,13 +141,15 @@ const StepUpload: React.FC = () => {
 
           <div className="mb-6">
             <label className="block text-xs font-extrabold text-black/40 dark:text-white/40 uppercase tracking-widest mb-3 transition-colors">
-              BRAND WEBSITE <span className="ml-2 px-1.5 py-0.5 bg-black/10 dark:bg-white/10 rounded text-[10px] text-black/50 dark:text-white/50 transition-colors font-bold">COMING SOON</span>
+              BRAND WEBSITE
             </label>
             <input
               type="url"
               placeholder="https://yourbrand.com"
-              className="w-full px-4 py-3 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl text-black/30 dark:text-white/30 cursor-not-allowed text-sm font-semibold focus:outline-none transition-colors"
-              disabled
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              className="w-full px-4 py-3 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl text-black dark:text-white text-sm font-semibold focus:outline-none focus:border-black/30 dark:focus:border-white/30 transition-colors"
+              disabled={isUploading}
             />
           </div>
 
@@ -209,10 +239,10 @@ const StepUpload: React.FC = () => {
 
           <motion.button
             onClick={handleAnalyze}
-            disabled={!uploadedFile || isUploading}
-            className="w-full h-12 bg-black dark:bg-white text-white dark:text-black rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
-            whileHover={uploadedFile && !isUploading ? { scale: 1.01 } : {}}
-            whileTap={uploadedFile && !isUploading ? { scale: 0.99 } : {}}
+            disabled={(!uploadedFile && !urlInput) || isUploading}
+            className="w-full h-12 bg-black dark:bg-white text-white dark:text-black rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg "
+            whileHover={(!uploadedFile && !urlInput) || isUploading ? {} : { scale: 1.01 }}
+            whileTap={(!uploadedFile && !urlInput) || isUploading ? {} : { scale: 0.99 }}
           >
             {isUploading ? (
               <>

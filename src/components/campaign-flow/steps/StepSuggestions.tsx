@@ -143,11 +143,11 @@ const InfoModal: React.FC<{
         <div className="w-full md:w-1/3 bg-black/5 dark:bg-white/5 border-b md:border-b-0 md:border-r border-black/10 dark:border-white/10 p-8 md:p-10 flex flex-col gap-8 transition-colors">
           <div className="flex flex-col items-center text-center">
             <div className="w-24 h-24 rounded-full bg-white dark:bg-white/10 border border-black/10 dark:border-white/20 flex items-center justify-center text-black dark:text-white text-4xl font-bold shadow-2xl mb-6 transition-colors">
-              {influencer.name.charAt(0).toUpperCase()}
+              {influencer.name?.charAt(0).toUpperCase() || '?'}
             </div>
             <h3 className="text-black dark:text-white text-2xl font-bold leading-tight mb-2 transition-colors">{influencer.name}</h3>
             <a 
-              href={`https://www.instagram.com/${influencer.handle.replace('@', '')}`}
+              href={`https://www.instagram.com/${influencer.handle?.replace('@', '') || ''}`}
               target="_blank" 
               rel="noopener noreferrer"
               className="text-black/50 dark:text-white/50 text-base font-medium mb-6 transition-colors hover:text-black dark:hover:text-white hover:underline"
@@ -168,7 +168,7 @@ const InfoModal: React.FC<{
             <div className="p-4 bg-white dark:bg-black/40 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col items-center gap-1 shadow-sm dark:shadow-none transition-colors">
               <TrendingUp className="w-5 h-5 text-black/50 dark:text-white/50 mb-1" />
               <span className="text-lg font-bold text-black dark:text-white">
-                {influencer.performanceBenefits.includes('%') ? `${influencer.performanceBenefits.split('%')[0]}%` : 'New'}
+                {typeof influencer.performanceBenefits === 'string' && influencer.performanceBenefits.includes('%') ? `${influencer.performanceBenefits.split('%')[0]}%` : 'New'}
               </span>
               <span className="text-[10px] uppercase text-black/30 dark:text-white/30 font-bold tracking-wider">Engagement</span>
             </div>
@@ -191,7 +191,7 @@ const InfoModal: React.FC<{
         
         <div className="mt-auto">
            <a
-              href={`https://www.instagram.com/${influencer.handle.replace('@', '').replace(/https?:\/\/(www\.)?instagram\.com\//gi, '')}`}
+              href={`https://www.instagram.com/${influencer.handle?.replace('@', '').replace(/https?:\/\/(www\.)?instagram\.com\//gi, '') || ''}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 w-full py-4 text-sm font-bold text-white dark:text-black bg-black dark:bg-white rounded-xl hover:bg-gray-800 dark:hover:bg-gray-200 transition-all shadow-lg"
@@ -245,7 +245,7 @@ const InfoModal: React.FC<{
               <span>Recommended Outreach</span>
             </div>
             <div className="bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 overflow-hidden transition-colors">
-               {influencer.executionSteps.map((step, i) => (
+               {influencer.executionSteps?.map((step, i) => (
                  <div key={i} className="flex items-center gap-4 p-5 border-b border-black/5 dark:border-white/5 last:border-0 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                     <div className="w-8 h-8 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center text-black/90 dark:text-white/90 text-sm font-bold shrink-0 transition-colors">
                       {i + 1}
@@ -268,7 +268,7 @@ const InfluencerCard: React.FC<{
   index: number;
   onInfo: () => void;
 }> = ({ influencer, index, onInfo }) => {
-  const instagramUsername = influencer.handle.replace('@', '').replace(/https?:\/\/(www\.)?instagram\.com\//gi, '');
+  const instagramUsername = influencer.handle?.replace('@', '').replace(/https?:\/\/(www\.)?instagram\.com\//gi, '') || '';
   const instagramLink = `https://www.instagram.com/${instagramUsername}`;
 
   return (
@@ -283,7 +283,7 @@ const InfluencerCard: React.FC<{
 
       <div className="flex items-center gap-6 mb-2">
         <div className="w-20 h-20 rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center text-black dark:text-white text-3xl font-bold shrink-0 shadow-lg group-hover:border-black/20 dark:group-hover:border-white/20 transition-colors">
-          {influencer.name.charAt(0).toUpperCase()}
+          {influencer.name?.charAt(0).toUpperCase() || '?'}
         </div>
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           <h4 className="text-black dark:text-white font-bold text-2xl truncate leading-tight group-hover:text-black/80 dark:group-hover:text-white/90 transition-colors">{influencer.name}</h4>
@@ -310,7 +310,7 @@ const InfluencerCard: React.FC<{
           <TrendingUp className="w-6 h-6 text-black/50 dark:text-white/50 shrink-0" />
           <div className="flex flex-col min-w-0">
             <div className="text-black dark:text-white font-bold text-xl leading-tight truncate transition-colors">
-              {influencer.performanceBenefits.includes('%') ? `${influencer.performanceBenefits.split('%')[0]}%` : 'New'}
+              {typeof influencer.performanceBenefits === 'string' && influencer.performanceBenefits.includes('%') ? `${influencer.performanceBenefits.split('%')[0]}%` : 'New'}
             </div>
             <div className="text-black/40 dark:text-white/40 text-xs font-bold uppercase tracking-wider mt-0.5 transition-colors">Engagement</div>
           </div>

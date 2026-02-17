@@ -7,18 +7,19 @@ const StepAnalysis: React.FC = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [completedIndices, setCompletedIndices] = useState<number[]>([]);
 
-  // Build analysis steps dynamically based on what user filled in
   const analysisSteps = React.useMemo(() => {
     const steps = ['Scanning uploaded document...'];
 
     if (preferences.primaryGoal) {
-      steps.push(`Mapping strategy for "${preferences.primaryGoal}"...`);
+      const goal = preferences.primaryGoal.length > 40 ? `${preferences.primaryGoal.substring(0, 40)}...` : preferences.primaryGoal;
+      steps.push(`Mapping strategy for "${goal}"...`);
     } else {
       steps.push('Extracting brand voice...');
     }
 
     if (preferences.budgetRange) {
-      steps.push(`Optimizing for ${preferences.budgetRange} budget...`);
+      const budget = preferences.budgetRange.length > 30 ? `${preferences.budgetRange.substring(0, 30)}...` : preferences.budgetRange;
+      steps.push(`Optimizing for ${budget} budget...`);
     } else {
       steps.push('Mapping target audience...');
     }
@@ -50,21 +51,7 @@ const StepAnalysis: React.FC = () => {
       );
     });
 
-    // Build analysis result dynamically from what user actually provided
     const finalTimer = setTimeout(() => {
-      setAnalysisResult({
-        businessCategory: preferences.primaryGoal || 'General Campaign',
-        targetAudience: 'Based on uploaded brief',
-        industryType: 'Detected from document',
-        marketPositioning: preferences.budgetRange || 'Standard',
-        keyInsights: [
-          preferences.primaryGoal ? `Primary goal: ${preferences.primaryGoal}` : 'Analyzing campaign objectives',
-          preferences.budgetRange ? `Budget: ${preferences.budgetRange}` : 'Budget to be determined',
-          preferences.timeline ? `Timeline: ${preferences.timeline}` : 'Flexible timeline',
-          'Creator matching in progress',
-        ],
-        summary: `Campaign configured for ${preferences.primaryGoal || 'growth'} with ${preferences.budgetRange || 'flexible'} budget over ${preferences.timeline || 'flexible'} timeline.`,
-      });
       setIsAnalyzing(false);
       nextStep();
     }, analysisSteps.length * 1200 + 600);

@@ -2,3 +2,4 @@ node_modules/
 .env
 serviceAccountKey.json
 influencers_data.json
+seed_influencers.json

@@ -1,12 +1,25 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 export interface AnalysisResult {
-  businessCategory: string;
-  targetAudience: string;
-  industryType: string;
-  marketPositioning: string;
-  keyInsights: string[];
-  summary: string;
+  brand_name: string;
+  industry: string;
+  products: string[];
+  target_audience: {
+    age_range: string;
+    interests: string[];
+    lifestyle: string;
+  };
+  primary_regions: string[];
+  price_segment: string;
+  brand_tone: string;
+  marketing_goal: string;
+  best_platforms: string[];
+  recommended_influencer_type: string;
+  content_formats: string[];
+  hashtags: string[];
+  competitor_types: string[];
+  campaign_hooks: string[];
+  ready_for_next_pipeline: boolean;
 }
 
 export interface CampaignPreferences {
@@ -63,8 +76,6 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentStep, setCurrentStep] = useState(() => {
     const saved = localStorage.getItem('campaign_step');
     const step = saved ? parseInt(saved, 10) : 0;
-    // Only restore state if step is greater than 1 (Analysis onwards)
-    // Always start at Welcome (0) if saved step was 0 or 1 (Upload)
     return step > 1 ? step : 0;
   });
   

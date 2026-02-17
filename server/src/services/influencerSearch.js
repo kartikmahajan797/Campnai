@@ -91,7 +91,7 @@ export function getDynamicTopK(message, conversationContext = "") {
 }
 
 // ─── Search influencers by query ─────────────────────────────────────
-export async function searchInfluencers(query, topK = 10, conversationContext = "") {
+export async function searchInfluencers(query, topK = 10, conversationContext = "", explicitFilter = null) {
     const index = getIndex();
     if (!index) {
         console.warn("Pinecone not available, falling back to empty results");
@@ -104,35 +104,141 @@ export async function searchInfluencers(query, topK = 10, conversationContext = 
         const embedding = await getQueryEmbedding(searchQuery);
 
         // Build optional metadata filters
-        const filter = buildMetadataFilter(query, conversationContext);
+        let filter = buildMetadataFilter(query, conversationContext);
+        
+        // Merge explicit filter (e.g., from Brand Analysis)
+        if (explicitFilter) {
+            filter = filter || {};
+            
+            // Handle Niche Mapping:
+            // Pinecone data only has: "Fashion", "Tech", "Food", "Lifestyle".
+            // If AI says "Nutrition", we should map to "Food" or "Health" if available.
+            // Since we know we have NO Health/Fitness data, we have two choices:
+            // 1. Strict: Return 0 results (User asked for "better precision").
+            // 2. Fuzzy: Map to "Lifestyle" or "Food".
+            
+            // Let's go with Strict for now as per user request ("why fashion for nutrition?").
+            // But we can do some basic mapping to available categories.
+            let targetNiche = explicitFilter.niche?.toLowerCase();
+            
+            // Map common AI outputs to our limited DB categories
+            // FIX: Nutrition should map to 'fitness', not 'food' (supplements != recipes)
+            const categoryMap = {
+                "nutrition": "fitness",
+                "diet": "fitness",
+                "health": "fitness",
+                "wellness": "lifestyle",
+                "apparel": "fashion",
+                "clothing": "fashion",
+                "wear": "fashion",
+                "technology": "tech",
+                "software": "tech",
+                "gadgets": "tech",
+                "electronics": "tech",
+                "audio": "tech",
+                "headphones": "tech",
+                "ai": "tech"
+            };
+
+            if (categoryMap[targetNiche]) {
+                targetNiche = categoryMap[targetNiche];
+            }
+        }
 
         const queryParams = {
             vector: embedding,
             topK,
             includeMetadata: true,
         };
-        if (filter) queryParams.filter = filter;
+        // We do NOT use Pinecone's strict filter because data is messy (csv strings).
+        // Instead we allow broad fetch and filter/penalize in JS.
+        // if (filter && Object.keys(filter).length > 0) queryParams.filter = filter;
 
-        console.log(`🔍 Pinecone search: topK=${topK}, filter=${JSON.stringify(filter || "none")}, query="${searchQuery.slice(0, 80)}..."`);
+        console.log(`🔍 Pinecone search: topK=${topK}, query="${searchQuery.slice(0, 80)}..."`);
 
         const results = await index.query(queryParams);
-
-        // Filter out very low-relevance matches (below 0.2 threshold)
-        // NOTE: 0.4 was too aggressive — many relevant results for generic queries
-        // (e.g. "fashion", "D2C apparel") score between 0.2-0.4 with embeddings.
-        const SCORE_THRESHOLD = 0.2;
         const allMatches = results.matches || [];
-        if (allMatches.length > 0) {
-            console.log(`📊 Score range: ${allMatches[0]?.score?.toFixed(3)} (best) → ${allMatches[allMatches.length - 1]?.score?.toFixed(3)} (worst)`);
-        }
-        const matches = allMatches
+        
+        let processedMatches = allMatches.map(match => {
+            let finalScore = match.score || 0;
+            const metaNiche = (match.metadata?.niche || "").toLowerCase();
+            const metaFit = (match.metadata?.brand_fit || "").toLowerCase();
+            const combinedMeta = metaNiche + " " + metaFit;
+
+            // NICHE PENALTY LOGIC
+            if (explicitFilter?.niche) {
+                let target = explicitFilter.niche.toLowerCase();
+                 // Re-map target again if needed (duplicate logic but safe)
+                const categoryMap = {
+                    "nutrition": "fitness", 
+                    "diet": "fitness",
+                    "health": "fitness",
+                    "apparel": "fashion", "clothing": "fashion", "wear": "fashion",
+                    "technology": "tech", "software": "tech", "gadgets": "tech", "electronics": "tech", "audio": "tech", "ai": "tech"
+                };
+                if (categoryMap[target]) target = categoryMap[target];
+
+                // Check for match
+                const isMatch = combinedMeta.includes(target);
+                
+                if (isMatch) {
+                    // Boost exact niche matches
+                    finalScore += 0.2; 
+                } else {
+                    // HEAVY PENALTY for mismatch
+                    
+                    // 1. Check if the TARGET itself is supported in our DB
+                    // We only have: Tech, Fashion, Fitness, Food, Travel, Lifestyle.
+                    // If the user wants "Pet Care", "Real Estate", "Automotive" -> We should show NOTHING.
+                    const SUPPORTED_NICHES = ['tech', 'fashion', 'fitness', 'food', 'travel', 'lifestyle', 'finance'];
+                    
+                    // Simple check: Is the meaningful part of the target in our supported list?
+                    // (We already mapped nutrition->fitness, etc.)
+                    const isSupported = SUPPORTED_NICHES.some(s => target.includes(s));
+                    
+                    if (!isSupported) {
+                        // UNKNOWN CATEGORY -> KILL IT
+                        // If we don't support "Pet Care", don't show "Fashion".
+                        // Apply massive penalty to force 0 results.
+                        finalScore -= 0.9; 
+                        console.log(`⚠️ Unsupported Niche '${target}': Applying kill penalty.`);
+                    } else {
+                         // Supported category, just wrong influencer? (e.g. Tech vs Fashion)
+                        if (target === 'tech' && !combinedMeta.includes('tech') && !combinedMeta.includes('ai')) {
+                            finalScore -= 0.4; // Tech is distinct.
+                        }
+                        else if (target === 'food' && !combinedMeta.includes('food')) {
+                            finalScore -= 0.4; // Food is distinct.
+                        }
+                         else if (target === 'fitness' && !combinedMeta.includes('fitness') && !combinedMeta.includes('health')) {
+                            finalScore -= 0.4; // Fitness is distinct.
+                        }
+                        else {
+                            // General mismatch
+                            finalScore -= 0.2;
+                        }
+                    }
+                }
+            }
+            
+            return {
+                ...match,
+                score: Math.max(0, Math.min(0.99, finalScore)) // Clamp between 0 and 0.99
+            };
+        });
+
+        // Re-sort after penalty
+        processedMatches.sort((a, b) => b.score - a.score);
+
+        const SCORE_THRESHOLD = 0.5; // High threshold for production precision
+        const matches = processedMatches
             .filter((match) => match.score >= SCORE_THRESHOLD)
             .map((match) => ({
                 score: match.score,
                 ...match.metadata,
             }));
 
-        console.log(`📊 Pinecone returned ${results.matches?.length || 0} results, ${matches.length} above threshold`);
+        console.log(`📊 Pinecone returned ${allMatches.length} raw, ${matches.length} after Niche Logic (Threshold ${SCORE_THRESHOLD})`);
 
         return matches;
     } catch (err) {
