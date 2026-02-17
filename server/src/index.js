@@ -10,6 +10,7 @@ import healthRouter from "./api/routes.js";
 import chatRouter from "./api/chat.js";
 import influencersRouter from "./api/influencers.js";
 import searchRouter from "./api/searchAPI.js";
+import brandRouter from "./api/brand.js";
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -52,6 +53,7 @@ app.use("/", healthRouter);
 app.use("/api/v1", chatRouter);
 app.use("/api/v1", influencersRouter);
 app.use("/api/v1", searchRouter);
+app.use("/api/v1", brandRouter);
 
 app.use((err, _req, res, _next) => {
     if (err.code === "LIMIT_FILE_SIZE") {
