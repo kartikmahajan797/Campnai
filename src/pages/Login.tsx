@@ -17,15 +17,11 @@ const Login = () => {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Listen for Auth State Changes - handles both persistence and OAuth completion
   useEffect(() => {
     let mounted = true;
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!mounted) return;
-
-      console.log('[Login] Auth state changed:', user ? user.uid : 'No user');
-
       if (user) {
         navigate('/campaign/new', { replace: true });
       } else {
@@ -46,12 +42,10 @@ const Login = () => {
     }
 
     try {
-      // set persistence based on "remember" checkbox
       await setPersistence(auth, formData.remember ? browserLocalPersistence : browserSessionPersistence);
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       console.log('Login successful:', userCredential.user);
       alert('Login successful!');
-      // client-side navigate to dashboard
       navigate('/campaign/new', { replace: true });
     } catch (error: any) {
       console.error('Login error:', error);
@@ -60,7 +54,6 @@ const Login = () => {
     }
   };
 
-  // Handle Google Login
   const handleGoogleLogin = async () => {
     try {
       setIsGoogleLoading(true);

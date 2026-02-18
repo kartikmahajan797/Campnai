@@ -47,7 +47,7 @@ router.get("/", authenticate, async (req, res) => {
     try {
         const user = req.user;
         const campaignsRef = db.collection(COLLECTION_NAME);
-        const snapshot = await campaignsRef.where('userId', '==', user.uid).orderBy('createdAt', 'desc').get();
+        const snapshot = await campaignsRef.where('userId', '==', user.uid).get();
 
         if (snapshot.empty) {
             return res.json([]);

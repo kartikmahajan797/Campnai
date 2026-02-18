@@ -14,12 +14,12 @@ const ALLOWED_TYPES = [
 ];
 
 const StepUpload: React.FC = () => {
-  const { nextStep, uploadedFile, setUploadedFile, setIsAnalyzing, setAnalysisResult, setPreferences, setSuggestions, setCampaignId } = useCampaign();
+  const { nextStep, uploadedFile, setUploadedFile, setIsAnalyzing, setAnalysisResult, setPreferences, setSuggestions, setCampaignId, preferences } = useCampaign();
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
-  const [urlInput, setUrlInput] = useState('');
+  const [urlInput, setUrlInput] = useState(preferences.websiteUrl || '');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((file: File) => {
@@ -91,14 +91,13 @@ const StepUpload: React.FC = () => {
 
       const data = await res.json();
       
-      setAnalysisResult(data.analysis);
-      // Remove suggestions setting here
-      // setSuggestions(data.suggestions); 
-      setPreferences({
-        primaryGoal: data.analysis.marketing_goal || '',
-        budgetRange: data.analysis.price_segment || '',
-        timeline: '30 Days',
-      });
+        setAnalysisResult(data.analysis);
+        setPreferences({
+          primaryGoal: data.analysis.marketing_goal || '',
+          budgetRange: data.analysis.price_segment || '',
+          timeline: '30 Days',
+          websiteUrl: urlInput || '',
+        });
 
       clearInterval(interval);
       setUploadProgress(100);
