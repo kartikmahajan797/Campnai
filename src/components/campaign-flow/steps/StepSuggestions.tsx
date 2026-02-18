@@ -4,10 +4,11 @@ import { useCampaign } from '../CampaignContext';
 import { useNavigate } from 'react-router-dom';
 import {
   X, CheckCircle2, TrendingUp, Target, Zap, Info,
-  Instagram, Youtube, MapPin, Users, ArrowRight, AlertCircle, RotateCcw
+  Instagram, Youtube, MapPin, Users, ArrowRight, AlertCircle, RotateCcw, FileText
 } from 'lucide-react';
 import { auth } from '../../../firebaseConfig';
 import { API_BASE_URL } from '../../../config/api';
+import { CampaignService } from '../../../services/CampaignService';
 import type { InfluencerSuggestion } from '../CampaignContext';
 
 async function fetchInfluencers(preferences: {
@@ -51,29 +52,87 @@ async function fetchInfluencers(preferences: {
     console.log('[Campaign] Got', data.total, 'influencers from API');
 
     return (data.influencers || []).map((inf: any, idx: number) => {
-      const scoreNum = parseFloat(inf.match_score) || 0;
+      // ── Score Handling (Robust) ───────────────────────────────────────
+      // 1. Try `inf.match.score` (0-100) from formatted API
+      // 2. Try `inf.score` (0-1) from raw Pinecone -> multiply by 100
+      // 3. Try `inf.match_score` (legacy)
+      // 4. Fallback to 0
+      let rawScore = 0;
+      if (typeof inf.match?.score === 'number') {
+        rawScore = inf.match.score;
+      } else if (typeof inf.score === 'number') {
+        rawScore = inf.score * 100;
+      } else if (inf.match_score) {
+        rawScore = parseFloat(inf.match_score);
+      }
+      
+      const scoreNum = isNaN(rawScore) ? 0 : rawScore;
+      const matchScore = Math.round(scoreNum);
+
+      // ── Why Suggested: combine AI reasons + warnings ─────────────────
+      const reasons  = inf.match?.reasons  || [];
+      const warnings = inf.match?.warnings || [];
+      let whySuggested = '';
+      
+      if (reasons.length > 0) {
+        whySuggested = reasons.join('. ') + '.';
+        if (warnings.length > 0) {
+          whySuggested += ' Note: ' + warnings.join('. ') + '.';
+        }
+      } else {
+        // Fallback: build from direct fields
+        whySuggested = buildWhySuggested(inf);
+      }
+
+      // ── Engagement Rate: direct field from API ────────────────────────
+      const er = parseFloat(inf.engagement_rate) || 0;
+      const erDisplay = er > 0 ? `${er}%` : null;
+
+      // ── Expected ROI: ER + views info ─────────────────────────────────
+      const roiParts: string[] = [];
+      if (er > 0) roiParts.push(`${er}% engagement rate — strong audience interaction`);
+      if (inf.avg_views && inf.avg_views > 0) roiParts.push(`avg ${formatFollowers(inf.avg_views)} views per post`);
+      const expectedROI = roiParts.length > 0
+        ? roiParts.join('. ') + '.'
+        : 'Engagement metrics will be tracked post-launch.';
+
+      // ── Performance Benefits: all demographic + metric data ───────────
+      const perfParts: string[] = [];
+      if (er > 0)                 perfParts.push(`${er}% engagement rate`);
+      if (inf.avg_views > 0)      perfParts.push(`${formatFollowers(inf.avg_views)} avg views`);
+      if (inf.mf_split)           perfParts.push(`Audience: ${inf.mf_split}`);
+      if (inf.age_concentration)  perfParts.push(`Age group: ${inf.age_concentration}`);
+      if (inf.india_split)        perfParts.push(`India audience: ${inf.india_split}`);
+      if (inf.brand_fit)          perfParts.push(`Brand fit: ${inf.brand_fit}`);
+      
+      const performanceBenefits = perfParts.length > 0
+        ? perfParts.join('. ') + '.'
+        : buildBenefits(inf); // Use helper as secondary fallback
+
+      // Ensure stable ID within search results
+      const safeId = inf.id || `inf_${idx}_${(inf.handle || inf.name || 'anon').replace(/[^a-z0-9]/gi, '')}`;
+
       return {
-        id: String(idx + 1),
+        id: safeId,
         name: inf.name || 'Unknown Creator',
-        handle: inf.instagram ? `@${inf.instagram.replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, '').replace(/\/$/, '').replace('@', '')}` : '—',
+        handle: inf.handle || inf.instagram_url || '—',
         platform: 'Instagram' as const,
-        followers: inf.followers ? formatFollowers(inf.followers) : '—',
+        followers: inf.followers ? formatFollowers(Number(inf.followers)) : '—',
         niche: inf.niche || inf.type || '—',
         pricePerPost: inf.commercials || '—',
         location: inf.location || '—',
-        matchScore: Math.round(scoreNum),
+        matchScore: matchScore,
+        engagementRate: erDisplay,
         avatar: '',
-        tier: scoreNum >= 60 ? 'A' as const : 'B' as const,
-        whySuggested: buildWhySuggested(inf),
-        expectedROI: inf.engagement_rate
-          ? `${inf.engagement_rate}% engagement rate — strong audience interaction.`
-          : 'Engagement data will be available after onboarding.',
-        performanceBenefits: buildBenefits(inf),
+        tier: matchScore >= 65 ? 'A' as const : 'B' as const,
+        whySuggested,
+        expectedROI,
+        performanceBenefits,
         executionSteps: [
           'Initial outreach via DM or email',
-          'Share campaign brief',
-          'Content creation & review',
-          'Publish and track performance',
+          'Share campaign brief & mood board',
+          'Content creation & review round',
+          'Publish and track performance metrics',
         ],
       };
     });
@@ -91,20 +150,32 @@ function formatFollowers(n: number): string {
 
 function buildWhySuggested(inf: any): string {
   const parts: string[] = [];
-  if (inf.niche) parts.push(`Specializes in ${inf.niche}`);
-  if (inf.location) parts.push(`based in ${inf.location}`);
-  if (inf.brand_fit) parts.push(`Brand fit: ${inf.brand_fit}`);
-  if (inf.vibe) parts.push(`Vibe: ${inf.vibe}`);
-  return parts.length > 0 ? parts.join('. ') + '.' : 'Matched based on campaign requirements.';
+  
+  // Niche Match
+  if (inf.niche) parts.push(`Specializes in ${inf.niche} content`);
+  
+  // Location Match
+  if (inf.location && inf.location !== '—') parts.push(`Based in ${inf.location}`);
+  
+  // Brand Fit (if available)
+  if (inf.brand_fit) parts.push(`Strong brand fit: ${inf.brand_fit}`);
+  
+  // Vibe/Style
+  if (inf.vibe) parts.push(`Content style: ${inf.vibe}`);
+  
+  // Audience
+  if (inf.mf_split) parts.push(`Audience: ${inf.mf_split}`);
+
+  if (parts.length === 0) {
+    return 'Matched based on high semantic relevance to campaign goals.';
+  }
+  
+  return parts.join('. ') + '.';
 }
 
 function buildBenefits(inf: any): string {
-  const parts: string[] = [];
-  if (inf.engagement_rate) parts.push(`${inf.engagement_rate}% engagement rate`);
-  if (inf.avg_views) parts.push(`${formatFollowers(inf.avg_views)} avg views`);
-  if (inf.mf_split) parts.push(`Audience split: ${inf.mf_split}`);
-  if (inf.age_concentration) parts.push(`Age concentration: ${inf.age_concentration}`);
-  return parts.length > 0 ? parts.join(', ') + '.' : 'Performance data available after campaign starts.';
+  // Only called if primary performance fields are missing
+  return 'Detailed performance metrics available upon request.';
 }
 
 const InfoModal: React.FC<{
@@ -133,8 +204,8 @@ const InfoModal: React.FC<{
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <button 
-          className="absolute top-6 right-6 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white transition-colors p-2 z-50 bg-black/5 dark:bg-black/50 rounded-full backdrop-blur-md" 
+        <button
+          className="absolute top-6 right-6 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white transition-colors p-2 z-50 bg-black/5 dark:bg-black/50 rounded-full backdrop-blur-md"
           onClick={onClose}
         >
           <X className="w-6 h-6" />
@@ -146,51 +217,51 @@ const InfoModal: React.FC<{
               {influencer.name?.charAt(0).toUpperCase() || '?'}
             </div>
             <h3 className="text-black dark:text-white text-2xl font-bold leading-tight mb-2 transition-colors">{influencer.name}</h3>
-            <a 
+            <a
               href={`https://www.instagram.com/${influencer.handle?.replace('@', '') || ''}`}
-              target="_blank" 
+              target="_blank"
               rel="noopener noreferrer"
               className="text-black/50 dark:text-white/50 text-base font-medium mb-6 transition-colors hover:text-black dark:hover:text-white hover:underline"
             >
               {influencer.handle}
             </a>
-            
+
             <div className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-full text-sm font-bold shadow-lg tracking-wide mb-8 transition-colors">
               {influencer.matchScore}% Match Score
             </div>
 
-          <div className="w-full grid grid-cols-2 gap-4">
-            <div className="p-4 bg-white dark:bg-black/40 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col items-center gap-1 shadow-sm dark:shadow-none transition-colors">
-              <Users className="w-5 h-5 text-black/50 dark:text-white/50 mb-1" />
-              <span className="text-lg font-bold text-black dark:text-white">{influencer.followers}</span>
-              <span className="text-[10px] uppercase text-black/30 dark:text-white/30 font-bold tracking-wider">Followers</span>
-            </div>
-            <div className="p-4 bg-white dark:bg-black/40 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col items-center gap-1 shadow-sm dark:shadow-none transition-colors">
-              <TrendingUp className="w-5 h-5 text-black/50 dark:text-white/50 mb-1" />
-              <span className="text-lg font-bold text-black dark:text-white">
-                {typeof influencer.performanceBenefits === 'string' && influencer.performanceBenefits.includes('%') ? `${influencer.performanceBenefits.split('%')[0]}%` : 'New'}
-              </span>
-              <span className="text-[10px] uppercase text-black/30 dark:text-white/30 font-bold tracking-wider">Engagement</span>
+            <div className="w-full grid grid-cols-2 gap-4">
+              <div className="p-4 bg-white dark:bg-black/40 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col items-center gap-1 shadow-sm dark:shadow-none transition-colors">
+                <Users className="w-5 h-5 text-black/50 dark:text-white/50 mb-1" />
+                <span className="text-lg font-bold text-black dark:text-white">{influencer.followers}</span>
+                <span className="text-[10px] uppercase text-black/30 dark:text-white/30 font-bold tracking-wider">Followers</span>
+              </div>
+              <div className="p-4 bg-white dark:bg-black/40 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col items-center gap-1 shadow-sm dark:shadow-none transition-colors">
+                <TrendingUp className="w-5 h-5 text-black/50 dark:text-white/50 mb-1" />
+                <span className="text-lg font-bold text-black dark:text-white">
+                  {(influencer as any).engagementRate || '—'}
+                </span>
+                <span className="text-[10px] uppercase text-black/30 dark:text-white/30 font-bold tracking-wider">Engagement</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="space-y-4">
-           {influencer.location !== '—' && (
-            <div className="flex items-center gap-3 text-black/60 dark:text-white/60 text-sm p-3 rounded-xl bg-white dark:bg-white/5 shadow-sm dark:shadow-none border border-black/5 dark:border-none transition-colors">
-              <MapPin className="w-4 h-4 text-black/40 dark:text-white/40" />
-              <span>{influencer.location}</span>
-            </div>
-           )}
-           {influencer.pricePerPost !== '—' && (
-             <div className="flex items-center gap-3 text-black/60 dark:text-white/60 text-sm p-3 rounded-xl bg-white dark:bg-white/5 shadow-sm dark:shadow-none border border-black/5 dark:border-none transition-colors">
+          <div className="space-y-4">
+            {influencer.location !== '—' && (
+              <div className="flex items-center gap-3 text-black/60 dark:text-white/60 text-sm p-3 rounded-xl bg-white dark:bg-white/5 shadow-sm dark:shadow-none border border-black/5 dark:border-none transition-colors">
+                <MapPin className="w-4 h-4 text-black/40 dark:text-white/40" />
+                <span>{influencer.location}</span>
+              </div>
+            )}
+            {influencer.pricePerPost !== '—' && (
+              <div className="flex items-center gap-3 text-black/60 dark:text-white/60 text-sm p-3 rounded-xl bg-white dark:bg-white/5 shadow-sm dark:shadow-none border border-black/5 dark:border-none transition-colors">
                 <span>Est. {influencer.pricePerPost}</span>
-             </div>
-           )}
-        </div>
-        
-        <div className="mt-auto">
-           <a
+              </div>
+            )}
+          </div>
+
+          <div className="mt-auto">
+            <a
               href={`https://www.instagram.com/${influencer.handle?.replace('@', '').replace(/https?:\/\/(www\.)?instagram\.com\//gi, '') || ''}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -199,86 +270,99 @@ const InfoModal: React.FC<{
               <Instagram className="w-4 h-4" />
               <span>View Profile</span>
             </a>
+          </div>
         </div>
-      </div>
 
-      <div className="w-full md:w-2/3 p-8 md:p-12 overflow-y-auto custom-scrollbar">
-        <div className="space-y-10">
-          
-          <section>
-            <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
-              <Target className="w-4 h-4 text-black dark:text-white transition-colors" />
-              <span>AI Analysis</span>
-            </div>
-            <h4 className="text-xl font-semibold text-black dark:text-white mb-3 transition-colors">Why This Creator?</h4>
-            <p className="text-black/70 dark:text-white/70 text-base leading-relaxed bg-black/5 dark:bg-white/5 p-6 rounded-2xl border border-black/5 dark:border-white/5 transition-colors break-words hyphens-auto">
-              {influencer.whySuggested}
-            </p>
-          </section>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <section>
-               <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
-                <TrendingUp className="w-4 h-4 text-black dark:text-white transition-colors" />
-                <span>ROI Projection</span>
-              </div>
-              <div className="bg-black/5 dark:bg-white/5 p-6 rounded-2xl border border-black/5 dark:border-white/5 h-full transition-colors">
-                 <p className="text-black/70 dark:text-white/70 text-sm leading-relaxed transition-colors break-words hyphens-auto">{influencer.expectedROI}</p>
-              </div>
-            </section>
+        <div className="w-full md:w-2/3 p-8 md:p-12 overflow-y-auto custom-scrollbar">
+          <div className="space-y-10">
 
             <section>
               <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
-                <Zap className="w-4 h-4 text-black dark:text-white transition-colors" />
-                <span>Key Strengths</span>
+                <Target className="w-4 h-4 text-black dark:text-white transition-colors" />
+                <span>AI Analysis</span>
               </div>
-              <div className="bg-black/5 dark:bg-white/5 p-6 rounded-2xl border border-black/5 dark:border-white/5 h-full transition-colors">
-                 <p className="text-black/70 dark:text-white/70 text-sm leading-relaxed transition-colors break-words hyphens-auto">{influencer.performanceBenefits}</p>
-              </div>
+              <h4 className="text-xl font-semibold text-black dark:text-white mb-3 transition-colors">Why This Creator?</h4>
+              <p className="text-black/70 dark:text-white/70 text-base leading-relaxed bg-black/5 dark:bg-white/5 p-6 rounded-2xl border border-black/5 dark:border-white/5 transition-colors break-words hyphens-auto">
+                {influencer.whySuggested}
+              </p>
             </section>
-          </div>
 
-          {/* Execution Plan */}
-          <section>
-            <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
-              <CheckCircle2 className="w-4 h-4 text-black dark:text-white transition-colors" />
-              <span>Recommended Outreach</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <section>
+                <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
+                  <TrendingUp className="w-4 h-4 text-black dark:text-white transition-colors" />
+                  <span>ROI Projection</span>
+                </div>
+                <div className="bg-black/5 dark:bg-white/5 p-6 rounded-2xl border border-black/5 dark:border-white/5 h-full transition-colors">
+                  <p className="text-black/70 dark:text-white/70 text-sm leading-relaxed transition-colors break-words hyphens-auto">{influencer.expectedROI}</p>
+                </div>
+              </section>
+
+              <section>
+                <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
+                  <Zap className="w-4 h-4 text-black dark:text-white transition-colors" />
+                  <span>Key Strengths</span>
+                </div>
+                <div className="bg-black/5 dark:bg-white/5 p-6 rounded-2xl border border-black/5 dark:border-white/5 h-full transition-colors">
+                  <p className="text-black/70 dark:text-white/70 text-sm leading-relaxed transition-colors break-words hyphens-auto">{influencer.performanceBenefits}</p>
+                </div>
+              </section>
             </div>
-            <div className="bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 overflow-hidden transition-colors">
-               {influencer.executionSteps?.map((step, i) => (
-                 <div key={i} className="flex items-center gap-4 p-5 border-b border-black/5 dark:border-white/5 last:border-0 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+
+            {/* Execution Plan */}
+            <section>
+              <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
+                <CheckCircle2 className="w-4 h-4 text-black dark:text-white transition-colors" />
+                <span>Recommended Outreach</span>
+              </div>
+              <div className="bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 overflow-hidden transition-colors">
+                {influencer.executionSteps?.map((step, i) => (
+                  <div key={i} className="flex items-center gap-4 p-5 border-b border-black/5 dark:border-white/5 last:border-0 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                     <div className="w-8 h-8 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center text-black/90 dark:text-white/90 text-sm font-bold shrink-0 transition-colors">
                       {i + 1}
                     </div>
                     <span className="text-black/80 dark:text-white/80 text-base transition-colors">{step}</span>
-                 </div>
-               ))}
-            </div>
-          </section>
+                  </div>
+                ))}
+              </div>
+            </section>
 
+          </div>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
-  </motion.div>
   );
 };
 
 const InfluencerCard: React.FC<{
   influencer: InfluencerSuggestion;
   index: number;
+  isSelected: boolean;
+  onToggle: () => void;
   onInfo: () => void;
-}> = ({ influencer, index, onInfo }) => {
+}> = ({ influencer, index, isSelected, onToggle, onInfo }) => {
   const instagramUsername = influencer.handle?.replace('@', '').replace(/https?:\/\/(www\.)?instagram\.com\//gi, '') || '';
   const instagramLink = `https://www.instagram.com/${instagramUsername}`;
 
   return (
-    <div 
-      className={`relative flex flex-col gap-6 p-8 bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-[2rem] transition-all duration-300 overflow-visible backdrop-blur-md`}
+    <div
+      className={`relative flex flex-col gap-6 p-8 bg-white dark:bg-[#0A0A0A] border ${isSelected ? 'border-black dark:border-white ring-2 ring-black dark:ring-white' : 'border-black/10 dark:border-white/10'} rounded-[2rem] transition-all duration-300 overflow-visible backdrop-blur-md`}
       onClick={onInfo}
       style={{ cursor: 'pointer' }}
     >
-      <div className="absolute top-6 right-6 px-4 py-2 bg-black dark:bg-white text-white dark:text-black border border-black dark:border-white rounded-xl text-sm font-bold shadow-lg z-10 transition-colors">
-        {influencer.matchScore}% Match
+      <div className="absolute top-6 right-6 flex gap-2 z-10">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          className={`p-2 rounded-xl border transition-all ${isSelected ? 'bg-black text-white dark:bg-white dark:text-black border-transparent' : 'bg-white dark:bg-black text-black dark:text-white border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5'}`}
+        >
+          {isSelected ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-5 h-5 rounded-full border-2 border-current" />}
+        </button>
+        <div className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black border border-black dark:border-white rounded-xl text-sm font-bold shadow-lg transition-colors">
+          {influencer.matchScore}% Match
+        </div>
       </div>
 
       <div className="flex items-center gap-6 mb-2">
@@ -305,12 +389,12 @@ const InfluencerCard: React.FC<{
             <div className="text-black/40 dark:text-white/40 text-xs font-bold uppercase tracking-wider mt-0.5 transition-colors">Followers</div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-4 p-5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl group-hover:bg-black/10 dark:group-hover:bg-white/10 transition-colors">
           <TrendingUp className="w-6 h-6 text-black/50 dark:text-white/50 shrink-0" />
           <div className="flex flex-col min-w-0">
             <div className="text-black dark:text-white font-bold text-xl leading-tight truncate transition-colors">
-              {typeof influencer.performanceBenefits === 'string' && influencer.performanceBenefits.includes('%') ? `${influencer.performanceBenefits.split('%')[0]}%` : 'New'}
+              {(influencer as any).engagementRate || '—'}
             </div>
             <div className="text-black/40 dark:text-white/40 text-xs font-bold uppercase tracking-wider mt-0.5 transition-colors">Engagement</div>
           </div>
@@ -318,14 +402,14 @@ const InfluencerCard: React.FC<{
       </div>
 
       {influencer.pricePerPost !== '—' && (
-         <div className="px-2">
-            <span className="text-black/60 dark:text-white/60 text-sm font-medium transition-colors">Est. Commercials: </span>
-            <span className="text-black dark:text-white font-semibold text-base transition-colors">{influencer.pricePerPost}</span>
-         </div>
+        <div className="px-2">
+          <span className="text-black/60 dark:text-white/60 text-sm font-medium transition-colors">Est. Commercials: </span>
+          <span className="text-black dark:text-white font-semibold text-base transition-colors">{influencer.pricePerPost}</span>
+        </div>
       )}
 
       <div className="flex items-center gap-4 mt-auto pt-4">
-        <button 
+        <button
           className="flex-1 flex items-center justify-center gap-3 px-6 py-4 text-base font-bold text-white dark:text-black bg-black dark:bg-white rounded-2xl shadow-sm hover:bg-gray-800 dark:hover:bg-gray-200 transition-all border-none transform active:scale-[0.98]"
           onClick={(e) => {
             e.stopPropagation();
@@ -334,7 +418,7 @@ const InfluencerCard: React.FC<{
         >
           <span>View Profile</span>
         </button>
-        
+
         <a
           href={instagramLink}
           target="_blank"
@@ -351,12 +435,12 @@ const InfluencerCard: React.FC<{
 
 const StepSuggestions: React.FC = () => {
   const navigate = useNavigate();
-  const { preferences, suggestions, setSuggestions, resetCampaign } = useCampaign();
+  const { preferences, suggestions, setSuggestions, resetCampaign, shortlist, addToShortlist, removeFromShortlist, campaignId, nextStep } = useCampaign();
   const [selectedModal, setSelectedModal] = useState<InfluencerSuggestion | null>(null);
   const [isLoading, setIsLoading] = useState(suggestions.length === 0);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 4; 
+  const ITEMS_PER_PAGE = 4;
 
   // Reset Handler
   const handleReset = (e: React.MouseEvent) => {
@@ -367,8 +451,8 @@ const StepSuggestions: React.FC = () => {
       // Reload to ensure a fresh start from the Welcome screen
       setTimeout(() => window.location.reload(), 100);
     }
-  }; 
-  
+  };
+
   useEffect(() => {
     if (suggestions.length > 0) {
       setIsLoading(false);
@@ -397,11 +481,32 @@ const StepSuggestions: React.FC = () => {
     return () => { cancelled = true; };
   }, [preferences, suggestions.length, setSuggestions]);
 
-  const handleApprove = (e: React.MouseEvent) => {
+  const handleApprove = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Approve clicked - navigating to dashboard');
-    navigate('/dashboard');
+    console.log('Approve clicked - syncing data and navigating...');
+    
+    if (!campaignId) {
+      console.error("No campaign ID found, cannot save suggestions.");
+      // Fallback: try to create campaign? Or just navigate to dashboard
+      navigate('/dashboard'); 
+      return;
+    }
+
+    // Force save suggestions and shortlist before navigating
+    try {
+      // Show some loading indicator if needed, but for now just await
+      await Promise.all([
+        CampaignService.updateSuggestions(campaignId, suggestions),
+        CampaignService.saveShortlist(campaignId, shortlist) // Ensure shortlist is also synced
+      ]);
+      console.log("Data synced successfully.");
+    } catch (err) {
+      console.error("Error syncing campaign data:", err);
+      // Proceed anyway? Or alert?
+    }
+
+    navigate(`/campaigns/${campaignId}`);
   };
 
   const topScore = suggestions.length > 0 ? Math.max(...suggestions.map(s => s.matchScore)) : 0;
@@ -416,16 +521,16 @@ const StepSuggestions: React.FC = () => {
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-black/5 dark:bg-white/5 rounded-full blur-[150px] pointer-events-none opacity-50" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-black/5 dark:bg-white/5 rounded-full blur-[150px] pointer-events-none opacity-50" />
-      
+
       {/* Reset Button */}
-      <button 
+      <button
         onClick={handleReset}
         className="absolute top-6 right-6 md:top-12 md:right-12 z-30 flex items-center gap-2 px-4 py-2 text-sm font-medium text-black/60 dark:text-white/60 bg-white/50 dark:bg-black/50 backdrop-blur-md rounded-full border border-black/5 dark:border-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-all hover:text-black dark:hover:text-white"
       >
         <RotateCcw className="w-4 h-4" />
         <span className="hidden md:inline">Reset Campaign</span>
       </button>
-      
+
       <div className="flex flex-col items-center text-center mb-10 relative z-20">
         <h1 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-3 tracking-tight transition-colors">Scout</h1>
         <p className="text-base text-black/50 dark:text-white/50 mb-8 max-w-lg mx-auto transition-colors">Influencer Discovery AI</p>
@@ -440,8 +545,8 @@ const StepSuggestions: React.FC = () => {
             <span>Top {suggestions.length > 0 ? suggestions.length : '10'} matches</span>
           </div>
           <div className="flex gap-3 items-center text-black/70 dark:text-white/70 text-base transition-colors">
-             <TrendingUp className="w-5 h-5 text-black dark:text-white transition-colors" />
-             <span>Optimized for {preferences.primaryGoal || 'Engagement'}</span>
+            <TrendingUp className="w-5 h-5 text-black dark:text-white transition-colors" />
+            <span>Optimized for {preferences.primaryGoal || 'Engagement'}</span>
           </div>
         </div>
       </div>
@@ -455,13 +560,13 @@ const StepSuggestions: React.FC = () => {
           <p className="text-black/40 dark:text-white/40 text-base mb-8 max-w-2xl mx-auto transition-colors">
             Based on your brief and strategy parameters.
           </p>
-          
+
           <div className="flex items-center justify-center gap-4 mt-6">
-             {!isLoading && suggestions.length > 0 && topScore > 0 && (
-               <div className="px-5 py-2 bg-black/5 dark:bg-white/10 rounded-full border border-black/10 dark:border-white/10 text-black/80 dark:text-white/80 text-base font-medium backdrop-blur-md transition-colors">
-                 Match Score: <span className="text-black dark:text-white font-bold ml-1.5 transition-colors">{topScore}%</span>
-               </div>
-             )}
+            {!isLoading && suggestions.length > 0 && topScore > 0 && (
+              <div className="px-5 py-2 bg-black/5 dark:bg-white/10 rounded-full border border-black/10 dark:border-white/10 text-black/80 dark:text-white/80 text-base font-medium backdrop-blur-md transition-colors">
+                Match Score: <span className="text-black dark:text-white font-bold ml-1.5 transition-colors">{topScore}%</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -483,7 +588,7 @@ const StepSuggestions: React.FC = () => {
         {!isLoading && error && (
           <div className="flex flex-col items-center justify-center gap-6 py-20 text-center flex-1">
             <AlertCircle className="w-12 h-12 text-gray-400" />
-            <p className="text-2xl font-semibold text-white">{error}</p>
+            <p className="text-2xl font-semibold text-black">{error}</p>
           </div>
         )}
 
@@ -491,8 +596,8 @@ const StepSuggestions: React.FC = () => {
         {!isLoading && !error && suggestions.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-6 py-20 text-center flex-1">
             <AlertCircle className="w-12 h-12 text-gray-400" />
-            <p className="text-2xl font-semibold text-white">No matching creators found</p>
-            <p className="text-white/40 text-base max-w-md">
+            <p className="text-2xl font-semibold text-black">No matching creators found</p>
+            <p className="text-black text-base max-w-md">
               We're still building our database for this niche. Try broadening your campaign parameters.
             </p>
           </div>
@@ -506,6 +611,11 @@ const StepSuggestions: React.FC = () => {
                 key={inf.id}
                 influencer={inf}
                 index={i}
+                isSelected={shortlist.includes(inf.id)}
+                onToggle={() => {
+                  if (shortlist.includes(inf.id)) removeFromShortlist(inf.id);
+                  else addToShortlist(inf.id);
+                }}
                 onInfo={() => {
                   console.log('Opening modal for:', inf.name);
                   setSelectedModal(inf);
@@ -516,65 +626,85 @@ const StepSuggestions: React.FC = () => {
         )}
 
         {!isLoading && suggestions.length > 0 && (
-           <div className="mt-12 flex flex-col gap-6 pb-8">
-              {totalPages > 1 && (
-                <div className="flex justify-center gap-2">
-                  <button
-                    className="flex items-center gap-2 px-6 h-12 text-base font-semibold text-black dark:text-white bg-transparent border border-black/30 dark:border-white/30 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-black/30 dark:disabled:hover:border-white/30"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (currentPage > 1) setCurrentPage(currentPage - 1);
-                    }}
-                    disabled={currentPage === 1}
-                  >
-                    <ArrowRight className="w-5 h-5 rotate-180" />
-                    <span>Prev</span>
-                  </button>
-                  
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      className={`min-w-[48px] h-12 px-4 text-base font-semibold rounded-xl border transition-all ${
-                        currentPage === page 
-                          ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white' 
-                          : 'bg-transparent text-black dark:text-white border-black/30 dark:border-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60'
-                      }`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setCurrentPage(page);
-                      }}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  
-                  <button
-                    className="flex items-center gap-2 px-6 h-12 text-base font-semibold text-black dark:text-white bg-transparent border border-black/30 dark:border-white/30 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-black/30 dark:disabled:hover:border-white/30"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-                    }}
-                    disabled={currentPage === totalPages}
-                  >
-                    <span>Next</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </button>
-                </div>
-              )}
-
-              <div className="flex flex-col items-center gap-2 mt-4">
+          <div className="mt-12 flex flex-col gap-6 pb-8">
+            {totalPages > 1 && (
+              <div className="flex justify-center gap-2">
                 <button
-                  className="w-full max-w-md flex items-center justify-center gap-2 px-6 py-4 text-lg font-bold text-white dark:text-black bg-black dark:bg-white border border-black/20 dark:border-white/20 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.1)] dark:shadow-[0_0_30px_rgba(255,255,255,0.06)] hover:bg-gray-800 dark:hover:bg-[#f0f0f0] hover:shadow-[0_0_50px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_0_50px_rgba(255,255,255,0.1)] transition-all cursor-pointer"
-                  onClick={handleApprove}
+                  className="flex items-center gap-2 px-6 h-12 text-base font-semibold text-black dark:text-white bg-transparent border border-black/30 dark:border-white/30 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-black/30 dark:disabled:hover:border-white/30"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (currentPage > 1) setCurrentPage(currentPage - 1);
+                  }}
+                  disabled={currentPage === 1}
                 >
-                  <span>Approve Shortlist & Begin Outreach</span>
-                  <ArrowRight className="w-6 h-6" />
+                  <ArrowRight className="w-5 h-5 rotate-180" />
+                  <span>Prev</span>
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    className={`min-w-[48px] h-12 px-4 text-base font-semibold rounded-xl border transition-all ${currentPage === page
+                        ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
+                        : 'bg-transparent text-black dark:text-white border-black/30 dark:border-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60'
+                      }`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setCurrentPage(page);
+                    }}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  className="flex items-center gap-2 px-6 h-12 text-base font-semibold text-black dark:text-white bg-transparent border border-black/30 dark:border-white/30 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-black/30 dark:disabled:hover:border-white/30"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                  }}
+                  disabled={currentPage === totalPages}
+                >
+                  <span>Next</span>
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
-           </div>
+            )}
+            
+            
+
+            <div className="flex flex-col items-center gap-3 mt-4">
+              <button
+                className="w-full max-w-md flex items-center justify-center gap-2 px-6 py-4 text-lg font-bold text-white dark:text-black bg-black dark:bg-white border border-black/20 dark:border-white/20 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.1)] dark:shadow-[0_0_30px_rgba(255,255,255,0.06)] hover:bg-gray-800 dark:hover:bg-[#f0f0f0] hover:shadow-[0_0_50px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_0_50px_rgba(255,255,255,0.1)] transition-all cursor-pointer"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (campaignId) {
+                    try {
+                      await Promise.all([
+                        CampaignService.updateSuggestions(campaignId, suggestions),
+                        CampaignService.saveShortlist(campaignId, shortlist),
+                      ]);
+                    } catch (err) { console.error('Sync error:', err); }
+                  }
+                  nextStep(); // Step 5 = Report
+                }}
+              >
+                <FileText className="w-5 h-5" />
+                <span>Generate Intelligence Report</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+              <button
+                className="w-full max-w-md flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-black/60 dark:text-white/60 bg-transparent border border-black/10 dark:border-white/10 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
+                onClick={handleApprove}
+              >
+                <span>{shortlist.length > 0 ? `Save & View ${shortlist.length} Shortlisted` : 'Skip to Campaign Details'}</span>
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

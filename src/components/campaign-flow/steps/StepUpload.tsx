@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useCampaign } from '../CampaignContext';
-import { Upload, FileText, X, Loader2, ArrowRight, Shield } from 'lucide-react';
+import { Upload, FileText, X, Loader2, ArrowRight, Shield, Globe, FileUp, Sparkles } from 'lucide-react';
 import { API_BASE_URL } from '../../../config/api';
 
 const ALLOWED_TYPES = [
@@ -14,7 +14,7 @@ const ALLOWED_TYPES = [
 ];
 
 const StepUpload: React.FC = () => {
-  const { nextStep, uploadedFile, setUploadedFile, setIsAnalyzing, setAnalysisResult, setPreferences, setSuggestions } = useCampaign();
+  const { nextStep, uploadedFile, setUploadedFile, setIsAnalyzing, setAnalysisResult, setPreferences, setSuggestions, setCampaignId } = useCampaign();
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -92,7 +92,8 @@ const StepUpload: React.FC = () => {
       const data = await res.json();
       
       setAnalysisResult(data.analysis);
-      setSuggestions(data.suggestions);
+      // Remove suggestions setting here
+      // setSuggestions(data.suggestions); 
       setPreferences({
         primaryGoal: data.analysis.marketing_goal || '',
         budgetRange: data.analysis.price_segment || '',
@@ -103,6 +104,19 @@ const StepUpload: React.FC = () => {
       setUploadProgress(100);
       
       await new Promise(r => setTimeout(r, 500));
+      
+      // Save full campaign to Firestore
+      try {
+          const { CampaignService } = await import('../../../services/CampaignService');
+          
+          // Pass empty array for suggestions initially
+          const id = await CampaignService.createCampaign(data.analysis, []);
+          setCampaignId(id);
+      } catch (dbErr: any) {
+          console.error("Failed to save campaign to DB:", dbErr);
+          alert(`Database Error: ${dbErr.message || 'Unknown error'}. Your progress is saved locally.`);
+      }
+
       setIsUploading(false);
       setIsAnalyzing(true);
       nextStep();
@@ -122,147 +136,188 @@ const StepUpload: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-full px-4 relative z-10 bg-white dark:bg-black text-black dark:text-white transition-colors duration-300">
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
-      <div className="absolute top-0 right-0 w-96 h-96 bg-black/5 dark:bg-white/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-black/5 dark:bg-white/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="flex items-center justify-center min-h-screen w-full px-4 relative z-10 bg-background text-foreground animate-in fade-in duration-500">
+      
+      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        
+        {/* Left Side: Context & Info */}
+        <div className="hidden md:block space-y-8 pr-8">
+           <div>
+             <h2 className="text-4xl font-extrabold tracking-tight mb-4">Let's build your <br /><span className="text-primary">Campaign Strategy.</span></h2>
+             <p className="text-lg text-muted-foreground leading-relaxed">
+               CampaignAI analyzes your brand assets to create a tailored influencer marketing plan.
+             </p>
+           </div>
 
-      <motion.div
-        className="w-full max-w-lg bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-[1.5rem] p-6 md:p-8 relative overflow-hidden shadow-2xl z-10 backdrop-blur-sm transition-colors"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="relative z-10">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-black dark:text-white mb-2 tracking-tight transition-colors">Tell us about your brand.</h2>
-          <p className="text-black/50 dark:text-white/50 text-sm mb-6 transition-colors font-medium">
-            Upload your brand brief to activate your AI team.
-          </p>
+           <div className="fixed inset-0 z-0 pointer-events-none">
+          <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-purple-500/15 rounded-full blur-[120px]" />
+          <div className="absolute top-[20%] right-[-10%] w-[40vw] h-[40vw] bg-pink-500/15 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[60vw] h-[60vw] bg-blue-500/15 rounded-full blur-[140px]" />
+      </div>
+           
+           <div className="space-y-4">
+              <div className="flex items-start gap-4">
+                 <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                 </div>
+                 <div>
+                    <h4 className="font-bold text-sm">AI Analysis</h4>
+                    <p className="text-xs text-muted-foreground mt-1">We extract your brand tone, audience, and key selling points.</p>
+                 </div>
+              </div>
+              <div className="flex items-start gap-4">
+                 <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                    <Shield className="w-5 h-5 text-primary" />
+                 </div>
+                 <div>
+                    <h4 className="font-bold text-sm">Targeted Matching</h4>
+                    <p className="text-xs text-muted-foreground mt-1">We find creators who actually match your specific niche.</p>
+                 </div>
+              </div>
+           </div>
+        </div>
 
-          <div className="mb-6">
-            <label className="block text-xs font-extrabold text-black/40 dark:text-white/40 uppercase tracking-widest mb-3 transition-colors">
-              BRAND WEBSITE
-            </label>
-            <input
-              type="url"
-              placeholder="https://yourbrand.com"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              className="w-full px-4 py-3 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl text-black dark:text-white text-sm font-semibold focus:outline-none focus:border-black/30 dark:focus:border-white/30 transition-colors"
-              disabled={isUploading}
-            />
-          </div>
-
-          <div className="flex items-center gap-4 my-6">
-            <div className="h-px bg-black/10 dark:bg-white/10 flex-1 transition-colors" />
-            <span className="text-black/30 dark:text-white/30 text-[10px] font-extrabold uppercase tracking-widest transition-colors">OR</span>
-            <div className="h-px bg-black/10 dark:bg-white/10 flex-1 transition-colors" />
-          </div>
-
+        {/* Right Side: Upload Card */}
+        <motion.div
+          className="w-full bg-card border border-border rounded-[2rem] p-8 relative overflow-hidden shadow-2xl z-10"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
           <div className="mb-8">
-            <label className="block text-[10px] font-extrabold text-black/40 dark:text-white/40 uppercase tracking-widest mb-2 transition-colors">
-              UPLOAD BRAND BRIEF <span className="text-black dark:text-white ml-1 transition-colors font-extrabold">(REQUIRED)</span>
-            </label>
+            <h3 className="text-xl font-bold mb-1">Upload Brand Brief</h3>
+            <p className="text-sm text-muted-foreground">Provide a website or upload a document.</p>
+          </div>
 
-            {!uploadedFile ? (
-              <div
-                className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer group relative overflow-hidden ${
-                  isDragging 
-                    ? 'border-black dark:border-white bg-black/10 dark:bg-white/10' 
-                    : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:border-black/20 dark:hover:border-white/20 hover:bg-black/[0.07] dark:hover:bg-white/[0.07]'
-                }`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => inputRef.current?.click()}
-              >
-                <div className={`p-3 rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 transition-transform duration-300 ${isDragging ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  <Upload className={`w-6 h-6 ${isDragging ? 'text-black dark:text-white' : 'text-black/60 dark:text-white/60'} transition-colors`} />
-                </div>
-                <div className="text-center z-10">
-                  <p className="text-sm text-black/80 dark:text-white/80 mb-1 transition-colors">
-                    <span className="font-extrabold text-black dark:text-white transition-colors">Click to upload</span> or drag and drop
-                  </p>
-                  <p className="text-xs text-black/40 dark:text-white/40 transition-colors font-medium">PDF, DOC, DOCX, PPT, TXT (Max 10MB)</p>
-                </div>
+          <div className="space-y-6">
+            
+            {/* Website Input */}
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                Brand Website
+              </label>
+              <div className="relative group">
+                <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <input
-                  ref={inputRef}
-                  type="file"
-                  accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
-                  className="hidden"
-                  onChange={handleInputChange}
+                  type="url"
+                  placeholder="https://yourbrand.com"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-muted/30 border border-border rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  disabled={isUploading}
                 />
               </div>
-            ) : (
-              <div className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl p-3 flex items-center justify-between group hover:border-black/20 dark:hover:border-white/20 transition-colors">
-                <div className="flex items-center gap-3">
-                   <div className="w-10 h-10 rounded-lg bg-black/10 dark:bg-white/10 flex items-center justify-center shrink-0 transition-colors">
-                     <FileText className="w-5 h-5 text-black dark:text-white transition-colors" />
-                   </div>
-                  <div>
-                    <p className="text-black dark:text-white text-sm font-bold truncate max-w-[180px] md:max-w-xs transition-colors">
-                      {uploadedFile.name}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="h-px bg-border flex-1" />
+              <span className="text-xs font-bold text-muted-foreground">OR</span>
+              <div className="h-px bg-border flex-1" />
+            </div>
+
+            {/* File Upload */}
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                Document (PDF, DOC, PPT)
+              </label>
+
+              {!uploadedFile ? (
+                <div
+                  className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-4 transition-all cursor-pointer group relative overflow-hidden ${
+                    isDragging 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-border bg-muted/20 hover:border-primary/50 hover:bg-muted/40'
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => inputRef.current?.click()}
+                >
+                  <div className={`p-4 rounded-full bg-background border border-border shadow-sm transition-transform duration-300 ${isDragging ? 'scale-110' : 'group-hover:scale-110'}`}>
+                    <FileUp className={`w-6 h-6 ${isDragging ? 'text-primary' : 'text-muted-foreground'} transition-colors`} />
+                  </div>
+                  <div className="text-center z-10">
+                    <p className="text-sm font-medium text-foreground mb-1">
+                      <span className="text-primary hover:underline">Click to upload</span> or drag and drop
                     </p>
-                    <p className="text-black/40 dark:text-white/40 text-[10px] font-semibold transition-colors">{formatFileSize(uploadedFile.size)}</p>
+                    <p className="text-xs text-muted-foreground">Max 10MB</p>
+                  </div>
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
+                    className="hidden"
+                    onChange={handleInputChange}
+                  />
+                </div>
+              ) : (
+                <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between group">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                     <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                       <FileText className="w-5 h-5 text-primary" />
+                     </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold truncate">
+                        {uploadedFile.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{formatFileSize(uploadedFile.size)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {isUploading ? (
+                       <div className="flex flex-col items-end">
+                         <span className="text-xs font-bold mb-1">{Math.round(uploadProgress)}%</span>
+                         <div className="w-20 h-1 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                         </div>
+                       </div>
+                    ) : (
+                      <button 
+                        onClick={handleRemoveFile} 
+                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {isUploading ? (
-                     <div className="flex flex-col items-end">
-                       <span className="text-xs text-black dark:text-white font-bold mb-1">{Math.round(uploadProgress)}%</span>
-                       <div className="w-20 h-1 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden transition-colors">
-                          <div 
-                            className="h-full bg-black dark:bg-white rounded-full transition-all duration-300 ease-out"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                       </div>
-                     </div>
-                  ) : (
-                    <button 
-                      onClick={handleRemoveFile} 
-                      className="p-2 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-all"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {error && (
-               <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-sm flex items-center gap-2 transition-colors font-medium">
+               <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-sm flex items-center gap-2 font-medium">
                  <X className="w-4 h-4" />
                  {error}
                </div>
             )}
           </div>
 
-          <motion.button
-            onClick={handleAnalyze}
-            disabled={(!uploadedFile && !urlInput) || isUploading}
-            className="w-full h-12 bg-black dark:bg-white text-white dark:text-black rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg "
-            whileHover={(!uploadedFile && !urlInput) || isUploading ? {} : { scale: 1.01 }}
-            whileTap={(!uploadedFile && !urlInput) || isUploading ? {} : { scale: 0.99 }}
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Processing Brief...</span>
-              </>
-            ) : (
-              <>
-                <span>Analyze & Continue</span>
-                <ArrowRight className="w-5 h-5" />
-              </>
-            )}
-          </motion.button>
-
-          <p className="text-center mt-6 text-black/30 dark:text-white/30 text-sm flex items-center justify-center gap-1.5 font-medium transition-colors">
-            <Shield className="w-3.5 h-3.5" /> 
-            Your data is analyzed securely and never shared.
-          </p>
-        </div>
-      </motion.div>
+          <div className="mt-8">
+            <motion.button
+              onClick={handleAnalyze}
+              disabled={(!uploadedFile && !urlInput) || isUploading}
+              className="w-full h-14 bg-primary text-primary-foreground rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
+              whileHover={(!uploadedFile && !urlInput) || isUploading ? {} : { scale: 1.01 }}
+              whileTap={(!uploadedFile && !urlInput) || isUploading ? {} : { scale: 0.99 }}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Analyzing Brand Assets...</span>
+                </>
+              ) : (
+                <>
+                  <span>Create Strategy & Continue</span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </motion.button>
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 };

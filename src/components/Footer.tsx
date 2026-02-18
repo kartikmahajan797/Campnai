@@ -14,6 +14,12 @@ const Footer = () => {
     <footer className="py-20 bg-background border-t border-border relative overflow-hidden">
       {/* Background Effects */}
 
+      <div className="fixed inset-0 z-0 pointer-events-none">
+          <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-purple-500/15 rounded-full blur-[120px]" />
+          <div className="absolute top-[20%] right-[-10%] w-[40vw] h-[40vw] bg-pink-500/15 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[60vw] h-[60vw] bg-blue-500/15 rounded-full blur-[140px]" />
+      </div>
+
       <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="container mx-auto px-6 relative z-10">

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { useAuth } from '../lib/useAuth';
-import { Plus, Search, User, Briefcase, MessageSquare, Menu, X, LogOut, Sparkles, Trash2, Rocket } from 'lucide-react';
+import { Plus, Search, User, Briefcase, MessageSquare, Menu, X, LogOut, Sparkles, Trash2, Rocket, Calendar } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   AlertDialog,
@@ -125,7 +125,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition ${isActive('/campaigns') ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50'}`}
                     >
                         <Briefcase size={18} />
-                        <span className="text-sm">Campaigns</span>
+                        <span className="text-sm">Find Influencers</span>
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/dashboard/history')}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition ${isActive('/dashboard/history') ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50'}`}
+                    >
+                        <Calendar size={18} />
+                        <span className="text-sm">My Campaigns</span>
                     </button>
 
                     <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition">

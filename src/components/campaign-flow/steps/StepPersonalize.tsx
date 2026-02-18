@@ -1,215 +1,403 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCampaign } from '../CampaignContext';
-import { ArrowRight, Sparkles, X } from 'lucide-react';
+import {
+  ArrowRight, Sparkles, Target, Zap,
+  Users, DollarSign, Clock,
+  CheckCircle2, ChevronRight, ChevronLeft
+} from 'lucide-react';
 
-const GOALS = ['Awareness', 'Sales / Conversions', 'Product Launch', 'App Installs', 'Creator Seeding'];
-const BUDGETS = ['Under ₹1 Lakh', '₹1-5 Lakh', '₹5-10 Lakh'];
-const TIMELINES = ['1 Week', '15 Days', '30 Days'];
+const GOAL_OPTIONS = [
+  { id: 'Awareness',           label: 'Brand Awareness',   desc: 'Maximize reach & visibility',  icon: Users      },
+  { id: 'Sales / Conversions', label: 'Sales & Conversions', desc: 'Drive purchases & ROI',       icon: DollarSign },
+  { id: 'Product Launch',      label: 'Product Launch',    desc: 'Hype for new products',          icon: Zap        },
+  { id: 'App Installs',        label: 'App Installs',      desc: 'Drive downloads',                icon: Target     },
+  { id: 'Creator Seeding',     label: 'Creator Seeding',   desc: 'Gift products to many',          icon: Sparkles   },
+];
 
-const ChipGroup: React.FC<{
-  label: string;
-  options: string[];
-  selected: string;
-  onSelect: (val: string) => void;
-}> = ({ label, options, selected, onSelect }) => (
-  <div className="mb-6 last:mb-0">
-    <label className="block text-[10px] font-extrabold text-black/40 dark:text-white/40 uppercase tracking-widest mb-2 transition-colors">{label}</label>
-    <div className="flex flex-wrap gap-2">
-      {options.map((opt) => (
-        <motion.button
-          key={opt}
-          onClick={() => onSelect(opt)}
-          className={`px-4 py-2 rounded-full border text-xs font-medium transition-all duration-300 ${
-            selected === opt 
-              ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white shadow-[0_0_20px_-5px_rgba(0,0,0,0.3)] dark:shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)]' 
-              : 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 hover:text-black dark:hover:text-white hover:border-black/20 dark:hover:border-white/20'
-          }`}
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.97 }}
-        >
-          {opt}
-        </motion.button>
-      ))}
-    </div>
-  </div>
-);
+const BUDGET_OPTIONS = [
+  { id: 'Under ₹1 Lakh', label: '< ₹1 Lakh',   desc: 'Micro — testing waters'   },
+  { id: '₹1-5 Lakh',     label: '₹1 – 5 Lakh', desc: 'Growth — scaling up'      },
+  { id: '₹5-10 Lakh',    label: '₹5 – 10 Lakh',desc: 'Scale — dominating niche' },
+  { id: '₹10 Lakh+',     label: '₹10 Lakh+',   desc: 'Enterprise — full force'  },
+];
+
+const TIMELINE_OPTIONS = [
+  { id: '1 Week',   label: '1 Week',   desc: 'Sprint — quick burst'           },
+  { id: '15 Days',  label: '15 Days',  desc: 'Campaign — sustained push'      },
+  { id: '30 Days',  label: '30 Days',  desc: 'Marathon — long-term building'  },
+];
+
+const STEPS = [
+  { key: 'primaryGoal', label: 'Primary Goal',       options: GOAL_OPTIONS    },
+  { key: 'budgetRange', label: 'Budget Range',        options: BUDGET_OPTIONS  },
+  { key: 'timeline',    label: 'Campaign Duration',   options: TIMELINE_OPTIONS},
+];
+
+const slideVariants = {
+  enter: (dir: number) => ({ x: dir > 0 ? 40 : -40, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit:  (dir: number) => ({ x: dir > 0 ? -40 : 40, opacity: 0 }),
+};
 
 const StepPersonalize: React.FC = () => {
-  const { preferences, setPreferences, nextStep, analysisResult } = useCampaign();
-  const [showAnalysisModal, setShowAnalysisModal] = React.useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [direction, setDirection]   = useState(1);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const isComplete = preferences.primaryGoal && preferences.budgetRange && preferences.timeline;
+  const {
+    preferences, setPreferences,
+    nextStep, analysisResult,
+    campaignId, setSuggestions,
+  } = useCampaign();
 
-  const handleGenerate = () => {
-    if (!isComplete) return;
-    nextStep();
+  const currentStepConfig = STEPS[wizardStep];
+  const currentValue = preferences[currentStepConfig.key as keyof typeof preferences] as string;
+
+  const handleSelect = (value: string) => {
+    setPreferences({ ...preferences, [currentStepConfig.key]: value });
   };
 
+  const goNext = () => {
+    setDirection(1);
+    setWizardStep(s => s + 1);
+  };
+
+  const goBack = () => {
+    setDirection(-1);
+    setWizardStep(s => s - 1);
+  };
+
+  const handleFindCreators = async () => {
+    if (!campaignId) return;
+    setIsGenerating(true);
+    try {
+      const { API_BASE_URL } = await import('../../../config/api');
+      const { auth }         = await import('../../../firebaseConfig');
+      const token = await auth.currentUser?.getIdToken();
+
+      const response = await fetch(
+        `${API_BASE_URL}/campaigns/${campaignId}/generate-suggestions`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      if (!response.ok) throw new Error('Failed to generate suggestions');
+      const data = await response.json();
+      setSuggestions(data.suggestions);
+      nextStep();
+    } catch (err) {
+      console.error('Error generating suggestions:', err);
+      alert('Failed to generate suggestions. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const canProceed = !!currentValue;
+
   return (
-    <div className="flex items-center justify-center min-h-screen w-full px-4 relative z-10 bg-white dark:bg-black text-black dark:text-white transition-colors duration-300">
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
-      <div className="absolute top-0 right-0 w-96 h-96 bg-black/5 dark:bg-white/5 rounded-full blur-[128px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-black/5 dark:bg-white/5 rounded-full blur-[128px] pointer-events-none" />
+    <div className="min-h-screen bg-white text-black font-sans relative overflow-hidden">
 
-      <motion.div
-        className="w-full max-w-lg bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-[1.5rem] p-6 md:p-8 relative overflow-hidden shadow-2xl z-10 backdrop-blur-sm transition-colors"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="relative z-10 max-h-[85vh] overflow-y-auto custom-scrollbar pr-2">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-black dark:text-white mb-2 tracking-tight transition-colors">Let's refine your campaign.</h2>
-          
-          <p className="text-black/50 dark:text-white/50 text-sm mb-6 transition-colors font-medium">
-            We've analyzed your document. Help us tailor the strategy.
-          </p>
+      
+      {/* Subtle Neon Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+          <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-purple-500/15 rounded-full blur-[120px]" />
+          <div className="absolute top-[20%] right-[-10%] w-[40vw] h-[40vw] bg-pink-500/15 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[60vw] h-[60vw] bg-blue-500/15 rounded-full blur-[140px]" />
+      </div>
 
-          {analysisResult && (
-            <motion.button
-              onClick={() => setShowAnalysisModal(true)}
-              className="w-full mb-8 p-4 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl flex items-center justify-between group hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-black dark:bg-white rounded-lg">
-                  <Sparkles className="w-4 h-4 text-white dark:text-black" />
-                </div>
-                <div className="text-left">
-                  <p className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">AI Brand Analysis</p>
-                  <p className="text-[10px] text-black/50 dark:text-white/50 font-medium">Click to view full insights</p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-black/30 dark:text-white/30 group-hover:text-black dark:group-hover:text-white transition-colors" />
-            </motion.button>
-          )}
+      <div className="relative z-10">
+          {/* ── Top rule ── */}
+      <div className="h-px w-full bg-black/10" />
 
-          <ChipGroup
-            label="PRIMARY GOAL"
-            options={GOALS}
-            selected={preferences.primaryGoal}
-            onSelect={(val) => setPreferences({ ...preferences, primaryGoal: val })}
-          />
+      <div className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
 
-          <ChipGroup
-            label="BUDGET RANGE"
-            options={BUDGETS}
-            selected={preferences.budgetRange}
-            onSelect={(val) => setPreferences({ ...preferences, budgetRange: val })}
-          />
-
-          <ChipGroup
-            label="TIMELINE"
-            options={TIMELINES}
-            selected={preferences.timeline}
-            onSelect={(val) => setPreferences({ ...preferences, timeline: val })}
-          />
-
-          <div className="mt-10">
-            <motion.button
-              onClick={handleGenerate}
-              disabled={!isComplete}
-              className="w-full h-12 bg-black dark:bg-white text-white dark:text-black rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
-              whileHover={isComplete ? { scale: 1.01 } : {}}
-              whileTap={isComplete ? { scale: 0.99 } : {}}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Generate Campaign Strategy</span>
-              <ArrowRight className="w-4 h-4" />
-            </motion.button>
-
-            <p className="text-center mt-4 text-black/30 dark:text-white/30 text-[10px] font-medium transition-colors">
-              You can adjust this later in the campaign settings.
+        {/* ═══════════════════════════════════════
+            LEFT — Intelligence Panel
+        ═══════════════════════════════════════ */}
+        <motion.aside
+          className="lg:sticky lg:top-12 space-y-8"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          {/* Eyebrow */}
+          <div>
+            <p className="text-xs font-semibold tracking-[0.16em] uppercase text-black/40 mb-1">
+              Campaign Intelligence
+            </p>
+            <h2 className="text-3xl font-black tracking-tight leading-none">
+              {analysisResult?.brand_name || 'Your Brand'}
+            </h2>
+            <p className="mt-1.5 text-[15px] text-black/50">
+              {analysisResult?.industry || 'Industry'} · {analysisResult?.brand_tone || 'Brand tone'}
             </p>
           </div>
-        </div>
-      </motion.div>
 
+          {/* Divider */}
+          <div className="h-px bg-black/8" />
 
-      <AnimatePresence>
-        {showAnalysisModal && analysisResult && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-             <motion.div 
-               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
-               exit={{ opacity: 0 }}
-               onClick={() => setShowAnalysisModal(false)}
-             />
-             <motion.div
-               className="w-full max-w-2xl bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-3xl p-6 md:p-8 relative z-10 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar"
-               initial={{ opacity: 0, scale: 0.9, y: 20 }}
-               animate={{ opacity: 1, scale: 1, y: 0 }}
-               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-             >
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h3 className="text-2xl font-extrabold text-black dark:text-white tracking-tight">AI Brand Analysis</h3>
-                    <p className="text-sm text-black/50 dark:text-white/50 font-medium">Based on your uploaded brief</p>
-                  </div>
-                  <button 
-                    onClick={() => setShowAnalysisModal(false)}
-                    className="p-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full transition-colors"
-                  >
-                    <X className="w-5 h-5 text-black dark:text-white" />
-                  </button>
+          {/* Target Audience */}
+          <div>
+            <p className="text-xs font-bold tracking-[0.14em] uppercase text-black/40 mb-3">
+              Target Audience
+            </p>
+            <div className="border border-black/10 rounded-2xl p-5 bg-black/[0.02]">
+              <p className="text-[15px] font-semibold">
+                {analysisResult?.target_audience?.age_range || 'General Audience'}
+              </p>
+              <p className="text-[14px] text-black/50 mt-1.5 leading-relaxed">
+                {analysisResult?.target_audience?.lifestyle || 'No lifestyle data'}
+              </p>
+              {analysisResult?.target_audience?.interests?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {analysisResult.target_audience.interests.slice(0, 4).map((tag: string) => (
+                    <span
+                      key={tag}
+                      className="px-3 py-1 rounded-full border border-black/12 text-xs font-medium text-black/55 bg-white"
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                   <div className="p-5 bg-black/5 dark:bg-white/5 rounded-2xl">
-                      <p className="text-xs font-bold text-black/40 dark:text-white/40 uppercase tracking-widest mb-2">About the Brand</p>
-                      <div className="space-y-3">
-                         <div>
-                            <span className="text-xs text-black/50 dark:text-white/50 font-semibold block mb-0.5">Industry</span>
-                            <span className="text-sm font-bold text-black dark:text-white">{analysisResult.industry}</span>
-                         </div>
-                         <div>
-                            <span className="text-xs text-black/50 dark:text-white/50 font-semibold block mb-0.5">Brand Tone</span>
-                            <span className="text-sm font-bold text-black dark:text-white">{analysisResult.brand_tone}</span>
-                         </div>
-                      </div>
-                   </div>
-
-                   <div className="p-5 bg-black/5 dark:bg-white/5 rounded-2xl">
-                      <p className="text-xs font-bold text-black/40 dark:text-white/40 uppercase tracking-widest mb-2">Target Audience</p>
-                      <div className="space-y-3">
-                         <div>
-                            <span className="text-xs text-black/50 dark:text-white/50 font-semibold block mb-0.5">Demographics</span>
-                            <span className="text-sm font-bold text-black dark:text-white">{analysisResult.target_audience?.age_range || 'General'}</span>
-                         </div>
-                         <div>
-                            <span className="text-xs text-black/50 dark:text-white/50 font-semibold block mb-0.5">Lifestyle</span>
-                            <span className="text-sm font-bold text-black dark:text-white">{analysisResult.target_audience?.lifestyle || 'General'}</span>
-                         </div>
-                      </div>
-                   </div>
-                </div>
-
-                <div className="mb-8">
-                  <p className="text-xs font-bold text-black/40 dark:text-white/40 uppercase tracking-widest mb-4">Strategic Insights</p>
-                  <div className="space-y-3">
-                     {analysisResult.campaign_hooks?.slice(0, 3).map((hook, i) => (
-                        <div key={i} className="flex gap-3 text-sm text-black/70 dark:text-white/70 font-medium">
-                           <span className="w-5 h-5 flex items-center justify-center bg-black/5 dark:bg-white/5 rounded-full text-[10px] font-bold shrink-0">{i+1}</span>
-                           <span>{hook}</span>
-                        </div>
-                     ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                   <button
-                     onClick={() => setShowAnalysisModal(false)}
-                     className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold text-sm hover:opacity-90 transition-opacity"
-                   >
-                     Done
-                   </button>
-                </div>
-             </motion.div>
+              )}
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+
+          {/* Strategic Hooks */}
+          {analysisResult?.campaign_hooks?.length > 0 && (
+            <div>
+              <p className="text-xs font-bold tracking-[0.14em] uppercase text-black/40 mb-4">
+                Strategic Hooks
+              </p>
+              <ol className="space-y-3">
+                {analysisResult.campaign_hooks.slice(0, 3).map((hook: string, i: number) => (
+                  <li
+                    key={i}
+                    className="flex gap-3 items-start"
+                  >
+                    <span className="mt-0.5 flex-shrink-0 w-6 h-6 rounded-full border border-black/15 flex items-center justify-center text-xs font-bold text-black/40">
+                      {i + 1}
+                    </span>
+                    <span className="text-[15px] text-black/75 leading-snug font-medium">
+                      {hook}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {/* Progress / Selection summary */}
+          <div>
+            <p className="text-xs font-bold tracking-[0.14em] uppercase text-black/40 mb-4">
+              Your Selection
+            </p>
+            <div className="space-y-3">
+              {STEPS.map((step, i) => {
+                const val = preferences[step.key as keyof typeof preferences] as string;
+                const done   = i < wizardStep;
+                const active = i === wizardStep;
+                return (
+                  <div key={step.key} className="flex items-start gap-3">
+                    {/* dot */}
+                    <div className={`mt-[5px] w-2 h-2 rounded-full flex-shrink-0 ${
+                      done   ? 'bg-black' :
+                      active ? 'bg-black/35 ring-2 ring-offset-1 ring-black/20' :
+                               'bg-black/10'
+                    }`} />
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-[15px] font-semibold leading-tight ${
+                        done || active ? 'text-black' : 'text-black/30'
+                      }`}>
+                        {step.label}
+                      </span>
+                      {val && (
+                        <p className="text-[13px] text-black/45 font-medium mt-0.5 leading-snug">
+                          {val}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </motion.aside>
+
+        {/* ═══════════════════════════════════════
+            RIGHT — Wizard Panel
+        ═══════════════════════════════════════ */}
+        <div>
+
+          {/* Step header */}
+          <motion.div
+            className="mb-7"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-black/35">
+                Step {wizardStep + 1} / {STEPS.length}
+              </span>
+            </div>
+            <h3 className="text-2xl font-black tracking-tight">
+              {currentStepConfig.label}
+            </h3>
+          </motion.div>
+
+          {/* Options list */}
+          <div className="relative overflow-hidden">
+            <AnimatePresence mode="wait" custom={direction}>
+              <motion.div
+                key={wizardStep}
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.22, ease: 'easeInOut' }}
+                className="space-y-2"
+              >
+                {currentStepConfig.options.map((opt, idx) => {
+                  const isSelected = currentValue === opt.id;
+                  const Icon = 'icon' in opt ? (opt as any).icon : null;
+
+                  return (
+                    <motion.button
+                      key={opt.id}
+                      onClick={() => handleSelect(opt.id)}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.04 }}
+                      className={`
+                        group w-full flex items-center justify-between gap-4
+                        px-5 py-4 rounded-2xl border text-left
+                        transition-all duration-200
+                        ${isSelected
+                          ? 'bg-black text-white border-black'
+                          : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02]'
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-4">
+                        {Icon && (
+                          <div
+                            className={`
+                              w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
+                              ${isSelected ? 'bg-white/15' : 'bg-black/5 group-hover:bg-black/8'}
+                            `}
+                          >
+                            <Icon
+                              size={17}
+                              className={isSelected ? 'text-white' : 'text-black/50'}
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <div className={`font-semibold text-[15px] ${isSelected ? 'text-white' : 'text-black'}`}>
+                            {opt.label}
+                          </div>
+                          <div className={`text-[12px] mt-0.5 ${isSelected ? 'text-white/60' : 'text-black/40'}`}>
+                            {opt.desc}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Selection indicator */}
+                      <div
+                        className={`
+                          w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center
+                          transition-all duration-200
+                          ${isSelected
+                            ? 'border-white bg-white'
+                            : 'border-black/15'
+                          }
+                        `}
+                      >
+                        {isSelected && (
+                          <motion.div
+                            layoutId="sel-dot"
+                            className="w-2 h-2 rounded-full bg-black"
+                          />
+                        )}
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* ── Action Bar ── */}
+          <div className="mt-8 pt-5 border-t border-black/8 flex items-center justify-between">
+
+            {wizardStep > 0 ? (
+              <button
+                onClick={goBack}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-black/40 hover:text-black hover:bg-black/5 transition-all"
+              >
+                <ChevronLeft size={15} />
+                Back
+              </button>
+            ) : (
+              <div />
+            )}
+
+            
+
+            {wizardStep < STEPS.length - 1 ? (
+              <button
+                onClick={goNext}
+                disabled={!canProceed}
+                className="
+                  flex items-center gap-2 px-6 py-2.5 rounded-xl
+                  bg-black text-white text-sm font-bold
+                  hover:bg-black/85 active:scale-[0.98]
+                  disabled:opacity-25 disabled:cursor-not-allowed
+                  transition-all duration-150
+                "
+              >
+                Continue
+                <ChevronRight size={15} />
+              </button>
+            ) : (
+              <button
+                onClick={handleFindCreators}
+                disabled={!canProceed || isGenerating}
+                className="
+                  flex items-center gap-2 px-7 py-2.5 rounded-xl
+                  bg-black text-white text-sm font-bold
+                  hover:bg-black/85 active:scale-[0.98]
+                  disabled:opacity-25 disabled:cursor-not-allowed
+                  transition-all duration-150
+                  shadow-[0_2px_12px_rgba(0,0,0,0.18)]
+                "
+              >
+                {isGenerating ? (
+                  <>
+                    <Sparkles size={15} className="animate-spin" />
+                    Analyzing…
+                  </>
+                ) : (
+                  <>
+                    Find Creators
+                    <ArrowRight size={15} />
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      </div>
     </div>
   );
 };

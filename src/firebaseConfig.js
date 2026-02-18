@@ -1,6 +1,7 @@
 // firebaseConfig.js
 import { initializeApp } from "firebase/app";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -19,9 +20,12 @@ const app = initializeApp(firebaseConfig);
 // Initialize Auth with proper error handling
 const auth = getAuth(app);
 
+// Initialize Firestore
+const db = getFirestore(app);
+
 // Uncomment below ONLY if using local emulator for testing
 // if (window.location.hostname === 'localhost') {
 //   connectAuthEmulator(auth, 'http://localhost:9099');
 // }
 
-export { auth, app };
+export { auth, app, db };
