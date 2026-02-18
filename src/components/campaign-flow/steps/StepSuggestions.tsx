@@ -10,6 +10,10 @@ import { auth } from '../../../firebaseConfig';
 import { API_BASE_URL } from '../../../config/api';
 import { CampaignService } from '../../../services/CampaignService';
 import type { InfluencerSuggestion } from '../CampaignContext';
+import { calculateInfluencerDisplayFields, formatFollowers, normalizeInfluencerData, getBanner } from '../../../utils/influencerUtils';
+import { FreelancerProfileCard } from '../../ui/freelancer-profile-card';
+import { Avatar, AvatarImage, AvatarFallback } from "../../ui/avatar";
+
 
 async function fetchInfluencers(preferences: {
   primaryGoal: string;
@@ -17,7 +21,9 @@ async function fetchInfluencers(preferences: {
   timeline: string;
 }): Promise<InfluencerSuggestion[]> {
   try {
-    const user = auth.currentUser;
+    const user = auth.currentUser || await new Promise<any>((resolve) => {
+      const unsub = auth.onAuthStateChanged(u => { unsub(); resolve(u); });
+    });
     if (!user) {
       console.warn('[Campaign] No auth user — cannot fetch influencers');
       return [];
@@ -52,82 +58,80 @@ async function fetchInfluencers(preferences: {
     console.log('[Campaign] Got', data.total, 'influencers from API');
 
     return (data.influencers || []).map((inf: any, idx: number) => {
-      // ── Score Handling (Robust) ───────────────────────────────────────
-      // 1. Try `inf.match.score` (0-100) from formatted API
-      // 2. Try `inf.score` (0-1) from raw Pinecone -> multiply by 100
-      // 3. Try `inf.match_score` (legacy)
-      // 4. Fallback to 0
-      let rawScore = 0;
-      if (typeof inf.match?.score === 'number') {
-        rawScore = inf.match.score;
-      } else if (typeof inf.score === 'number') {
-        rawScore = inf.score * 100;
-      } else if (inf.match_score) {
-        rawScore = parseFloat(inf.match_score);
-      }
-      
-      const scoreNum = isNaN(rawScore) ? 0 : rawScore;
-      const matchScore = Math.round(scoreNum);
+      // ── API returns NESTED object (formatForSearchAPI output) ──────────
+      // inf.match.score, inf.audience.mf_split, inf.pricing.display,
+      // inf.contact.phone, inf.contact.email, inf.engagement_rate (flat),
+      // inf.handle (flat), inf.instagram_url (flat), inf.followers (flat)
 
-      // ── Why Suggested: combine AI reasons + warnings ─────────────────
-      const reasons  = inf.match?.reasons  || [];
-      const warnings = inf.match?.warnings || [];
-      let whySuggested = '';
-      
-      if (reasons.length > 0) {
-        whySuggested = reasons.join('. ') + '.';
-        if (warnings.length > 0) {
-          whySuggested += ' Note: ' + warnings.join('. ') + '.';
-        }
-      } else {
-        // Fallback: build from direct fields
-        whySuggested = buildWhySuggested(inf);
-      }
+      const matchScore = Math.round(inf.match?.score ?? 0);
+      const er = parseFloat(String(inf.engagement_rate || 0)) || 0;
+      const avgViewsNum = parseInt(String(inf.avg_views || 0)) || 0;
 
-      // ── Engagement Rate: direct field from API ────────────────────────
-      const er = parseFloat(inf.engagement_rate) || 0;
+      // Audience nested
+      const mfSplit = inf.audience?.mf_split || null;
+      const indiaSplit = inf.audience?.india_split || null;
+      const ageGroup = inf.audience?.age_group || null;
+      const indiaPct = inf.audience?.india_pct ?? null;
+
+      // Brand
+      const brandFit = inf.brand_fit || null;
+      const vibe = inf.vibe || null;
+
+      // Pricing nested
+      const priceDisplay = inf.pricing?.display || null;
+
+      // Contact nested
+      const phone = inf.contact?.phone || null;
+      const email = inf.contact?.email || null;
+
+      // Instagram
+      const igUrl = inf.instagram_url || '';
+      const handle = inf.handle || (inf.name ? `@${inf.name.replace(/\s+/g, '_').toLowerCase()}` : '—');
+
+      // ── Engagement display ────────────────────────────────────────────
       const erDisplay = er > 0 ? `${er}%` : null;
 
-      // ── Expected ROI: ER + views info ─────────────────────────────────
-      const roiParts: string[] = [];
-      if (er > 0) roiParts.push(`${er}% engagement rate — strong audience interaction`);
-      if (inf.avg_views && inf.avg_views > 0) roiParts.push(`avg ${formatFollowers(inf.avg_views)} views per post`);
-      const expectedROI = roiParts.length > 0
-        ? roiParts.join('. ') + '.'
-        : 'Engagement metrics will be tracked post-launch.';
+      const { whySuggested, expectedROI, performanceBenefits } = calculateInfluencerDisplayFields({
+        niche: (inf.niche || inf.type || '—').split(',')[0].trim(),
+        location: inf.location || '—',
+        matchScore,
+        engagementRate: String(er), // ensure string for util if needed, but util handles it
+        avgViews: String(avgViewsNum),
+        mfSplit,
+        indiaSplit,
+        ageGroup,
+        brandFit,
+        vibe,
+      });
 
-      // ── Performance Benefits: all demographic + metric data ───────────
-      const perfParts: string[] = [];
-      if (er > 0)                 perfParts.push(`${er}% engagement rate`);
-      if (inf.avg_views > 0)      perfParts.push(`${formatFollowers(inf.avg_views)} avg views`);
-      if (inf.mf_split)           perfParts.push(`Audience: ${inf.mf_split}`);
-      if (inf.age_concentration)  perfParts.push(`Age group: ${inf.age_concentration}`);
-      if (inf.india_split)        perfParts.push(`India audience: ${inf.india_split}`);
-      if (inf.brand_fit)          perfParts.push(`Brand fit: ${inf.brand_fit}`);
-      
-      const performanceBenefits = perfParts.length > 0
-        ? perfParts.join('. ') + '.'
-        : buildBenefits(inf); // Use helper as secondary fallback
-
-      // Ensure stable ID within search results
-      const safeId = inf.id || `inf_${idx}_${(inf.handle || inf.name || 'anon').replace(/[^a-z0-9]/gi, '')}`;
+      const safeId = inf.id || `inf_${idx}_${(handle || inf.name || 'anon').replace(/[^a-z0-9]/gi, '')}`;
 
       return {
         id: safeId,
         name: inf.name || 'Unknown Creator',
-        handle: inf.handle || inf.instagram_url || '—',
+        handle,
         platform: 'Instagram' as const,
         followers: inf.followers ? formatFollowers(Number(inf.followers)) : '—',
-        niche: inf.niche || inf.type || '—',
-        pricePerPost: inf.commercials || '—',
+        niche: (inf.niche || inf.type || '—').split(',')[0].trim(),
+        pricePerPost: priceDisplay || '—',
         location: inf.location || '—',
-        matchScore: matchScore,
+        matchScore,
         engagementRate: erDisplay,
         avatar: '',
         tier: matchScore >= 65 ? 'A' as const : 'B' as const,
-        whySuggested,
-        expectedROI,
-        performanceBenefits,
+        whySuggested: whySuggested || '',
+        expectedROI: expectedROI || '',
+        performanceBenefits: performanceBenefits || '',
+        vibe,
+        brandFit,
+        mfSplit,
+        indiaSplit,
+        ageGroup,
+        avgViews: avgViewsNum > 0 ? formatFollowers(avgViewsNum) : null,
+        phone,
+        email,
+        instagramUrl: igUrl || null,
+        scoreBreakdown: inf.score_breakdown || null,
         executionSteps: [
           'Initial outreach via DM or email',
           'Share campaign brief & mood board',
@@ -142,41 +146,6 @@ async function fetchInfluencers(preferences: {
   }
 }
 
-function formatFollowers(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return String(n);
-}
-
-function buildWhySuggested(inf: any): string {
-  const parts: string[] = [];
-  
-  // Niche Match
-  if (inf.niche) parts.push(`Specializes in ${inf.niche} content`);
-  
-  // Location Match
-  if (inf.location && inf.location !== '—') parts.push(`Based in ${inf.location}`);
-  
-  // Brand Fit (if available)
-  if (inf.brand_fit) parts.push(`Strong brand fit: ${inf.brand_fit}`);
-  
-  // Vibe/Style
-  if (inf.vibe) parts.push(`Content style: ${inf.vibe}`);
-  
-  // Audience
-  if (inf.mf_split) parts.push(`Audience: ${inf.mf_split}`);
-
-  if (parts.length === 0) {
-    return 'Matched based on high semantic relevance to campaign goals.';
-  }
-  
-  return parts.join('. ') + '.';
-}
-
-function buildBenefits(inf: any): string {
-  // Only called if primary performance fields are missing
-  return 'Detailed performance metrics available upon request.';
-}
 
 const InfoModal: React.FC<{
   influencer: InfluencerSuggestion;
@@ -198,7 +167,7 @@ const InfoModal: React.FC<{
       onClick={onClose}
     >
       <motion.div
-        className="w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-[2rem] relative shadow-2xl flex flex-col md:flex-row overflow-hidden transition-colors duration-300 custom-scrollbar"
+        className="w-full max-w-5xl h-[90vh] bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-[2rem] relative shadow-2xl flex flex-col md:flex-row overflow-hidden transition-colors duration-300"
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -211,11 +180,25 @@ const InfoModal: React.FC<{
           <X className="w-6 h-6" />
         </button>
 
-        <div className="w-full md:w-1/3 bg-black/5 dark:bg-white/5 border-b md:border-b-0 md:border-r border-black/10 dark:border-white/10 p-8 md:p-10 flex flex-col gap-8 transition-colors">
+        <div className="w-full md:w-1/3 h-full overflow-y-auto bg-black/5 dark:bg-white/5 border-b md:border-b-0 md:border-r border-black/10 dark:border-white/10 p-8 md:p-10 flex flex-col gap-8 transition-colors custom-scrollbar">
           <div className="flex flex-col items-center text-center">
-            <div className="w-24 h-24 rounded-full bg-white dark:bg-white/10 border border-black/10 dark:border-white/20 flex items-center justify-center text-black dark:text-white text-4xl font-bold shadow-2xl mb-6 transition-colors">
-              {influencer.name?.charAt(0).toUpperCase() || '?'}
-            </div>
+            {(() => {
+              const handle = influencer.instagramUrl 
+                ? influencer.instagramUrl.replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, '').replace(/\/$/, '')
+                : (influencer.handle ? influencer.handle.replace('@', '') : undefined);
+              const igFallback = handle ? `https://unavatar.io/instagram/${handle}?fallback=false` : undefined;
+              
+              return (
+                <div className="relative mb-6">
+                   <div className="absolute inset-0 rounded-full border-2 border-zinc-50 dark:border-zinc-800 scale-110" />
+                   <Avatar className="h-32 w-32 border-4 border-white dark:border-zinc-900 shadow-xl mx-auto">
+                     <AvatarImage src={igFallback || ''} alt={influencer.name} className="object-cover" />
+                     {influencer.avatar && <AvatarImage src={influencer.avatar} alt={influencer.name} className="object-cover" />}
+                     <AvatarFallback className="text-4xl font-bold bg-zinc-100 dark:bg-zinc-800">{influencer.name?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
+                   </Avatar>
+                </div>
+              );
+            })()}
             <h3 className="text-black dark:text-white text-2xl font-bold leading-tight mb-2 transition-colors">{influencer.name}</h3>
             <a
               href={`https://www.instagram.com/${influencer.handle?.replace('@', '') || ''}`}
@@ -239,7 +222,7 @@ const InfoModal: React.FC<{
               <div className="p-4 bg-white dark:bg-black/40 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col items-center gap-1 shadow-sm dark:shadow-none transition-colors">
                 <TrendingUp className="w-5 h-5 text-black/50 dark:text-white/50 mb-1" />
                 <span className="text-lg font-bold text-black dark:text-white">
-                  {(influencer as any).engagementRate || '—'}
+                  {influencer.engagementRate || '—'}
                 </span>
                 <span className="text-[10px] uppercase text-black/30 dark:text-white/30 font-bold tracking-wider">Engagement</span>
               </div>
@@ -253,9 +236,19 @@ const InfoModal: React.FC<{
                 <span>{influencer.location}</span>
               </div>
             )}
-            {influencer.pricePerPost !== '—' && (
+            {influencer.pricePerPost && influencer.pricePerPost !== '—' && (
               <div className="flex items-center gap-3 text-black/60 dark:text-white/60 text-sm p-3 rounded-xl bg-white dark:bg-white/5 shadow-sm dark:shadow-none border border-black/5 dark:border-none transition-colors">
-                <span>Est. {influencer.pricePerPost}</span>
+                <span className="font-semibold text-black dark:text-white">Est. {influencer.pricePerPost}</span>
+              </div>
+            )}
+            {influencer.phone && (
+              <div className="flex items-center gap-3 text-black/60 dark:text-white/60 text-sm p-3 rounded-xl bg-white dark:bg-white/5 border border-black/5 dark:border-none transition-colors">
+                <span>📞 {influencer.phone}</span>
+              </div>
+            )}
+            {influencer.email && (
+              <div className="flex items-center gap-3 text-black/60 dark:text-white/60 text-sm p-3 rounded-xl bg-white dark:bg-white/5 border border-black/5 dark:border-none transition-colors">
+                <span>✉️ {influencer.email}</span>
               </div>
             )}
           </div>
@@ -327,6 +320,58 @@ const InfoModal: React.FC<{
               </div>
             </section>
 
+            {/* Audience & Score Details */}
+            {((influencer as any).scoreBreakdown || influencer.mfSplit || influencer.ageGroup) && (
+              <section>
+                <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
+                  <Users className="w-4 h-4 text-black dark:text-white transition-colors" />
+                  <span>Audience & Score Details</span>
+                </div>
+                <div className="bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 p-6 space-y-3 transition-colors">
+                  {influencer.mfSplit && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-black/50 dark:text-white/50">Audience M/F Split</span>
+                      <span className="text-black dark:text-white font-medium">{influencer.mfSplit}</span>
+                    </div>
+                  )}
+                  {influencer.indiaSplit && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-black/50 dark:text-white/50">India / Global Split</span>
+                      <span className="text-black dark:text-white font-medium">{influencer.indiaSplit}</span>
+                    </div>
+                  )}
+                  {influencer.ageGroup && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-black/50 dark:text-white/50">Age Concentration</span>
+                      <span className="text-black dark:text-white font-medium">{influencer.ageGroup}</span>
+                    </div>
+                  )}
+                  {influencer.avgViews && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-black/50 dark:text-white/50">Avg. Views/Post</span>
+                      <span className="text-black dark:text-white font-medium">{influencer.avgViews}</span>
+                    </div>
+                  )}
+                  {influencer.scoreBreakdown && Object.keys(influencer.scoreBreakdown).length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-black/10 dark:border-white/10 space-y-2">
+                      <p className="text-xs font-bold uppercase tracking-widest text-black/30 dark:text-white/30 mb-3">Score Breakdown</p>
+                      {Object.entries(influencer.scoreBreakdown).map(([key, val]: [string, any]) => (
+                        <div key={key} className="flex items-center gap-3">
+                          <span className="text-xs text-black/50 dark:text-white/50 w-24 capitalize">{key}</span>
+                          <div className="flex-1 h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-black dark:bg-white rounded-full transition-all"
+                              style={{ width: `${val?.score ?? 0}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-black dark:text-white font-bold w-8 text-right">{val?.score ?? 0}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
           </div>
         </div>
       </motion.div>
@@ -334,104 +379,6 @@ const InfoModal: React.FC<{
   );
 };
 
-const InfluencerCard: React.FC<{
-  influencer: InfluencerSuggestion;
-  index: number;
-  isSelected: boolean;
-  onToggle: () => void;
-  onInfo: () => void;
-}> = ({ influencer, index, isSelected, onToggle, onInfo }) => {
-  const instagramUsername = influencer.handle?.replace('@', '').replace(/https?:\/\/(www\.)?instagram\.com\//gi, '') || '';
-  const instagramLink = `https://www.instagram.com/${instagramUsername}`;
-
-  return (
-    <div
-      className={`relative flex flex-col gap-6 p-8 bg-white dark:bg-[#0A0A0A] border ${isSelected ? 'border-black dark:border-white ring-2 ring-black dark:ring-white' : 'border-black/10 dark:border-white/10'} rounded-[2rem] transition-all duration-300 overflow-visible backdrop-blur-md`}
-      onClick={onInfo}
-      style={{ cursor: 'pointer' }}
-    >
-      <div className="absolute top-6 right-6 flex gap-2 z-10">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-          className={`p-2 rounded-xl border transition-all ${isSelected ? 'bg-black text-white dark:bg-white dark:text-black border-transparent' : 'bg-white dark:bg-black text-black dark:text-white border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5'}`}
-        >
-          {isSelected ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-5 h-5 rounded-full border-2 border-current" />}
-        </button>
-        <div className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black border border-black dark:border-white rounded-xl text-sm font-bold shadow-lg transition-colors">
-          {influencer.matchScore}% Match
-        </div>
-      </div>
-
-      <div className="flex items-center gap-6 mb-2">
-        <div className="w-20 h-20 rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center text-black dark:text-white text-3xl font-bold shrink-0 shadow-lg group-hover:border-black/20 dark:group-hover:border-white/20 transition-colors">
-          {influencer.name?.charAt(0).toUpperCase() || '?'}
-        </div>
-        <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <h4 className="text-black dark:text-white font-bold text-2xl truncate leading-tight group-hover:text-black/80 dark:group-hover:text-white/90 transition-colors">{influencer.name}</h4>
-          <span className="text-black/50 dark:text-white/50 text-base font-medium truncate transition-colors">{influencer.niche}</span>
-          {influencer.location !== '—' && (
-            <div className="flex items-center gap-1.5 text-black/50 dark:text-white/50 text-sm mt-1 transition-colors">
-              <MapPin className="w-4 h-4 text-black/40 dark:text-white/40" />
-              <span>{influencer.location}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 mb-2">
-        <div className="flex items-center gap-4 p-5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl group-hover:bg-black/10 dark:group-hover:bg-white/10 transition-colors">
-          <Users className="w-6 h-6 text-black/50 dark:text-white/50 shrink-0" />
-          <div className="flex flex-col min-w-0">
-            <div className="text-black dark:text-white font-bold text-xl leading-tight truncate transition-colors">{influencer.followers}</div>
-            <div className="text-black/40 dark:text-white/40 text-xs font-bold uppercase tracking-wider mt-0.5 transition-colors">Followers</div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 p-5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl group-hover:bg-black/10 dark:group-hover:bg-white/10 transition-colors">
-          <TrendingUp className="w-6 h-6 text-black/50 dark:text-white/50 shrink-0" />
-          <div className="flex flex-col min-w-0">
-            <div className="text-black dark:text-white font-bold text-xl leading-tight truncate transition-colors">
-              {(influencer as any).engagementRate || '—'}
-            </div>
-            <div className="text-black/40 dark:text-white/40 text-xs font-bold uppercase tracking-wider mt-0.5 transition-colors">Engagement</div>
-          </div>
-        </div>
-      </div>
-
-      {influencer.pricePerPost !== '—' && (
-        <div className="px-2">
-          <span className="text-black/60 dark:text-white/60 text-sm font-medium transition-colors">Est. Commercials: </span>
-          <span className="text-black dark:text-white font-semibold text-base transition-colors">{influencer.pricePerPost}</span>
-        </div>
-      )}
-
-      <div className="flex items-center gap-4 mt-auto pt-4">
-        <button
-          className="flex-1 flex items-center justify-center gap-3 px-6 py-4 text-base font-bold text-white dark:text-black bg-black dark:bg-white rounded-2xl shadow-sm hover:bg-gray-800 dark:hover:bg-gray-200 transition-all border-none transform active:scale-[0.98]"
-          onClick={(e) => {
-            e.stopPropagation();
-            onInfo();
-          }}
-        >
-          <span>View Profile</span>
-        </button>
-
-        <a
-          href={instagramLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="p-4 text-black/70 dark:text-white/70 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10 hover:border-black/20 dark:hover:border-white/20 hover:-translate-y-px transition-all flex items-center justify-center"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Instagram className="w-6 h-6" />
-        </a>
-      </div>
-    </div>
-  );
-};
 
 const StepSuggestions: React.FC = () => {
   const navigate = useNavigate();
@@ -440,7 +387,24 @@ const StepSuggestions: React.FC = () => {
   const [isLoading, setIsLoading] = useState(suggestions.length === 0);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 4;
+  const ITEMS_PER_PAGE = 6;
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
+
+  // Hydrate suggestions for display - mirrors CampaignDetails logic to fix missing data
+  const displaySuggestions = React.useMemo(() => {
+    return suggestions.map(s => {
+      // 1. Normalize (snake_case from API/Pinecone -> camelCase)
+      let norm = normalizeInfluencerData(s) as InfluencerSuggestion;
+
+      // 2. Hydrate/Calculate missing display fields
+      if (!norm.whySuggested || norm.whySuggested === '—' || !norm.expectedROI || norm.expectedROI === '—') {
+        const calculated = calculateInfluencerDisplayFields(norm);
+        norm = { ...norm, ...calculated };
+      }
+      return norm;
+    });
+  }, [suggestions]);
 
   // Reset Handler
   const handleReset = (e: React.MouseEvent) => {
@@ -485,11 +449,11 @@ const StepSuggestions: React.FC = () => {
     e.preventDefault();
     e.stopPropagation();
     console.log('Approve clicked - syncing data and navigating...');
-    
+
     if (!campaignId) {
       console.error("No campaign ID found, cannot save suggestions.");
       // Fallback: try to create campaign? Or just navigate to dashboard
-      navigate('/dashboard'); 
+      navigate('/dashboard');
       return;
     }
 
@@ -509,65 +473,118 @@ const StepSuggestions: React.FC = () => {
     navigate(`/campaigns/${campaignId}`);
   };
 
-  const topScore = suggestions.length > 0 ? Math.max(...suggestions.map(s => s.matchScore)) : 0;
+  const topScore = displaySuggestions.length > 0 ? Math.max(...displaySuggestions.map(s => s.matchScore)) : 0;
 
-  const totalPages = Math.ceil(suggestions.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(displaySuggestions.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentPageItems = suggestions.slice(startIndex, endIndex);
+  const currentPageItems = displaySuggestions.slice(startIndex, endIndex);
 
   return (
-    <div className="flex flex-col w-full min-h-screen pt-12 px-6 md:px-12 pb-12 gap-10 max-w-[1600px] mx-auto overflow-hidden text-black dark:text-white bg-white/0 transition-colors" onClick={(e) => e.stopPropagation()}>
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-black/5 dark:bg-white/5 rounded-full blur-[150px] pointer-events-none opacity-50" />
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-black/5 dark:bg-white/5 rounded-full blur-[150px] pointer-events-none opacity-50" />
-
+    <div className="flex flex-col lg:flex-row w-full min-h-screen pt-12 px-6 md:px-12 pb-12 gap-10 max-w-[1600px] mx-auto text-black relative" onClick={(e) => e.stopPropagation()}>
       {/* Reset Button */}
       <button
         onClick={handleReset}
-        className="absolute top-6 right-6 md:top-12 md:right-12 z-30 flex items-center gap-2 px-4 py-2 text-sm font-medium text-black/60 dark:text-white/60 bg-white/50 dark:bg-black/50 backdrop-blur-md rounded-full border border-black/5 dark:border-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-all hover:text-black dark:hover:text-white"
+        className="absolute top-6 right-6 md:top-12 md:right-12 z-30 flex items-center gap-2 px-4 py-2 text-sm font-medium text-black/60 hover:text-black bg-white/50 backdrop-blur-md rounded-full border border-black/5 hover:bg-black/5 transition-all"
       >
         <RotateCcw className="w-4 h-4" />
         <span className="hidden md:inline">Reset Campaign</span>
       </button>
 
-      <div className="flex flex-col items-center text-center mb-10 relative z-20">
-        <h1 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-3 tracking-tight transition-colors">Scout</h1>
-        <p className="text-base text-black/50 dark:text-white/50 mb-8 max-w-lg mx-auto transition-colors">Influencer Discovery AI</p>
+      {/* Left Sidebar - Sticky */}
+      <aside className="w-full lg:w-[320px] shrink-0 lg:sticky lg:top-10 lg:h-fit flex flex-col gap-8">
+        <div className="bg-white rounded-3xl p-8 border border-black/10 shadow-sm space-y-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="w-5 h-5 text-black/40" />
+              <span className="text-xs font-bold uppercase tracking-widest text-black/40">Discovery</span>
+            </div>
+            <h1 className="text-3xl font-bold text-black leading-tight">
+              Scout
+            </h1>
+            <p className="text-black/40 text-base mt-2">Influencer Discovery AI</p>
+          </div>
 
-        <div className="flex flex-wrap justify-center gap-6 md:gap-10">
-          <div className="flex gap-3 items-center text-black/70 dark:text-white/70 text-base transition-colors">
-            <CheckCircle2 className="w-5 h-5 text-black dark:text-white transition-colors" />
-            <span>Analyzed 1,842 creators</span>
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center p-3 bg-black/[0.04] rounded-xl text-sm">
+              <span className="text-black/60">Analyzed</span>
+              <span className="font-medium text-black">1,842 creators</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-black/[0.04] rounded-xl text-sm">
+              <span className="text-black/60">Matches</span>
+              <span className="font-bold text-black">Top {displaySuggestions.length > 0 ? displaySuggestions.length : '10'}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-black/[0.04] rounded-xl text-sm">
+              <span className="text-black/60">Goal</span>
+              <span className="font-medium text-black">{preferences.primaryGoal || 'Engagement'}</span>
+            </div>
           </div>
-          <div className="flex gap-3 items-center text-black/70 dark:text-white/70 text-base transition-colors">
-            <Target className="w-5 h-5 text-black dark:text-white transition-colors" />
-            <span>Top {suggestions.length > 0 ? suggestions.length : '10'} matches</span>
-          </div>
-          <div className="flex gap-3 items-center text-black/70 dark:text-white/70 text-base transition-colors">
-            <TrendingUp className="w-5 h-5 text-black dark:text-white transition-colors" />
-            <span>Optimized for {preferences.primaryGoal || 'Engagement'}</span>
+
+          <div className="pt-4 w-full space-y-3">
+            {/* Action Buttons */}
+            <button
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-black text-white rounded-2xl font-bold text-sm hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+              disabled={isGeneratingReport || isSkipping}
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsGeneratingReport(true);
+                if (campaignId) {
+                  try {
+                    await Promise.all([
+                      CampaignService.updateSuggestions(campaignId, suggestions),
+                      CampaignService.saveShortlist(campaignId, shortlist),
+                    ]);
+                  } catch (err) { console.error('Sync error:', err); }
+                }
+                nextStep(); // Step 5 = Report
+                // State stays true until component unmounts/navigates
+              }}
+            >
+              {isGeneratingReport ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Generating...</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4" />
+                  <span>Generate Report</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+            <button
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-black/60 bg-transparent hover:bg-black/5 rounded-2xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isGeneratingReport || isSkipping}
+              onClick={async (e) => {
+                 e.preventDefault();
+                 e.stopPropagation();
+                 setIsSkipping(true);
+                 await handleApprove(e);
+                 // State stays true until navigation
+              }}
+            >
+              {isSkipping ? (
+                 <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+              ) : (
+                <span>{shortlist.length > 0 ? `Save & View ${shortlist.length} Shortlisted` : 'Skip to Details'}</span>
+              )}
+            </button>
           </div>
         </div>
-      </div>
+      </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden pb-4 relative z-10 w-full">
-        <div className="mb-10 text-center">
-          <h2 className="text-3xl md:text-4xl font-light text-black dark:text-white mb-3 transition-colors">
-            <span className="font-bold">Scout</span> has shortlisted{' '}
-            <span className="font-bold">creators</span> for your campaign.
+      {/* Right Content - Scrollable Grid */}
+      <main className="flex-1 flex flex-col min-w-0">
+        <div className="mb-8">
+          <h2 className="text-3xl font-light text-black dark:text-white mb-2 transition-colors">
+            <span className="font-bold">Shortlisted Creators</span>
           </h2>
-          <p className="text-black/40 dark:text-white/40 text-base mb-8 max-w-2xl mx-auto transition-colors">
-            Based on your brief and strategy parameters.
+          <p className="text-black/40 dark:text-white/40 text-sm max-w-xl transition-colors">
+            Scout has identified the best matches for your campaign based on your brief.
           </p>
-
-          <div className="flex items-center justify-center gap-4 mt-6">
-            {!isLoading && suggestions.length > 0 && topScore > 0 && (
-              <div className="px-5 py-2 bg-black/5 dark:bg-white/10 rounded-full border border-black/10 dark:border-white/10 text-black/80 dark:text-white/80 text-base font-medium backdrop-blur-md transition-colors">
-                Match Score: <span className="text-black dark:text-white font-bold ml-1.5 transition-colors">{topScore}%</span>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Loading State */}
@@ -593,7 +610,7 @@ const StepSuggestions: React.FC = () => {
         )}
 
         {/* Empty State */}
-        {!isLoading && !error && suggestions.length === 0 && (
+        {!isLoading && !error && displaySuggestions.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-6 py-20 text-center flex-1">
             <AlertCircle className="w-12 h-12 text-gray-400" />
             <p className="text-2xl font-semibold text-black">No matching creators found</p>
@@ -603,110 +620,88 @@ const StepSuggestions: React.FC = () => {
           </div>
         )}
 
-        {/* Influencer Grid */}
-        {!isLoading && suggestions.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 w-full flex-1 overflow-y-auto pr-2 custom-scrollbar px-4">
-            {currentPageItems.map((inf, i) => (
-              <InfluencerCard
+        {/* Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 w-full">
+          {currentPageItems.map((inf, i) => {
+            const isShortlisted = shortlist.includes(inf.id);
+            // Construct fallback URL - use strict instagram unavatar with no fallback to avoid generic logos/twitch
+            const handle = inf.instagramUrl 
+              ? inf.instagramUrl.replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, '').replace(/\/$/, '')
+              : (inf.handle ? inf.handle.replace('@', '') : undefined);
+            const igFallback = handle ? `https://unavatar.io/instagram/${handle}?fallback=false` : undefined;
+            
+            return (
+              <FreelancerProfileCard
                 key={inf.id}
-                influencer={inf}
-                index={i}
-                isSelected={shortlist.includes(inf.id)}
-                onToggle={() => {
-                  if (shortlist.includes(inf.id)) removeFromShortlist(inf.id);
-                  else addToShortlist(inf.id);
-                }}
-                onInfo={() => {
-                  console.log('Opening modal for:', inf.name);
-                  setSelectedModal(inf);
-                }}
+                name={inf.name}
+                title={inf.niche || inf.handle}
+                avatarSrc={igFallback || ''}
+                backupSrc={inf.avatar || undefined}
+                rating={inf.matchScore ? `${inf.matchScore}%` : "New"}
+                duration={inf.followers}
+                rate={inf.engagementRate || '—'}
+                location={inf.location !== '—' ? inf.location : undefined}
+                handle={inf.handle}
+                instagramUrl={inf.instagramUrl || undefined}
+                isBookmarked={isShortlisted}
+                onBookmark={() => isShortlisted ? removeFromShortlist(inf.id) : addToShortlist(inf.id)}
+                onGetInTouch={() => setSelectedModal(inf)}
+                tools={
+                  (inf.brandFit || "").split(',').filter(Boolean).slice(0, 3).map((tag) => tag.trim())
+                }
+                className="w-full"
               />
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
 
-        {!isLoading && suggestions.length > 0 && (
-          <div className="mt-12 flex flex-col gap-6 pb-8">
-            {totalPages > 1 && (
-              <div className="flex justify-center gap-2">
-                <button
-                  className="flex items-center gap-2 px-6 h-12 text-base font-semibold text-black dark:text-white bg-transparent border border-black/30 dark:border-white/30 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-black/30 dark:disabled:hover:border-white/30"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (currentPage > 1) setCurrentPage(currentPage - 1);
-                  }}
-                  disabled={currentPage === 1}
-                >
-                  <ArrowRight className="w-5 h-5 rotate-180" />
-                  <span>Prev</span>
-                </button>
+        {!isLoading && displaySuggestions.length > 0 && totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-12 pt-8 border-t border-black/5 dark:border-white/5">
+            <button
+              className="flex items-center gap-2 px-6 h-12 text-base font-semibold text-black dark:text-white bg-transparent border border-black/30 dark:border-white/30 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-black/30 dark:disabled:hover:border-white/30"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentPage > 1) setCurrentPage(currentPage - 1);
+              }}
+              disabled={currentPage === 1}
+            >
+              <ArrowRight className="w-5 h-5 rotate-180" />
+              <span>Prev</span>
+            </button>
 
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    className={`min-w-[48px] h-12 px-4 text-base font-semibold rounded-xl border transition-all ${currentPage === page
-                        ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
-                        : 'bg-transparent text-black dark:text-white border-black/30 dark:border-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60'
-                      }`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setCurrentPage(page);
-                    }}
-                  >
-                    {page}
-                  </button>
-                ))}
-
-                <button
-                  className="flex items-center gap-2 px-6 h-12 text-base font-semibold text-black dark:text-white bg-transparent border border-black/30 dark:border-white/30 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-black/30 dark:disabled:hover:border-white/30"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-                  }}
-                  disabled={currentPage === totalPages}
-                >
-                  <span>Next</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            )}
-            
-            
-
-            <div className="flex flex-col items-center gap-3 mt-4">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
               <button
-                className="w-full max-w-md flex items-center justify-center gap-2 px-6 py-4 text-lg font-bold text-white dark:text-black bg-black dark:bg-white border border-black/20 dark:border-white/20 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.1)] dark:shadow-[0_0_30px_rgba(255,255,255,0.06)] hover:bg-gray-800 dark:hover:bg-[#f0f0f0] hover:shadow-[0_0_50px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_0_50px_rgba(255,255,255,0.1)] transition-all cursor-pointer"
-                onClick={async (e) => {
+                key={page}
+                className={`min-w-[48px] h-12 px-4 text-base font-semibold rounded-xl border transition-all ${currentPage === page
+                  ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
+                  : 'bg-transparent text-black dark:text-white border-black/30 dark:border-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60'
+                  }`}
+                onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (campaignId) {
-                    try {
-                      await Promise.all([
-                        CampaignService.updateSuggestions(campaignId, suggestions),
-                        CampaignService.saveShortlist(campaignId, shortlist),
-                      ]);
-                    } catch (err) { console.error('Sync error:', err); }
-                  }
-                  nextStep(); // Step 5 = Report
+                  setCurrentPage(page);
                 }}
               >
-                <FileText className="w-5 h-5" />
-                <span>Generate Intelligence Report</span>
-                <ArrowRight className="w-5 h-5" />
+                {page}
               </button>
-              <button
-                className="w-full max-w-md flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-black/60 dark:text-white/60 bg-transparent border border-black/10 dark:border-white/10 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
-                onClick={handleApprove}
-              >
-                <span>{shortlist.length > 0 ? `Save & View ${shortlist.length} Shortlisted` : 'Skip to Campaign Details'}</span>
-              </button>
-            </div>
+            ))}
+
+            <button
+              className="flex items-center gap-2 px-6 h-12 text-base font-semibold text-black dark:text-white bg-transparent border border-black/30 dark:border-white/30 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/60 dark:hover:border-white/60 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-black/30 dark:disabled:hover:border-white/30"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+              }}
+              disabled={currentPage === totalPages}
+            >
+              <span>Next</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
           </div>
         )}
-      </div>
+      </main>
 
       <AnimatePresence>
         {selectedModal && (

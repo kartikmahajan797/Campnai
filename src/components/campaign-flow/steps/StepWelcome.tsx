@@ -1,10 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useCampaign } from '../CampaignContext';
-import { ArrowRight, Sparkles, Rocket, PlayCircle } from 'lucide-react';
+import { ArrowRight, Sparkles, Rocket, PlayCircle, RotateCcw } from 'lucide-react';
 
 const StepWelcome: React.FC = () => {
-  const { nextStep } = useCampaign();
+  const { nextStep, resetCampaign, campaignId, analysisResult } = useCampaign();
+
+  const hasExistingCampaign = !!(campaignId && analysisResult);
+
+  const handleNewCampaign = () => {
+    resetCampaign();
+    setTimeout(() => nextStep(), 0);
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen w-full relative overflow-hidden bg-background text-foreground px-4">
@@ -47,18 +54,41 @@ const StepWelcome: React.FC = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+          {hasExistingCampaign && (
+            <motion.button
+              onClick={nextStep}
+              className="group relative flex items-center justify-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:shadow-2xl hover:shadow-primary/20 transition-all"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+            >
+              <ArrowRight className="w-5 h-5" />
+              <span>Continue Campaign</span>
+            </motion.button>
+          )}
+
           <motion.button
-            onClick={nextStep}
-            className="group relative flex items-center justify-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:shadow-2xl hover:shadow-primary/20 transition-all"
+            onClick={handleNewCampaign}
+            className={`group relative flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-lg transition-all ${
+              hasExistingCampaign
+                ? 'bg-background border border-border text-foreground hover:bg-muted/50'
+                : 'bg-primary text-primary-foreground hover:shadow-2xl hover:shadow-primary/20'
+            }`}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
+            transition={{ delay: hasExistingCampaign ? 0.5 : 0.4, duration: 0.5 }}
           >
-            <Sparkles className="w-5 h-5 group-hover:animate-spin-slow" />
+            {hasExistingCampaign ? (
+              <RotateCcw className="w-5 h-5" />
+            ) : (
+              <Sparkles className="w-5 h-5 group-hover:animate-spin-slow" />
+            )}
             <span>Create New Campaign</span>
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            {!hasExistingCampaign && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
           </motion.button>
           
           <motion.button
@@ -67,7 +97,7 @@ const StepWelcome: React.FC = () => {
             whileTap={{ scale: 0.98 }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
+            transition={{ delay: hasExistingCampaign ? 0.6 : 0.5, duration: 0.5 }}
           >
             <PlayCircle className="w-5 h-5" />
             <span>Watch Demo</span>

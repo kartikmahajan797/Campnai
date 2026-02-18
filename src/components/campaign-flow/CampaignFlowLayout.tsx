@@ -43,12 +43,14 @@ const SyncStatus = () => {
     );
 };
 
+import { PremiumBackground } from '../ui/premium-background';
+
 const CampaignFlowLayout: React.FC<CampaignFlowLayoutProps> = ({ children }) => {
   const { currentStep } = useCampaign();
 
   return (
-    <div className="min-h-screen w-full bg-white dark:bg-black text-black dark:text-white font-sans selection:bg-black/10 dark:selection:bg-white/20 selection:text-black dark:selection:text-white relative overflow-x-hidden transition-colors duration-300">
-      <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none z-0" />
+    <div className="min-h-screen w-full font-sans selection:bg-black/10 dark:selection:bg-white/20 selection:text-black dark:selection:text-white relative">
+      <PremiumBackground />
       
       {/* Cloud Sync Status */}
       <div className="fixed top-6 right-6 z-50 pointer-events-none">
