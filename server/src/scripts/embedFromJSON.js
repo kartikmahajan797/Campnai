@@ -16,7 +16,7 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 const { getIndex } = await import("../core/pinecone.js");
 const { GoogleGenerativeAI } = await import("@google/generative-ai");
 
-const JSON_PATH = path.resolve(__dirname, "../../influencers_data.json");
+const JSON_PATH = path.resolve(__dirname, "../influencers_data.json");
 const PINECONE_BATCH = 50;
 const EMBED_CHUNK   = 90;
 const EMBED_DELAY   = 200;
@@ -203,7 +203,7 @@ async function main() {
 
     for (let i = 0; i < vectors.length; i += PINECONE_BATCH) {
         const batch = vectors.slice(i, i + PINECONE_BATCH);
-        await index.upsert({ records: batch });
+        await index.upsert(batch);
         console.log(`  📦 Uploaded batch ${Math.floor(i / PINECONE_BATCH) + 1} (${batch.length} vectors)`);
     }
 

@@ -406,7 +406,7 @@ router.post("/analyze-brand", upload.single("file"), async (req, res) => {
             `Positioning: ${analysis.brand_positioning?.market_position}`,
         ].filter(Boolean).join(". ");
 
-        const rawSuggestions = await searchInfluencers(searchQuery, 15, searchContext, explicitFilter);
+        const rawSuggestions = await searchInfluencers(searchQuery, 15, searchContext, explicitFilter, searchContext);
         const suggestions = formatForSearchAPI(rawSuggestions);
 
         const processingTime = Date.now() - startTime;
