@@ -136,12 +136,17 @@ const StepReport: React.FC = () => {
       setTimeout(() => setLoadingStep(i), i * 1500)
     );
 
-    const generateReport = async () => {
-      try {
-        const user = auth.currentUser;
-        if (!user) { setError('Please log in to generate a report.'); setLoading(false); return; }
+      const generateReport = async () => {
+        try {
+          let user = auth.currentUser;
+          if (!user) {
+            user = await new Promise<any>((resolve) => {
+              const unsub = auth.onAuthStateChanged(u => { unsub(); resolve(u); });
+            });
+          }
+          if (!user) { setError('Please log in to generate a report.'); setLoading(false); return; }
 
-        const token = await user.getIdToken();
+          const token = await user.getIdToken();
         const res = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/report`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

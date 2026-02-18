@@ -1,292 +1,423 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import DashboardLayout from '../DashboardLayout';
-import { ChevronRight, CheckSquare, MessageSquare, Mail, AlertCircle, Phone } from 'lucide-react';
-import { useChatSessions } from '../../lib/useChatSessions';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  X, Instagram, MapPin, Users, TrendingUp, Zap, Target,
+  CheckCircle2, Phone, Mail, ExternalLink, ArrowLeft, ChevronDown, ChevronUp, FileText, ArrowRight, LayoutDashboard
+} from 'lucide-react';
 import { CampaignService } from '../../services/CampaignService';
+import type { InfluencerSuggestion } from '../campaign-flow/CampaignContext';
+import { calculateInfluencerDisplayFields, formatFollowers, normalizeInfluencerData, getBanner } from '../../utils/influencerUtils';
+import { FreelancerProfileCard } from '../ui/freelancer-profile-card';
+import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
+import { PremiumBackground } from '../ui/premium-background';
 
-const CampaignDetails = () => {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const decodedId = decodeURIComponent(id || 'Campaign');
-    const { sessions: chatSessions, isLoading: isSessionsLoading, deleteSession } = useChatSessions();
+// ── helpers ───────────────────────────────────────────────────────────────────
+function parseER(val: string | number | null | undefined): string {
+  if (!val) return '—';
+  const n = parseFloat(String(val));
+  if (isNaN(n) || n === 0) return '—';
+  return `${n}%`;
+}
 
-    const [influencers, setInfluencers] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [campaignName, setCampaignName] = useState('Campaign');
+// ── Full-detail modal ─────────────────────────────────────────────────────────
+const InfluencerModal: React.FC<{
+  influencer: InfluencerSuggestion;
+  onClose: () => void;
+}> = ({ influencer: inf, onClose }) => {
+  const igUsername = inf.handle?.replace('@', '') || '';
+  const igLink = (inf as any).instagramUrl || (igUsername ? `https://www.instagram.com/${igUsername}` : '#');
 
-    const selectedCount = influencers.filter(i => i.selected).length;
-    const allSelected = influencers.length > 0 && selectedCount === influencers.length;
+  return (
+    <motion.div
+      className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl shadow-2xl flex flex-col md:flex-row overflow-hidden"
+        initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Close */}
+        <button onClick={onClose} className="absolute top-5 right-5 z-10 p-2 rounded-full bg-black/5 hover:bg-black/10 transition-colors">
+          <X className="w-5 h-5 text-black/60" />
+        </button>
 
-    React.useEffect(() => {
-        const loadCampaign = async () => {
-            if (!id) return;
-            try {
-                console.log("[CampaignDetails] Loading ID:", id);
-                const campaign = await CampaignService.getCampaign(id);
-                console.log("[CampaignDetails] Loaded data:", campaign);
-                
-                if (campaign) {
-                    setCampaignName(campaign.name || `Campaign ${id.slice(0, 5)}`);
-                    
-                    const shortlistedIds = campaign.shortlist || [];
-                    const suggestions = campaign.suggestions || [];
-                    
-                    console.log("[CampaignDetails] Total Suggestions:", suggestions.length);
-                    console.log("[CampaignDetails] Shortlisted IDs:", shortlistedIds.length);
-
-                    const displayList = suggestions
-                        .filter(inf => {
-                            // Convert both to strings for safety
-                            const sid = String(inf.id);
-                            return shortlistedIds.map(String).includes(sid);
-                        })
-                        .map(inf => ({ ...inf, selected: true }));
-                    
-                    console.log("[CampaignDetails] Display List Count:", displayList.length);
-                    setInfluencers(displayList);
-                }
-            } catch (error) {
-                console.error("[CampaignDetails] Load Error:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadCampaign();
-    }, [id]);
-
-    const toggleSelection = (id: string) => {
-        setInfluencers(prev => prev.map(inf =>
-            inf.id === id ? { ...inf, selected: !inf.selected } : inf
-        ));
-    };
-
-    const toggleAll = () => {
-        setInfluencers(prev => prev.map(inf => ({ ...inf, selected: !allSelected })));
-    };
-
-    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-
-    return (
-        <DashboardLayout
-            title={
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span onClick={() => navigate('/campaigns')} className="cursor-pointer hover:text-foreground transition">Campaigns</span>
-                    <ChevronRight size={14} />
-                    <span className="text-foreground">{decodedId}</span>
-                </div>
-            }
-            chatSessions={chatSessions}
-            isLoading={isSessionsLoading}
-            onDeleteSession={deleteSession}
-        >
-            <div className="p-8 min-h-full bg-background">
-                {isLoading ? (
-                    <div className="flex items-center justify-center h-64">
-                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                ) : (
-                    <>
-                        <h2 className="text-xl font-medium text-foreground mb-6">Shortlisted Influencers ({influencers.length})</h2>
-
-                        {/* Table Container */}
-                        <div className="w-full bg-card border border-border rounded-xl overflow-hidden shadow-xl mb-24">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm text-muted-foreground">
-                                    <thead className="text-xs uppercase bg-muted/50 text-foreground font-medium">
-                                        <tr>
-                                            <th className="px-6 py-4 w-12">
-                                                <div
-                                                    onClick={toggleAll}
-                                                    className={`w-4 h-4 rounded border ${allSelected ? 'bg-primary/20 border-primary' : 'border-border bg-muted/50'} flex items-center justify-center cursor-pointer transition-colors`}
-                                                >
-                                                    {allSelected && <CheckSquare size={12} className="text-primary opacity-100" />}
-                                                </div>
-                                            </th>
-                                            <th className="px-6 py-4 font-medium">Name</th>
-                                            <th className="px-6 py-4 font-medium">IG Handle</th>
-                                            <th className="px-6 py-4 font-medium">Location</th>
-                                            <th className="px-6 py-4 font-medium">Followers</th>
-                                            <th className="px-6 py-4 font-medium">Engagement</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border/50">
-                                        {influencers.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
-                                                    No influencers shortlisted. Go back to suggestions to select some.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            influencers.map((influencer) => (
-                                                <tr
-                                                    key={influencer.id}
-                                                    className={`transition-colors group ${influencer.selected ? 'bg-primary/5' : 'hover:bg-muted/20'}`}
-                                                    onClick={() => toggleSelection(influencer.id)}
-                                                >
-                                                    <td className="px-6 py-4">
-                                                        <div
-                                                            className={`w-5 h-5 rounded border ${influencer.selected ? 'bg-primary/20 border-primary' : 'border-border bg-muted/50'} flex items-center justify-center cursor-pointer transition-colors`}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                toggleSelection(influencer.id);
-                                                            }}
-                                                        >
-                                                            {influencer.selected && <CheckSquare size={14} className="text-primary" />}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 font-medium text-foreground">{influencer.name}</td>
-                                                    <td className="px-6 py-4 text-muted-foreground">{influencer.handle}</td>
-                                                    <td className="px-6 py-4 text-muted-foreground">{influencer.location !== '—' ? influencer.location : '-'}</td>
-                                                    <td className="px-6 py-4 text-muted-foreground">{influencer.followers}</td>
-                                                   <td className="px-6 py-4 text-muted-foreground">
-                                                        {typeof influencer.performanceBenefits === 'string' && influencer.performanceBenefits.includes('%') ? `${influencer.performanceBenefits.split('%')[0]}%` : '-'}
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        {/* Bottom Action Bar */}
-                        <div className="fixed bottom-0 left-0 right-0 p-4 border-t border-border bg-background/90 backdrop-blur-md z-50 flex items-center justify-between pl-72">
-                            {/* pl-72 accounts for sidebar width (w-64) + padding */}
-                            <div className="text-muted-foreground text-sm">
-                                <span className="text-foreground font-medium">{selectedCount} influencers</span> selected
-                            </div>
-
-                            <button
-                                onClick={() => setIsReviewModalOpen(true)}
-                                disabled={selectedCount === 0}
-                                className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2.5 rounded-lg font-medium transition shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Review & Reach Out
-                                <ChevronRight size={16} />
-                            </button>
-                        </div>
-                    </>
-                )}
+        {/* LEFT PANEL */}
+        <div className="w-full md:w-[280px] shrink-0 bg-black/[0.03] border-b md:border-b-0 md:border-r border-black/10 p-7 flex flex-col gap-5">
+          <div className="flex flex-col items-center text-center gap-3">
+            <div className="w-20 h-20 rounded-full bg-black/10 flex items-center justify-center text-3xl font-bold text-black">
+              {inf.name?.charAt(0).toUpperCase() ?? '?'}
             </div>
-
-            {/* Review Modal */}
-            {isReviewModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsReviewModalOpen(false)} />
-                    <div className="relative bg-card border border-border rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-
-                        {/* Modal Header */}
-                        <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-card">
-                            <div>
-                                <h2 className="text-xl font-semibold text-foreground">Review Your Outreach</h2>
-                                <p className="text-sm text-muted-foreground mt-1">Review and customize outreach messages before sending.</p>
-                            </div>
-                            <button
-                                onClick={() => setIsReviewModalOpen(false)}
-                                className="text-muted-foreground hover:text-foreground transition p-2 hover:bg-muted rounded-lg"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                            </button>
-                        </div>
-
-                        {/* Modal Content */}
-                        <div className="flex-1 overflow-y-auto p-6 bg-background/50">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
-
-                                {/* WhatsApp Section */}
-                                <div className="flex flex-col h-full">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <div className="w-1.5 h-4 bg-green-500 rounded-full" />
-                                        <h3 className="font-medium text-foreground flex items-center gap-2">
-                                            <MessageSquare size={16} className="text-green-500" />
-                                            WhatsApp
-                                        </h3>
-                                    </div>
-
-                                    <div className="flex-1 bg-card border border-border rounded-xl p-4 flex flex-col shadow-inner">
-                                        <textarea
-                                            className="w-full flex-1 bg-transparent border-none focus:ring-0 text-foreground placeholder:text-muted-foreground resize-none text-sm leading-relaxed min-h-[300px]"
-                                            defaultValue={`Hi {{ name }},\n\nWe loved your content on {{ niche }} and are launching a new {{ brand }} skincare line. We'd love to send you free products + partner on a paid campaign.\n\nLet me know if you're interested! 😉\nThanks!`}
-                                        />
-                                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border text-xs text-muted-foreground">
-                                            <span className="hover:text-primary cursor-pointer transition">Keep Editing</span>
-                                            <span>222 characters</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4 flex flex-col gap-3">
-                                        <label className="flex items-center gap-3 cursor-pointer group">
-                                            <div className="w-5 h-5 rounded bg-indigo-600 flex items-center justify-center border border-indigo-500 shadow-lg shadow-indigo-500/20">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                            </div>
-                                            <span className="text-foreground font-medium group-hover:text-primary transition">Send WhatsApp</span>
-                                        </label>
-
-                                        <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-2">
-                                            <span className="text-sm text-muted-foreground">Rate limit</span>
-                                            <select className="bg-transparent border-none text-foreground text-sm focus:ring-0 cursor-pointer">
-                                                <option>Send 5 messages / minute</option>
-                                                <option>Send 10 messages / minute</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Gmail Section */}
-                                <div className="flex flex-col h-full">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <div className="w-1.5 h-4 bg-red-500 rounded-full" />
-                                        <h3 className="font-medium text-foreground flex items-center gap-2">
-                                            <Mail size={16} className="text-red-500" />
-                                            Gmail
-                                        </h3>
-                                    </div>
-
-                                    <div className="flex-1 bg-card border border-border rounded-xl flex flex-col shadow-inner overflow-hidden">
-                                        {/* Subject Line */}
-                                        <div className="px-4 py-3 border-b border-border flex gap-2 items-center">
-                                            <span className="text-sm text-muted-foreground">Subject:</span>
-                                            <input
-                                                type="text"
-                                                defaultValue="Let's do a collab?"
-                                                className="bg-transparent border-none focus:ring-0 text-foreground text-sm flex-1 placeholder:text-muted-foreground"
-                                            />
-                                        </div>
-
-                                        <div className="flex-1 p-4 flex flex-col">
-                                            <textarea
-                                                className="w-full flex-1 bg-transparent border-none focus:ring-0 text-foreground placeholder:text-muted-foreground resize-none text-sm leading-relaxed min-h-[300px]"
-                                                defaultValue={`Hi {{ name }},\n\nI hope this email finds you well! We're excited to be working with {{ brand }} for the launch of their new skincare line. We think your content would be a fantastic fit for this campaign, and we'd like to offer you free products + a paid partnership.\n\nInterested? I'd love to discuss this further, including the details of the collab and compensation.\n\nBest,\n[Your name]`}
-                                            />
-                                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-border text-xs text-muted-foreground">
-                                                <span className="hover:text-primary cursor-pointer transition">Keep Editing</span>
-                                                <span>293 characters</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Modal Footer */}
-                        <div className="px-6 py-4 border-t border-border bg-card flex justify-between items-center">
-                            <button className="text-muted-foreground hover:text-foreground text-sm font-medium transition px-4 py-2 rounded-lg hover:bg-muted">
-                                Save as Template
-                            </button>
-                            <button
-                                onClick={() => navigate(`/campaigns/${encodeURIComponent(decodedId)}/track`)}
-                                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-xl font-medium transition shadow-lg shadow-primary/20 flex items-center gap-2"
-                            >
-                                Send Outreach
-                                <ChevronRight size={16} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
+            <div>
+              <h3 className="text-xl font-bold text-black leading-tight">{inf.name}</h3>
+              <p className="text-black/40 text-sm mt-0.5">{inf.handle || '—'}</p>
+            </div>
+            {inf.matchScore > 0 && (
+              <div className="px-4 py-1.5 bg-black text-white rounded-full text-sm font-bold">
+                {inf.matchScore}% Match
+              </div>
             )}
-        </DashboardLayout>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white rounded-2xl p-3 text-center border border-black/5">
+              <Users className="w-4 h-4 text-black/30 mx-auto mb-1" />
+              <div className="font-bold text-black text-base">{inf.followers || '—'}</div>
+              <div className="text-[9px] uppercase tracking-wider text-black/25 font-bold">Followers</div>
+            </div>
+            <div className="bg-white rounded-2xl p-3 text-center border border-black/5">
+              <TrendingUp className="w-4 h-4 text-black/30 mx-auto mb-1" />
+              <div className="font-bold text-black text-base">{parseER(inf.engagementRate)}</div>
+              <div className="text-[9px] uppercase tracking-wider text-black/25 font-bold">Engagement</div>
+            </div>
+          </div>
+
+          <div className="space-y-2 text-sm">
+            {inf.location && inf.location !== '—' && (
+              <div className="flex items-center gap-2 text-black/50"><MapPin className="w-4 h-4 text-black/25 shrink-0" /><span>{inf.location}</span></div>
+            )}
+            {inf.niche && inf.niche !== '—' && (
+              <div className="flex items-center gap-2 text-black/50"><Zap className="w-4 h-4 text-black/25 shrink-0" /><span>{inf.niche}</span></div>
+            )}
+            {inf.pricePerPost && inf.pricePerPost !== '—' && (
+              <div className="flex items-center gap-2 text-black/70 font-semibold">
+                <span className="text-black/25 text-xs">Est.</span><span>{inf.pricePerPost}</span>
+              </div>
+            )}
+            {(inf as any).phone && (
+              <div className="flex items-center gap-2 text-black/50"><Phone className="w-4 h-4 text-black/25 shrink-0" /><span>{(inf as any).phone}</span></div>
+            )}
+            {(inf as any).email && (
+              <div className="flex items-center gap-2 text-black/50 break-all"><Mail className="w-4 h-4 text-black/25 shrink-0" /><span className="text-xs">{(inf as any).email}</span></div>
+            )}
+          </div>
+
+          <a href={igLink} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 py-3 bg-black text-white rounded-2xl font-semibold text-sm hover:bg-gray-800 transition-colors mt-auto">
+            <Instagram className="w-4 h-4" /> View Profile
+          </a>
+        </div>
+
+        {/* RIGHT PANEL */}
+        <div className="flex-1 overflow-y-auto p-7 space-y-7">
+          {/* Why This Creator */}
+          <section>
+            <Label icon={<Target className="w-4 h-4 text-black/40" />} text="Why This Creator?" />
+            <p className="text-black/60 text-sm leading-relaxed bg-black/[0.03] rounded-2xl p-5 border border-black/5">
+              {inf.whySuggested || '—'}
+            </p>
+          </section>
+
+          {/* ROI + Strengths */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <section>
+              <Label icon={<TrendingUp className="w-4 h-4 text-black/40" />} text="ROI Projection" />
+              <div className="bg-black/[0.03] rounded-2xl p-5 border border-black/5 h-full">
+                <p className="text-black/60 text-sm leading-relaxed">{inf.expectedROI || '—'}</p>
+              </div>
+            </section>
+            <section>
+              <Label icon={<Zap className="w-4 h-4 text-black/40" />} text="Key Strengths" />
+              <div className="bg-black/[0.03] rounded-2xl p-5 border border-black/5 h-full">
+                <p className="text-black/60 text-sm leading-relaxed">{inf.performanceBenefits || '—'}</p>
+              </div>
+            </section>
+          </div>
+
+          {/* Audience Details */}
+          {((inf as any).mfSplit || (inf as any).indiaSplit || (inf as any).ageGroup || (inf as any).avgViews) && (
+            <section>
+              <Label icon={<Users className="w-4 h-4 text-black/40" />} text="Audience Details" />
+              <div className="bg-black/[0.03] rounded-2xl p-5 border border-black/5 space-y-3">
+                {[(inf as any).mfSplit && ['M/F Split', (inf as any).mfSplit],
+                  (inf as any).indiaSplit && ['India / Global', (inf as any).indiaSplit],
+                  (inf as any).ageGroup && ['Age Group', (inf as any).ageGroup],
+                  (inf as any).avgViews && ['Avg Views/Post', (inf as any).avgViews]
+                ].filter(Boolean).map(([label, value]: any) => (
+                  <div key={label} className="flex justify-between text-sm">
+                    <span className="text-black/35">{label}</span>
+                    <span className="font-semibold text-black">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Brand Fit + Vibe */}
+          {((inf as any).brandFit || (inf as any).vibe) && (
+            <section>
+              <Label icon={<Zap className="w-4 h-4 text-black/40" />} text="Brand Fit" />
+              <div className="bg-black/[0.03] rounded-2xl p-5 border border-black/5 space-y-3">
+                {(inf as any).brandFit && (
+                  <div>
+                    <p className="text-xs text-black/25 font-bold uppercase tracking-wider mb-2">Categories</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(inf as any).brandFit.split(',').map((tag: string) => (
+                        <span key={tag} className="px-3 py-1 bg-black/[0.06] rounded-full text-xs text-black/60">{tag.trim()}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(inf as any).vibe && (
+                  <p className="text-black/50 text-sm italic leading-relaxed">"{(inf as any).vibe}"</p>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Score Breakdown */}
+          {(inf as any).scoreBreakdown && Object.keys((inf as any).scoreBreakdown).length > 0 && (
+            <section>
+              <Label icon={<CheckCircle2 className="w-4 h-4 text-black/40" />} text="Score Breakdown" />
+              <div className="bg-black/[0.03] rounded-2xl p-5 border border-black/5 space-y-3">
+                {Object.entries((inf as any).scoreBreakdown).map(([key, val]: [string, any]) => (
+                  <div key={key} className="flex items-center gap-3">
+                    <span className="text-xs text-black/35 w-24 capitalize">{key}</span>
+                    <div className="flex-1 h-1.5 bg-black/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-black rounded-full" style={{ width: `${val?.score ?? 0}%` }} />
+                    </div>
+                    <span className="text-xs font-bold text-black w-7 text-right">{val?.score ?? 0}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const Label: React.FC<{ icon: React.ReactNode; text: string }> = ({ icon, text }) => (
+  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-black/30 mb-3">
+    {icon}<span>{text}</span>
+  </div>
+);
+
+
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+const CampaignDetails: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [campaign, setCampaign] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedModal, setSelectedModal] = useState<InfluencerSuggestion | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    CampaignService.getCampaign(id)
+      .then(data => { setCampaign(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-black/10 border-t-black rounded-full animate-spin" />
+      </div>
     );
+  }
+
+  if (!campaign) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+        <p className="text-black/40 text-lg">Campaign not found.</p>
+        <button onClick={() => navigate('/dashboard')} className="px-5 py-2 bg-black text-white rounded-full text-sm font-semibold">Back to Dashboard</button>
+      </div>
+    );
+  }
+
+  // Get shortlisted influencers (filter from suggestions using shortlist IDs, or use all suggestions)
+  const rawSuggestions: InfluencerSuggestion[] = campaign.suggestions || [];
+  
+  const allSuggestions = rawSuggestions.map(s => {
+      let norm = normalizeInfluencerData(s) as InfluencerSuggestion;
+
+      if (!norm.whySuggested || norm.whySuggested === '—' || !norm.expectedROI || norm.expectedROI === '—') {
+        const calculated = calculateInfluencerDisplayFields(norm);
+        norm = { ...norm, ...calculated };
+      }
+      return norm;
+  });
+
+  const shortlistIds: string[] = campaign.shortlist || [];
+
+  const shortlisted = shortlistIds.length > 0
+    ? allSuggestions.filter(s => shortlistIds.includes(s.id))
+    : allSuggestions;
+
+  const analysis = campaign.analysisResult?.analysis || {};
+  const meta = campaign.analysisResult?.meta || {};
+
+  const toggleShortlist = async (infId: string) => {
+      const isShortlisted = shortlistIds.includes(infId);
+      let newShortlistIds;
+      if (isShortlisted) {
+          newShortlistIds = shortlistIds.filter(id => id !== infId);
+      } else {
+          newShortlistIds = [...shortlistIds, infId];
+      }
+      
+      setCampaign((prev: any) => ({ ...prev, shortlist: newShortlistIds }));
+      
+      try {
+          if (id) await CampaignService.saveShortlist(id, newShortlistIds);
+      } catch (err) {
+          console.error("Failed to update shortlist", err);
+      }
+  };
+
+  return (
+    <div className="min-h-screen py-10 px-4 md:px-10 flex flex-col lg:flex-row gap-10 max-w-[1600px] mx-auto relative font-sans selection:bg-black/10 dark:selection:bg-white/20 selection:text-black dark:selection:text-white">
+      <PremiumBackground />
+      
+      {/* Left Sidebar - Sticky */}
+      <aside className="w-full lg:w-[320px] shrink-0 lg:sticky lg:top-10 lg:h-fit flex flex-col gap-8">
+        {/* Back */}
+        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-black/40 hover:text-black text-sm font-medium transition-colors w-fit">
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+        </button>
+
+        {/* Campaign Info Card */}
+        <div className="bg-white rounded-3xl p-8 border border-black/10 shadow-sm space-y-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <LayoutDashboard className="w-5 h-5 text-black/40" />
+              <span className="text-xs font-bold uppercase tracking-widest text-black/40">Campaign</span>
+            </div>
+            <h1 className="text-3xl font-bold text-black leading-tight">
+              {analysis.brand_name || campaign.name || 'Campaign Details'}
+            </h1>
+            <p className="text-black/40 text-base mt-2">{analysis.industry || ''}</p>
+          </div>
+
+          <div className="flex flex-col gap-3">
+             {meta.top_match_score > 0 && (
+                <div className="flex justify-between items-center p-3 bg-black/[0.04] rounded-xl text-sm">
+                  <span className="text-black/60">Top Match Score</span>
+                  <span className="font-bold text-black">{meta.top_match_score}%</span>
+                </div>
+              )}
+              {campaign.preferences?.budgetRange && (
+                <div className="flex justify-between items-center p-3 bg-black/[0.04] rounded-xl text-sm">
+                  <span className="text-black/60">Budget</span>
+                  <span className="font-medium text-black">{campaign.preferences.budgetRange}</span>
+                </div>
+              )}
+              {campaign.preferences?.primaryGoal && (
+                <div className="flex justify-between items-center p-3 bg-black/[0.04] rounded-xl text-sm">
+                  <span className="text-black/60">Goal</span>
+                  <span className="font-medium text-black">{campaign.preferences.primaryGoal}</span>
+                </div>
+              )}
+              {campaign.preferences?.timeline && (
+                <div className="flex justify-between items-center p-3 bg-black/[0.04] rounded-xl text-sm">
+                   <span className="text-black/60">Timeline</span>
+                   <span className="font-medium text-black">{campaign.preferences.timeline}</span>
+                </div>
+              )}
+          </div>
+
+          {/* Action Button */}
+          <button
+              onClick={() => navigate(`/campaign/new?id=${id}&step=5`)}
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-black text-white rounded-2xl font-bold text-sm hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl"
+            >
+              <FileText className="w-4 h-4" />
+              Generate Report
+              <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </aside>
+
+      {/* Right Content */}
+      <main className="flex-1 space-y-12">
+        
+        {/* Shortlisted Influencers */}
+        <div>
+          <div className="flex items-center gap-3 mb-6">
+            <h2 className="text-2xl font-bold text-black">
+              Shortlisted Influencers <span className="text-black/30 ml-2">{shortlisted.length}</span>
+            </h2>
+          </div>
+
+          {shortlisted.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 border border-black/10 text-center">
+              <Users className="w-10 h-10 mx-auto mb-4 text-black/20" />
+              <p className="text-black/30 font-medium">No influencers shortlisted yet.</p>
+            </div>
+          ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {shortlisted.map(inf => (
+                  <FreelancerProfileCard
+                    key={inf.id}
+                    name={inf.name}
+                    title={inf.niche || inf.handle}
+                    avatarSrc={(inf.avatar && inf.avatar !== '') ? inf.avatar : ((inf as any).instagramUrl ? `https://unavatar.io/instagram/${(inf as any).instagramUrl.replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, '').replace(/\/$/, '')}` : `https://unavatar.io/instagram/${(inf.handle || '').replace('@', '')}`)}
+                    rating={inf.matchScore ? `${inf.matchScore}%` : "New"}
+                    duration={inf.followers || '—'}
+                    rate={inf.engagementRate || '—'}
+                    location={inf.location !== '—' ? inf.location : undefined}
+                    handle={inf.handle}
+                    instagramUrl={(inf as any).instagramUrl || undefined}
+                    isBookmarked={true}
+                    onBookmark={() => toggleShortlist(inf.id)}
+                    onGetInTouch={() => setSelectedModal(inf)}
+                    tools={(inf.brandFit || "").split(',').filter(Boolean).slice(0, 3).map((tag: string) => tag.trim())}
+                    className="w-full"
+                  />
+                ))}
+              </div>
+          )}
+        </div>
+
+        {/* All Suggestions (if shortlist is different) */}
+        {shortlistIds.length > 0 && allSuggestions.length > shortlisted.length && (
+          <div>
+            <div className="flex items-center gap-3 mb-6 pt-10 border-t border-black/5">
+               <h2 className="text-2xl font-bold text-black">
+                All Suggested <span className="text-black/30 ml-2">{allSuggestions.length}</span>
+              </h2>
+            </div>
+            
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {allSuggestions.filter(s => !shortlistIds.includes(s.id)).map(inf => (
+                  <FreelancerProfileCard
+                    key={inf.id}
+                    name={inf.name}
+                    title={inf.niche || inf.handle}
+                    avatarSrc={(inf.avatar && inf.avatar !== '') ? inf.avatar : ((inf as any).instagramUrl ? `https://unavatar.io/instagram/${(inf as any).instagramUrl.replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, '').replace(/\/$/, '')}` : `https://unavatar.io/instagram/${(inf.handle || '').replace('@', '')}`)}
+                    rating={inf.matchScore ? `${inf.matchScore}%` : "New"}
+                    duration={inf.followers || '—'}
+                    rate={inf.engagementRate || '—'}
+                    location={inf.location !== '—' ? inf.location : undefined}
+                    handle={inf.handle}
+                    instagramUrl={(inf as any).instagramUrl || undefined}
+                    isBookmarked={false}
+                    onBookmark={() => toggleShortlist(inf.id)}
+                    onGetInTouch={() => setSelectedModal(inf)}
+                    tools={(inf.brandFit || "").split(',').filter(Boolean).slice(0, 3).map((tag: string) => tag.trim())}
+                    className="w-full"
+                  />
+                ))}
+              </div>
+          </div>
+        )}
+      </main>
+
+      <AnimatePresence>
+        {selectedModal && (
+          <InfluencerModal
+            influencer={selectedModal}
+            onClose={() => setSelectedModal(null)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
 };
 
 export default CampaignDetails;

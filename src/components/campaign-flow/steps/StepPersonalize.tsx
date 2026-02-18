@@ -68,13 +68,21 @@ const StepPersonalize: React.FC = () => {
     setWizardStep(s => s - 1);
   };
 
-  const handleFindCreators = async () => {
-    if (!campaignId) return;
-    setIsGenerating(true);
-    try {
-      const { API_BASE_URL } = await import('../../../config/api');
-      const { auth }         = await import('../../../firebaseConfig');
-      const token = await auth.currentUser?.getIdToken();
+    const handleFindCreators = async () => {
+      if (!campaignId) return;
+      setIsGenerating(true);
+      try {
+        const { API_BASE_URL } = await import('../../../config/api');
+        const { auth }         = await import('../../../firebaseConfig');
+        
+        let user = auth.currentUser;
+        if (!user) {
+          user = await new Promise<any>((resolve) => {
+            const unsub = auth.onAuthStateChanged(u => { unsub(); resolve(u); });
+          });
+        }
+        if (!user) throw new Error('Please log in to continue.');
+        const token = await user.getIdToken();
 
       const response = await fetch(
         `${API_BASE_URL}/campaigns/${campaignId}/generate-suggestions`,

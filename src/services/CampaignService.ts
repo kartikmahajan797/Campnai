@@ -1,16 +1,5 @@
-import { db, auth } from '../firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
 import { API_BASE_URL } from '../config/api';
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  doc, 
-  getDoc, 
-  serverTimestamp, 
-  arrayUnion, 
-  arrayRemove 
-} from 'firebase/firestore';
 import { AnalysisResult, CampaignPreferences, InfluencerSuggestion } from '../components/campaign-flow/CampaignContext';
 
 export interface CampaignData {
@@ -21,20 +10,11 @@ export interface CampaignData {
   analysisResult?: AnalysisResult;
   preferences?: CampaignPreferences;
   suggestions?: InfluencerSuggestion[];
-  shortlist?: string[]; // Array of influencer IDs
-  name?: string; // Auto-generated or user provided
+  shortlist?: string[];
+  name?: string;
 }
 
-const COLLECTION_NAME = 'campaigns';
-
-const waitForAuth = () => {
-  return new Promise((resolve) => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      unsubscribe();
-      resolve(user);
-    });
-  });
-};
+const waitForAuth = () => auth.authStateReady().then(() => auth.currentUser);
 
 // Removed hardcoded API_BASE_URL
 

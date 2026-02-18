@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { auth } from '../../firebaseConfig';
 
 export interface AnalysisResult {
   brand_name: string;
@@ -26,6 +27,7 @@ export interface CampaignPreferences {
   primaryGoal: string;
   budgetRange: string;
   timeline: string;
+  websiteUrl?: string;
 }
 
 export interface InfluencerSuggestion {
@@ -44,6 +46,18 @@ export interface InfluencerSuggestion {
   expectedROI: string;
   performanceBenefits: string;
   executionSteps: string[];
+  // Extra fields from API
+  engagementRate?: string | null;
+  vibe?: string | null;
+  brandFit?: string | null;
+  mfSplit?: string | null;
+  indiaSplit?: string | null;
+  ageGroup?: string | null;
+  avgViews?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  instagramUrl?: string | null;
+  scoreBreakdown?: Record<string, any> | null;
 }
 
 import { CampaignService } from '../../services/CampaignService';
@@ -164,45 +178,99 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
   }, [campaignId]);
 
-  // URL Persistence Logic
   const [isInitializing, setIsInitializing] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+
+  const restoreCampaignData = (data: any, stepParam: string | null) => {
+    if (data.analysisResult) setAnalysisResult(data.analysisResult);
+    if (data.preferences) setPreferences(data.preferences || { primaryGoal: '', budgetRange: '', timeline: '' });
+    if (data.suggestions) setSuggestions(data.suggestions || []);
+    if (data.shortlist) setShortlist(data.shortlist || []);
+
+    if (stepParam) {
+      setCurrentStep(parseInt(stepParam));
+    } else if (data.shortlist && data.shortlist.length > 0) {
+      setCurrentStep(4);
+    } else if (data.suggestions && data.suggestions.length > 0) {
+      setCurrentStep(4);
+    } else if (data.analysisResult) {
+      setCurrentStep(3);
+    } else {
+      setCurrentStep(1); // Skip welcome, go to upload
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
-    
-    if (id && !campaignId) {
-       // Restore from URL
-       setCampaignId(id);
-       setSaveStatus('saving'); // UI indicator
-       
-       CampaignService.getCampaign(id)
-         .then(data => {
-            if (data) {
-                if (data.analysisResult) setAnalysisResult(data.analysisResult);
-                if (data.preferences) setPreferences(data.preferences || { primaryGoal: '', budgetRange: '', timeline: '' });
-                if (data.suggestions) setSuggestions(data.suggestions || []);
-                if (data.shortlist) setShortlist(data.shortlist || []);
-                
-                // Determine step based on data
-                if (data.shortlist && data.shortlist.length > 0) setCurrentStep(4); // Suggestions/Shortlist (Step 4)
-                else if (data.suggestions && data.suggestions.length > 0) setCurrentStep(4); // Suggestions (Step 4)
-                else if (data.analysisResult) setCurrentStep(3); // Personalize (Step 3) - Skip Analysis (Step 2)
-                else setCurrentStep(0);
-                
+    let cancelled = false;
+
+    const init = async () => {
+      // auth.authStateReady() resolves once Firebase has determined auth state
+      // (no more ambiguous null on cold start)
+      await auth.authStateReady();
+      if (cancelled) return;
+
+      const user = auth.currentUser;
+
+      if (id) {
+        // Restore specific campaign from URL
+        setCampaignId(id);
+        try {
+          const data = await CampaignService.getCampaign(id);
+          if (!cancelled && data) {
+            restoreCampaignData(data, params.get('step'));
+            setSaveStatus('saved');
+          }
+        } catch (err) {
+          console.error("Failed to restore campaign", err);
+          if (!cancelled) {
+            setFetchError(true);
+            setSaveStatus('error');
+          }
+        } finally {
+          if (!cancelled) setIsInitializing(false);
+        }
+      } else if (user) {
+        // No ?id in URL — try loading user's most recent campaign
+        try {
+          const campaigns = await CampaignService.getUserCampaigns();
+          if (!cancelled && campaigns && campaigns.length > 0) {
+            // Sort by updatedAt descending — Firestore Timestamps serialize as { _seconds, _nanoseconds }
+            const sorted = [...campaigns].sort((a: any, b: any) => {
+              const ta = a.updatedAt?._seconds ?? a.updatedAt?.seconds ?? a.updatedAt ?? 0;
+              const tb = b.updatedAt?._seconds ?? b.updatedAt?.seconds ?? b.updatedAt ?? 0;
+              return tb - ta;
+            });
+            const latest = sorted[0];
+            if (latest?.id) {
+              setCampaignId(latest.id);
+              // Update URL so future refreshes restore correctly
+              const url = new URL(window.location.href);
+              url.searchParams.set('id', latest.id);
+              window.history.replaceState({}, '', url.toString());
+
+              const data = await CampaignService.getCampaign(latest.id);
+              if (!cancelled && data) {
+                restoreCampaignData(data, null);
                 setSaveStatus('saved');
+              }
             }
-         })
-         .catch(err => {
-             console.error("Failed to restore campaign", err);
-             setSaveStatus('error');
-         })
-         .finally(() => {
-             setIsInitializing(false);
-         });
-    } else {
-        setIsInitializing(false);
-    }
+          }
+        } catch (err) {
+          console.error("Failed to load latest campaign", err);
+          // Non-fatal — show StepWelcome
+        } finally {
+          if (!cancelled) setIsInitializing(false);
+        }
+      } else {
+        // Confirmed: not logged in
+        if (!cancelled) setIsInitializing(false);
+      }
+    };
+
+    init();
+    return () => { cancelled = true; };
   }, []); // Run once on mount
 
   // Sync ID to URL
@@ -250,7 +318,7 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }
 
   // Show error if restoration failed (and we have an ID we tried to load)
-  if (saveStatus === 'error' && campaignId) {
+  if (fetchError && campaignId) {
       return (
           <div className="flex items-center justify-center min-h-screen bg-white dark:bg-black p-4">
               <div className="max-w-md w-full bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-2xl p-8 text-center shadow-2xl">
@@ -268,15 +336,16 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                       >
                         Retry Connection
                       </button>
-                      <button 
-                        onClick={() => {
-                            // Clear ID and reset
-                            const url = new URL(window.location.href);
-                            url.searchParams.delete('id');
-                            window.history.pushState({}, '', url.toString());
-                            setCampaignId(null);
-                            setSaveStatus('idle');
-                        }}
+                        <button 
+                          onClick={() => {
+                              // Clear ID and reset
+                              const url = new URL(window.location.href);
+                              url.searchParams.delete('id');
+                              window.history.pushState({}, '', url.toString());
+                              setCampaignId(null);
+                              setSaveStatus('idle');
+                              setFetchError(false);
+                          }}
                         className="w-full py-3 bg-transparent border border-black/10 dark:border-white/10 text-black dark:text-white rounded-xl font-bold text-sm hover:bg-black/5 dark:hover:bg-white/5"
                       >
                         Start New Campaign
