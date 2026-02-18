@@ -47,7 +47,6 @@ export const ChatInterface = ({ initialMessage }) => {
       if (data.messages && data.messages.length > 0) {
         setMessages(data.messages);
       } else {
-        // Show welcome message if no history
         setMessages([
           {
             role: 'assistant',
@@ -71,7 +70,6 @@ export const ChatInterface = ({ initialMessage }) => {
   useEffect(() => {
     if (initialMessage && sessionId && !hasInitialized.current) {
       hasInitialized.current = true;
-      // Send the initial message
       const sendInitial = async () => {
         const userMessage = {
           role: 'user',
