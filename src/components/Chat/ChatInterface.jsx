@@ -25,7 +25,6 @@ export const ChatInterface = ({ initialMessage }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Load chat history on mount (after auth is ready)
   useEffect(() => {
     if (authLoading || !user) return;
 
@@ -69,7 +68,6 @@ export const ChatInterface = ({ initialMessage }) => {
     }
   };
 
-  // Send initial message if provided
   useEffect(() => {
     if (initialMessage && sessionId && !hasInitialized.current) {
       hasInitialized.current = true;
