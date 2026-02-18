@@ -11,6 +11,8 @@ import chatRouter from "./api/chat.js";
 import influencersRouter from "./api/influencers.js";
 import searchRouter from "./api/searchAPI.js";
 import brandRouter from "./api/brand.js";
+import campaignRouter from "./api/campaigns.js";
+import reportRouter from "./api/report.js";
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -54,6 +56,8 @@ app.use("/api/v1", chatRouter);
 app.use("/api/v1", influencersRouter);
 app.use("/api/v1", searchRouter);
 app.use("/api/v1", brandRouter);
+app.use("/api/v1/campaigns", campaignRouter);
+app.use("/api/v1/campaigns", reportRouter);
 
 app.use((err, _req, res, _next) => {
     if (err.code === "LIMIT_FILE_SIZE") {

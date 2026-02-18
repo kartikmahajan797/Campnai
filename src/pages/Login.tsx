@@ -27,7 +27,7 @@ const Login = () => {
       console.log('[Login] Auth state changed:', user ? user.uid : 'No user');
 
       if (user) {
-        navigate('/dashboard', { replace: true });
+        navigate('/campaign/new', { replace: true });
       } else {
         setIsCheckingAuth(false);
       }
@@ -52,7 +52,7 @@ const Login = () => {
       console.log('Login successful:', userCredential.user);
       alert('Login successful!');
       // client-side navigate to dashboard
-      navigate('/dashboard', { replace: true });
+      navigate('/campaign/new', { replace: true });
     } catch (error: any) {
       console.error('Login error:', error);
       const message = error?.message || 'Login failed';
@@ -74,7 +74,7 @@ const Login = () => {
 
       const result = await signInWithPopup(auth, provider);
       console.log('Google login valid:', result.user.uid);
-      navigate('/dashboard', { replace: true });
+      navigate('/campaign/new', { replace: true });
 
     } catch (error: any) {
       console.error('[Auth Debug] Popup error:', error);

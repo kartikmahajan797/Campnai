@@ -6,6 +6,7 @@ import StepUpload from '../components/campaign-flow/steps/StepUpload';
 import StepAnalysis from '../components/campaign-flow/steps/StepAnalysis';
 import StepPersonalize from '../components/campaign-flow/steps/StepPersonalize';
 import StepSuggestions from '../components/campaign-flow/steps/StepSuggestions';
+import StepReport from '../components/campaign-flow/steps/StepReport';
 
 
 const StepRouter: React.FC = () => {
@@ -22,6 +23,8 @@ const StepRouter: React.FC = () => {
       return <StepPersonalize />;
     case 4:
       return <StepSuggestions />;
+    case 5:
+      return <StepReport />;
     default:
       return <StepWelcome />;
   }

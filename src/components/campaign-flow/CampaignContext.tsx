@@ -46,6 +46,8 @@ export interface InfluencerSuggestion {
   executionSteps: string[];
 }
 
+import { CampaignService } from '../../services/CampaignService';
+
 interface CampaignContextType {
   currentStep: number;
   setCurrentStep: (step: number) => void;
@@ -62,6 +64,12 @@ interface CampaignContextType {
   isAnalyzing: boolean;
   setIsAnalyzing: (val: boolean) => void;
   resetCampaign: () => void;
+  campaignId: string | null;
+  setCampaignId: (id: string | null) => void;
+  shortlist: string[];
+  addToShortlist: (id: string) => void;
+  removeFromShortlist: (id: string) => void;
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error';
 }
 
 const CampaignContext = createContext<CampaignContextType | null>(null);
@@ -73,54 +81,138 @@ export const useCampaign = () => {
 };
 
 export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentStep, setCurrentStep] = useState(() => {
-    const saved = localStorage.getItem('campaign_step');
-    const step = saved ? parseInt(saved, 10) : 0;
-    return step > 1 ? step : 0;
-  });
-  
+  const [currentStep, setCurrentStep] = useState(0);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(() => {
-    const saved = localStorage.getItem('campaign_analysis');
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  const [preferences, setPreferences] = useState<CampaignPreferences>(() => {
-    const saved = localStorage.getItem('campaign_preferences');
-    return saved ? JSON.parse(saved) : {
+  const [preferences, setPreferences] = useState<CampaignPreferences>({
       primaryGoal: '',
       budgetRange: '',
       timeline: '',
-    };
   });
 
-  const [suggestions, setSuggestions] = useState<InfluencerSuggestion[]>(() => {
-    const saved = localStorage.getItem('campaign_suggestions');
-    return saved ? JSON.parse(saved) : [];
-  });
-
+  const [suggestions, setSuggestions] = useState<InfluencerSuggestion[]>([]);
+  const [shortlist, setShortlist] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // Database Synchronization for Preferences
+  useEffect(() => {
+      if (campaignId && preferences.primaryGoal) {
+          setSaveStatus('saving');
+          const timeoutId = setTimeout(() => {
+              CampaignService.updatePreferences(campaignId, preferences)
+                  .then(() => setSaveStatus('saved'))
+                  .catch((e) => {
+                      console.error(e);
+                      setSaveStatus('error');
+                  });
+          }, 1000); // Debounce
+          return () => clearTimeout(timeoutId);
+      }
+  }, [preferences, campaignId]);
+
+  // Database Synchronization for Suggestions
+  useEffect(() => {
+      if (campaignId && suggestions.length > 0) {
+          setSaveStatus('saving');
+          const timeoutId = setTimeout(() => {
+              CampaignService.updateSuggestions(campaignId, suggestions)
+                  .then(() => setSaveStatus('saved'))
+                  .catch((e) => {
+                      console.error(e);
+                      setSaveStatus('error');
+                  });
+          }, 1000); // Debounce
+          return () => clearTimeout(timeoutId);
+      }
+  }, [suggestions, campaignId]);
+
+  // Shortlist helpers
+  const addToShortlist = useCallback((id: string) => {
+      setShortlist(prev => {
+          const newList = [...prev, id];
+          if (campaignId) {
+             setSaveStatus('saving');
+             // Send FULL list to backend
+             CampaignService.saveShortlist(campaignId, newList)
+                .then(() => setSaveStatus('saved'))
+                .catch((e) => {
+                    console.error(e);
+                    setSaveStatus('error');
+                });
+          }
+          return newList;
+      });
+  }, [campaignId]);
+
+  const removeFromShortlist = useCallback((id: string) => {
+      setShortlist(prev => {
+          const newList = prev.filter(item => item !== id);
+          if (campaignId) {
+             setSaveStatus('saving');
+             // Send FULL list to backend
+             CampaignService.saveShortlist(campaignId, newList)
+                .then(() => setSaveStatus('saved'))
+                .catch((e) => {
+                    console.error(e);
+                    setSaveStatus('error');
+                });
+          }
+          return newList;
+      });
+  }, [campaignId]);
+
+  // URL Persistence Logic
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem('campaign_step', currentStep.toString());
-  }, [currentStep]);
-
-  useEffect(() => {
-    if (analysisResult) {
-      localStorage.setItem('campaign_analysis', JSON.stringify(analysisResult));
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    
+    if (id && !campaignId) {
+       // Restore from URL
+       setCampaignId(id);
+       setSaveStatus('saving'); // UI indicator
+       
+       CampaignService.getCampaign(id)
+         .then(data => {
+            if (data) {
+                if (data.analysisResult) setAnalysisResult(data.analysisResult);
+                if (data.preferences) setPreferences(data.preferences || { primaryGoal: '', budgetRange: '', timeline: '' });
+                if (data.suggestions) setSuggestions(data.suggestions || []);
+                if (data.shortlist) setShortlist(data.shortlist || []);
+                
+                // Determine step based on data
+                if (data.shortlist && data.shortlist.length > 0) setCurrentStep(4); // Suggestions/Shortlist (Step 4)
+                else if (data.suggestions && data.suggestions.length > 0) setCurrentStep(4); // Suggestions (Step 4)
+                else if (data.analysisResult) setCurrentStep(3); // Personalize (Step 3) - Skip Analysis (Step 2)
+                else setCurrentStep(0);
+                
+                setSaveStatus('saved');
+            }
+         })
+         .catch(err => {
+             console.error("Failed to restore campaign", err);
+             setSaveStatus('error');
+         })
+         .finally(() => {
+             setIsInitializing(false);
+         });
+    } else {
+        setIsInitializing(false);
     }
-  }, [analysisResult]);
+  }, []); // Run once on mount
 
+  // Sync ID to URL
   useEffect(() => {
-    localStorage.setItem('campaign_preferences', JSON.stringify(preferences));
-  }, [preferences]);
-
-  useEffect(() => {
-    if (suggestions.length > 0) {
-      localStorage.setItem('campaign_suggestions', JSON.stringify(suggestions));
-    }
-  }, [suggestions]);
+      if (campaignId) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('id', campaignId);
+          window.history.replaceState({}, '', url.toString());
+      }
+  }, [campaignId]);
 
   const resetCampaign = useCallback(() => {
     setCurrentStep(0);
@@ -132,16 +224,68 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       timeline: '',
     });
     setSuggestions([]);
+    setShortlist([]);
     setIsAnalyzing(false);
-
-    localStorage.removeItem('campaign_step');
-    localStorage.removeItem('campaign_analysis');
-    localStorage.removeItem('campaign_preferences');
-    localStorage.removeItem('campaign_suggestions');
+    setCampaignId(null);
+    setSaveStatus('idle');
+    
+    // Clear URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('id');
+    window.history.pushState({}, '', url.toString());
   }, []);
 
   const nextStep = useCallback(() => setCurrentStep(s => Math.min(s + 1, 5)), []);
   const prevStep = useCallback(() => setCurrentStep(s => Math.max(s - 1, 0)), []);
+
+  if (isInitializing) {
+      return (
+          <div className="flex items-center justify-center min-h-screen bg-white dark:bg-black">
+              <div className="flex flex-col items-center gap-4">
+                  <div className="w-8 h-8 border-4 border-black/10 dark:border-white/10 border-t-black dark:border-t-white rounded-full animate-spin" />
+                  <p className="text-sm font-medium text-black/40 dark:text-white/40">Restoring session...</p>
+              </div>
+          </div>
+      );
+  }
+
+  // Show error if restoration failed (and we have an ID we tried to load)
+  if (saveStatus === 'error' && campaignId) {
+      return (
+          <div className="flex items-center justify-center min-h-screen bg-white dark:bg-black p-4">
+              <div className="max-w-md w-full bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-2xl p-8 text-center shadow-2xl">
+                  <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-2xl">⚠️</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-black dark:text-white mb-2">Session Restoration Failed</h2>
+                  <p className="text-sm text-black/60 dark:text-white/60 mb-6">
+                      We couldn't load your campaign data. This might be due to a network connection or permissions issue.
+                  </p>
+                  <div className="flex flex-col gap-3">
+                      <button 
+                        onClick={() => window.location.reload()}
+                        className="w-full py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold text-sm hover:opacity-90"
+                      >
+                        Retry Connection
+                      </button>
+                      <button 
+                        onClick={() => {
+                            // Clear ID and reset
+                            const url = new URL(window.location.href);
+                            url.searchParams.delete('id');
+                            window.history.pushState({}, '', url.toString());
+                            setCampaignId(null);
+                            setSaveStatus('idle');
+                        }}
+                        className="w-full py-3 bg-transparent border border-black/10 dark:border-white/10 text-black dark:text-white rounded-xl font-bold text-sm hover:bg-black/5 dark:hover:bg-white/5"
+                      >
+                        Start New Campaign
+                      </button>
+                  </div>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <CampaignContext.Provider value={{
@@ -152,6 +296,9 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       suggestions, setSuggestions,
       isAnalyzing, setIsAnalyzing,
       resetCampaign,
+      campaignId, setCampaignId,
+      shortlist, addToShortlist, removeFromShortlist,
+      saveStatus
     }}>
       {children}
     </CampaignContext.Provider>

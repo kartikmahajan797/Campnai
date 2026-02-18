@@ -12,6 +12,7 @@ import Campaigns from "./pages/Campaigns";
 import NewCampaignSuccess from "./components/campaigns/NewCampaignSuccess";
 import CampaignDetails from "./components/campaigns/CampaignDetails";
 import CampaignCommandCenter from "./components/campaigns/CampaignCommandCenter";
+import CampaignHistory from "./components/dashboard/CampaignHistory";
 import CampaignFlowPage from "./pages/CampaignFlowPage";
 import NotFound from "./pages/NotFound";
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/:sessionId" element={<Dashboard />} />
+            <Route path="/dashboard/history" element={<CampaignHistory />} />
             <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/campaigns/new/success" element={<NewCampaignSuccess />} />
             <Route path="/campaigns/:id" element={<CampaignDetails />} />

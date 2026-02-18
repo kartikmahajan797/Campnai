@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '../DashboardLayout';
 import { ChevronRight, CheckSquare, MessageSquare, Mail, AlertCircle, Phone } from 'lucide-react';
 import { useChatSessions } from '../../lib/useChatSessions';
+import { CampaignService } from '../../services/CampaignService';
 
 const CampaignDetails = () => {
     const { id } = useParams();
@@ -10,21 +11,51 @@ const CampaignDetails = () => {
     const decodedId = decodeURIComponent(id || 'Campaign');
     const { sessions: chatSessions, isLoading: isSessionsLoading, deleteSession } = useChatSessions();
 
-    // Mock data based on the image provided
-    const initialInfluencers = [
-        { id: 1, name: 'Aditi Kapoor', handle: '@aditix', city: 'Mumbai', whatsapp: 'No Whatsapp', email: 'No Email', selected: true },
-        { id: 2, name: 'Rahul Verma', handle: '@rahulv', city: 'Delhi', whatsapp: '+91 9823 456789', email: 'rahul@example.com', selected: true },
-        { id: 3, name: 'Simran Sharma', handle: '@simran.s', city: 'Mumbai', whatsapp: 'No Whatsapp', email: 'simran@gmail.com', selected: true },
-        { id: 4, name: 'Ankit Yadav', handle: '@ankity_', city: 'Bangalore', whatsapp: 'No Email', email: 'No Email', selected: true },
-        { id: 5, name: 'Priya Singh', handle: '@priyargs', city: 'Delhi', whatsapp: '+91 9810 123456', email: 'psingh@example.com', selected: true },
-        // Add more mock data if needed for scroll testing
-    ];
+    const [influencers, setInfluencers] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [campaignName, setCampaignName] = useState('Campaign');
 
-    const [influencers, setInfluencers] = useState(initialInfluencers);
     const selectedCount = influencers.filter(i => i.selected).length;
     const allSelected = influencers.length > 0 && selectedCount === influencers.length;
 
-    const toggleSelection = (id: number) => {
+    React.useEffect(() => {
+        const loadCampaign = async () => {
+            if (!id) return;
+            try {
+                console.log("[CampaignDetails] Loading ID:", id);
+                const campaign = await CampaignService.getCampaign(id);
+                console.log("[CampaignDetails] Loaded data:", campaign);
+                
+                if (campaign) {
+                    setCampaignName(campaign.name || `Campaign ${id.slice(0, 5)}`);
+                    
+                    const shortlistedIds = campaign.shortlist || [];
+                    const suggestions = campaign.suggestions || [];
+                    
+                    console.log("[CampaignDetails] Total Suggestions:", suggestions.length);
+                    console.log("[CampaignDetails] Shortlisted IDs:", shortlistedIds.length);
+
+                    const displayList = suggestions
+                        .filter(inf => {
+                            // Convert both to strings for safety
+                            const sid = String(inf.id);
+                            return shortlistedIds.map(String).includes(sid);
+                        })
+                        .map(inf => ({ ...inf, selected: true }));
+                    
+                    console.log("[CampaignDetails] Display List Count:", displayList.length);
+                    setInfluencers(displayList);
+                }
+            } catch (error) {
+                console.error("[CampaignDetails] Load Error:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadCampaign();
+    }, [id]);
+
+    const toggleSelection = (id: string) => {
         setInfluencers(prev => prev.map(inf =>
             inf.id === id ? { ...inf, selected: !inf.selected } : inf
         ));
@@ -50,92 +81,93 @@ const CampaignDetails = () => {
             onDeleteSession={deleteSession}
         >
             <div className="p-8 min-h-full bg-background">
-                <h2 className="text-xl font-medium text-foreground mb-6">Imported Influencers ({influencers.length})</h2>
-
-                {/* Table Container */}
-                <div className="w-full bg-card border border-border rounded-xl overflow-hidden shadow-xl mb-24">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-muted-foreground">
-                            <thead className="text-xs uppercase bg-muted/50 text-foreground font-medium">
-                                <tr>
-                                    <th className="px-6 py-4 w-12">
-                                        <div
-                                            onClick={toggleAll}
-                                            className={`w-4 h-4 rounded border ${allSelected ? 'bg-primary/20 border-primary' : 'border-border bg-muted/50'} flex items-center justify-center cursor-pointer transition-colors`}
-                                        >
-                                            {allSelected && <CheckSquare size={12} className="text-primary opacity-100" />}
-                                        </div>
-                                    </th>
-                                    <th className="px-6 py-4 font-medium">Name</th>
-                                    <th className="px-6 py-4 font-medium">IG Handle</th>
-                                    <th className="px-6 py-4 font-medium">City</th>
-                                    <th className="px-6 py-4 font-medium">WhatsApp</th>
-                                    <th className="px-6 py-4 font-medium">Email</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border/50">
-                                {influencers.map((influencer) => (
-                                    <tr
-                                        key={influencer.id}
-                                        className={`transition-colors group ${influencer.selected ? 'bg-primary/5' : 'hover:bg-muted/20'}`}
-                                        onClick={() => toggleSelection(influencer.id)}
-                                    >
-                                        <td className="px-6 py-4">
-                                            <div
-                                                className={`w-5 h-5 rounded border ${influencer.selected ? 'bg-primary/20 border-primary' : 'border-border bg-muted/50'} flex items-center justify-center cursor-pointer transition-colors`}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    toggleSelection(influencer.id);
-                                                }}
-                                            >
-                                                {influencer.selected && <CheckSquare size={14} className="text-primary" />}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-foreground">{influencer.name}</td>
-                                        <td className="px-6 py-4 text-muted-foreground">{influencer.handle}</td>
-                                        <td className="px-6 py-4 text-muted-foreground">{influencer.city}</td>
-                                        <td className="px-6 py-4">
-                                            {influencer.whatsapp.startsWith('+') ? (
-                                                <span className="text-foreground">{influencer.whatsapp}</span>
-                                            ) : (
-                                                <span className="flex items-center gap-1.5 text-orange-400/80 text-xs bg-orange-500/10 px-2 py-1 rounded-md w-fit">
-                                                    <AlertCircle size={12} />
-                                                    {influencer.whatsapp}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {influencer.email.includes('@') ? (
-                                                <span className="text-foreground">{influencer.email}</span>
-                                            ) : (
-                                                <span className="flex items-center gap-1.5 text-orange-400/80 text-xs bg-orange-500/10 px-2 py-1 rounded-md w-fit">
-                                                    <AlertCircle size={12} />
-                                                    {influencer.email}
-                                                </span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                {isLoading ? (
+                    <div className="flex items-center justify-center h-64">
+                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
-                </div>
+                ) : (
+                    <>
+                        <h2 className="text-xl font-medium text-foreground mb-6">Shortlisted Influencers ({influencers.length})</h2>
 
-                {/* Bottom Action Bar */}
-                <div className="fixed bottom-0 left-0 right-0 p-4 border-t border-border bg-background/90 backdrop-blur-md z-50 flex items-center justify-between pl-72">
-                    {/* pl-72 accounts for sidebar width (w-64) + padding */}
-                    <div className="text-muted-foreground text-sm">
-                        <span className="text-foreground font-medium">{selectedCount} influencers</span> selected
-                    </div>
+                        {/* Table Container */}
+                        <div className="w-full bg-card border border-border rounded-xl overflow-hidden shadow-xl mb-24">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm text-muted-foreground">
+                                    <thead className="text-xs uppercase bg-muted/50 text-foreground font-medium">
+                                        <tr>
+                                            <th className="px-6 py-4 w-12">
+                                                <div
+                                                    onClick={toggleAll}
+                                                    className={`w-4 h-4 rounded border ${allSelected ? 'bg-primary/20 border-primary' : 'border-border bg-muted/50'} flex items-center justify-center cursor-pointer transition-colors`}
+                                                >
+                                                    {allSelected && <CheckSquare size={12} className="text-primary opacity-100" />}
+                                                </div>
+                                            </th>
+                                            <th className="px-6 py-4 font-medium">Name</th>
+                                            <th className="px-6 py-4 font-medium">IG Handle</th>
+                                            <th className="px-6 py-4 font-medium">Location</th>
+                                            <th className="px-6 py-4 font-medium">Followers</th>
+                                            <th className="px-6 py-4 font-medium">Engagement</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border/50">
+                                        {influencers.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                                                    No influencers shortlisted. Go back to suggestions to select some.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            influencers.map((influencer) => (
+                                                <tr
+                                                    key={influencer.id}
+                                                    className={`transition-colors group ${influencer.selected ? 'bg-primary/5' : 'hover:bg-muted/20'}`}
+                                                    onClick={() => toggleSelection(influencer.id)}
+                                                >
+                                                    <td className="px-6 py-4">
+                                                        <div
+                                                            className={`w-5 h-5 rounded border ${influencer.selected ? 'bg-primary/20 border-primary' : 'border-border bg-muted/50'} flex items-center justify-center cursor-pointer transition-colors`}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                toggleSelection(influencer.id);
+                                                            }}
+                                                        >
+                                                            {influencer.selected && <CheckSquare size={14} className="text-primary" />}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 font-medium text-foreground">{influencer.name}</td>
+                                                    <td className="px-6 py-4 text-muted-foreground">{influencer.handle}</td>
+                                                    <td className="px-6 py-4 text-muted-foreground">{influencer.location !== '—' ? influencer.location : '-'}</td>
+                                                    <td className="px-6 py-4 text-muted-foreground">{influencer.followers}</td>
+                                                   <td className="px-6 py-4 text-muted-foreground">
+                                                        {typeof influencer.performanceBenefits === 'string' && influencer.performanceBenefits.includes('%') ? `${influencer.performanceBenefits.split('%')[0]}%` : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
-                    <button
-                        onClick={() => setIsReviewModalOpen(true)}
-                        className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2.5 rounded-lg font-medium transition shadow-lg shadow-primary/20"
-                    >
-                        Review & Reach Out
-                        <ChevronRight size={16} />
-                    </button>
-                </div>
+                        {/* Bottom Action Bar */}
+                        <div className="fixed bottom-0 left-0 right-0 p-4 border-t border-border bg-background/90 backdrop-blur-md z-50 flex items-center justify-between pl-72">
+                            {/* pl-72 accounts for sidebar width (w-64) + padding */}
+                            <div className="text-muted-foreground text-sm">
+                                <span className="text-foreground font-medium">{selectedCount} influencers</span> selected
+                            </div>
+
+                            <button
+                                onClick={() => setIsReviewModalOpen(true)}
+                                disabled={selectedCount === 0}
+                                className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2.5 rounded-lg font-medium transition shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Review & Reach Out
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Review Modal */}
