@@ -13,6 +13,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '@/config/api';
 import { useChatSessions } from '../lib/useChatSessions';
+import { CampaignService } from '@/services/CampaignService';
 
 const Campaigns = () => {
     const navigate = useNavigate();
@@ -102,9 +103,7 @@ const Campaigns = () => {
             'M/F SPLIT', 'INDIA 1/2 SPLIT', 'AGE CONCENTRATION', 'BRAND FIT',
             'VIBE', 'CONTACT NO.', 'EMAIL'
         ];
-        const csvContent = headers.join('\t'); // User mentioned tabs in the prompt "PROFILE LINK NAME..." look like tab separated or space but typical "CSV" usually uses commas, however the user input had large spaces. I will use comma as standard for CSV, but join with comma.
-        // Re-reading user request: "PROFILE LINK\tNAME\tGENDER..." - actually it looks like they pasted from a spreadsheet. CSV usually uses commas. 
-        // I will use commas for a standard CSV.
+        const csvContent = headers.join('\t'); 
         const csvString = headers.join(',');
 
         const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
@@ -221,13 +220,7 @@ const Campaigns = () => {
                             {isUploading ? 'Uploading...' : 'Upload CSV'}
                         </button>
 
-                        {/* Temporary Navigation Code as per user request */}
-                        <button
-                            onClick={() => navigate('/campaigns/new/success')}
-                            className="text-muted-foreground hover:text-primary text-sm font-medium underline underline-offset-4"
-                        >
-                            View Success Screen
-                        </button>
+
                     </div>
                 </div>
 
@@ -255,8 +248,7 @@ const Campaigns = () => {
                                     <TableHead className="text-muted-foreground min-w-[150px]">Name</TableHead>
                                     <TableHead className="text-muted-foreground">Gender</TableHead>
                                     <TableHead className="text-muted-foreground min-w-[120px]">Location</TableHead>
-                                    {/* <TableHead className="text-slate-400">Type</TableHead>
-                                    <TableHead className="text-slate-400 min-w-[120px]">Niche</TableHead>
+                                    {/* <TableHead className="text-slate-400 min-w-[120px]">Niche</TableHead>
                                     <TableHead className="text-slate-400">Followers</TableHead>
                                     <TableHead className="text-slate-400">Avg Views</TableHead>
                                     <TableHead className="text-slate-400">Engagement</TableHead>
@@ -299,8 +291,7 @@ const Campaigns = () => {
                                             <TableCell className="font-medium text-foreground">{influencer.profile?.name || '-'}</TableCell>
                                             <TableCell className="text-muted-foreground">{influencer.profile?.gender || '-'}</TableCell>
                                             <TableCell className="text-muted-foreground">{influencer.profile?.location || '-'}</TableCell>
-                                            {/* <TableCell className="text-slate-400">{influencer.profile?.type || '-'}</TableCell>
-                                            <TableCell className="text-slate-400">{influencer.brand?.niche || '-'}</TableCell>
+                                            {/* <TableCell className="text-slate-400">{influencer.brand?.niche || '-'}</TableCell>
                                             <TableCell className="text-slate-300 font-mono text-xs">{influencer.metrics?.followers?.toLocaleString() || '0'}</TableCell>
                                             <TableCell className="text-slate-300 font-mono text-xs">{influencer.metrics?.avg_views?.toLocaleString() || '0'}</TableCell>
                                             <TableCell className="text-slate-300 font-mono text-xs">{influencer.metrics?.engagement_rate ? `${influencer.metrics.engagement_rate}%` : '0%'}</TableCell>

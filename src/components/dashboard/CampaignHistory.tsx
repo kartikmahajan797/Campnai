@@ -103,55 +103,75 @@ const CampaignHistory = () => {
                         {campaigns.map((campaign) => (
                             <div 
                                 key={campaign.id} 
-                                className="group bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-all duration-300 hover:border-primary/50 relative overflow-hidden flex flex-col h-[280px]"
+                                className="group relative w-full overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 p-8 flex flex-col items-center border border-zinc-200 dark:border-zinc-800 transition-all duration-200 shadow-sm min-h-[380px]"
                             >
-                                <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <ArrowRight className="text-primary" />
+                                <div className="w-full flex justify-between items-center mb-6">
+                                    <span className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide uppercase border ${
+                                        campaign.status === 'completed' ? 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30' :
+                                        campaign.status === 'active' ? 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' :
+                                        'bg-zinc-50 text-zinc-500 border-zinc-100 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                    }`}>
+                                        {campaign.status || 'DRAFT'}
+                                    </span>
+                                    <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500 flex items-center gap-1.5 uppercase tracking-wider">
+                                        <Calendar size={12} />
+                                        {formatDate(campaign.createdAt)}
+                                    </span>
                                 </div>
 
-                                <div className="mb-4">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase ${
-                                            campaign.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                            campaign.status === 'active' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                            'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
-                                        }`}>
-                                            {campaign.status || 'DRAFT'}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <Calendar size={10} />
-                                            {formatDate(campaign.createdAt)}
-                                        </span>
-                                    </div>
-                                    <h3 className="text-lg font-bold text-foreground mb-1 line-clamp-1" title={campaign.name}>
+                                {/* Delete Button - Absolute positioned or top right */}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm("Are you sure you want to delete this campaign?")) {
+                                            CampaignService.deleteCampaign(campaign.id)
+                                                .then(() => {
+                                                    setCampaigns(prev => prev.filter(c => c.id !== campaign.id));
+                                                })
+                                                .catch(err => {
+                                                    console.error("Failed to delete", err);
+                                                    alert("Failed to delete campaign");
+                                                });
+                                        }
+                                    }}
+                                    className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                    title="Delete Campaign"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+
+                                <div className="text-center mb-6 w-full">
+                                    <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-2 truncate px-2" title={campaign.name}>
                                         {campaign.name || 'Untitled Campaign'}
                                     </h3>
-                                </div>
-
-                                <div className="space-y-2 flex-1 overflow-hidden">
                                     {campaign.analysisResult?.industry && (
-                                        <div className="text-sm">
-                                            <span className="text-muted-foreground">Industry:</span> <span className="font-medium text-foreground">{campaign.analysisResult.industry}</span>
-                                        </div>
+                                         <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider line-clamp-1">
+                                            {campaign.analysisResult.industry}
+                                        </p>
                                     )}
-                                    {campaign.analysisResult?.marketing_goal && (
-                                        <div className="text-sm">
-                                            <span className="text-muted-foreground">Goal:</span> <span className="font-medium text-foreground line-clamp-2">{campaign.analysisResult.marketing_goal}</span>
+                                </div>
+
+                                <div className="flex-1 w-full flex flex-col items-center justify-center mb-6 px-4">
+                                    {campaign.analysisResult?.marketing_goal ? (
+                                        <div className="text-center">
+                                            <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 tracking-widest uppercase block mb-2">GOAL</span>
+                                            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 line-clamp-3 leading-relaxed">
+                                                {campaign.analysisResult.marketing_goal}
+                                            </p>
                                         </div>
-                                    )}
-                                    {!campaign.analysisResult && (
-                                        <div className="text-sm text-muted-foreground italic mt-4">
-                                            Draft setup pending...
+                                    ) : (
+                                        <div className="text-center text-sm font-medium text-zinc-400 italic">
+                                            Setup pending...
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="mt-4 pt-4 border-t border-border flex items-center gap-3">
+                                <div className="w-full mt-auto">
                                     <button 
                                         onClick={() => handleResume(campaign.id)}
-                                        className="w-full bg-primary/5 hover:bg-primary/10 text-primary font-medium py-2 rounded-lg transition text-center text-sm border border-primary/10 hover:border-primary/20 cursor-pointer"
+                                        className="w-full h-12 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-90 font-bold rounded-lg text-sm tracking-wide shadow-sm transition-all flex items-center justify-center gap-2"
                                     >
-                                        Resume Campaign
+                                        Resume Campaign <ArrowRight size={16} />
                                     </button>
                                 </div>
                             </div>

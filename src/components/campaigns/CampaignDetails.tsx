@@ -11,6 +11,7 @@ import { calculateInfluencerDisplayFields, formatFollowers, normalizeInfluencerD
 import { FreelancerProfileCard } from '../ui/freelancer-profile-card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { PremiumBackground } from '../ui/premium-background';
+import OutreachReviewModal from './OutreachReviewModal';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function parseER(val: string | number | null | undefined): string {
@@ -24,7 +25,8 @@ function parseER(val: string | number | null | undefined): string {
 const InfluencerModal: React.FC<{
   influencer: InfluencerSuggestion;
   onClose: () => void;
-}> = ({ influencer: inf, onClose }) => {
+  onOutreach: () => void;
+}> = ({ influencer: inf, onClose, onOutreach }) => {
   const igUsername = inf.handle?.replace('@', '') || '';
   const igLink = (inf as any).instagramUrl || (igUsername ? `https://www.instagram.com/${igUsername}` : '#');
 
@@ -94,8 +96,15 @@ const InfluencerModal: React.FC<{
             )}
           </div>
 
+          <button 
+              onClick={onOutreach}
+              className="flex items-center justify-center gap-2 py-3 bg-zinc-900 text-white rounded-2xl font-semibold text-sm hover:bg-zinc-800 transition-colors mt-auto mb-3"
+          >
+            <Zap className="w-4 h-4" /> Send Outreach
+          </button>
+
           <a href={igLink} target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 py-3 bg-black text-white rounded-2xl font-semibold text-sm hover:bg-gray-800 transition-colors mt-auto">
+            className="flex items-center justify-center gap-2 py-3 bg-black text-white rounded-2xl font-semibold text-sm hover:bg-gray-800 transition-colors">
             <Instagram className="w-4 h-4" /> View Profile
           </a>
         </div>
@@ -205,6 +214,18 @@ const CampaignDetails: React.FC = () => {
   const [campaign, setCampaign] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedModal, setSelectedModal] = useState<InfluencerSuggestion | null>(null);
+  const [outreachInfluencer, setOutreachInfluencer] = useState<InfluencerSuggestion | null>(null);
+
+  const handleOutreachSend = (channels: string[], messages: any) => {
+      console.log("Sending outreach via:", channels, messages);
+      // Simulate API call
+      setTimeout(() => {
+        setOutreachInfluencer(null);
+        if (id) {
+            navigate(`/campaigns/${id}/track`);
+        }
+      }, 500);
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -322,6 +343,9 @@ const CampaignDetails: React.FC = () => {
           </div>
 
           {/* Action Button */}
+
+
+          
           <button
               onClick={() => navigate(`/campaign/new?id=${id}&step=5`)}
               className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-black text-white rounded-2xl font-bold text-sm hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl"
@@ -413,11 +437,51 @@ const CampaignDetails: React.FC = () => {
           <InfluencerModal
             influencer={selectedModal}
             onClose={() => setSelectedModal(null)}
+            onOutreach={() => {
+                setOutreachInfluencer(selectedModal);
+                setSelectedModal(null);
+            }}
           />
         )}
+        
+        {outreachInfluencer && (
+            <OutreachReviewModal
+                influencer={outreachInfluencer}
+                onClose={() => setOutreachInfluencer(null)}
+                // onSend={handleOutreachSend} // original
+                onSend={(channels, messages) => {
+                   // Navigate immediately for flow visual per user request
+                   handleOutreachSend(channels, messages);
+                   // Also ensure we are showing the imported state
+                }}
+            />
+        )}
       </AnimatePresence>
+
+      {/* Fixed Bottom Bar for Outreach Launch */}
+      {shortlisted.length > 0 && (
+        <motion.div 
+            initial={{ y: 100 }} animate={{ y: 0 }} 
+            className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-black/10 flex justify-between items-center px-10 shadow-2xl z-40"
+        >
+            <div className="flex items-center gap-4">
+                <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold">
+                    {shortlisted.length} Imported
+                </div>
+                <span className="text-black/60 text-sm font-medium">Ready for outreach sequence</span>
+            </div>
+            
+             <button
+              onClick={() => navigate(`/campaigns/${id}/track`)}
+              className="flex items-center justify-center gap-2 px-8 py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors shadow-lg hover:shadow-zinc-500/20"
+            >
+              Launch Outreach Campaign <ArrowRight className="w-4 h-4" />
+            </button>
+        </motion.div>
+      )}
     </div>
   );
 };
+
 
 export default CampaignDetails;

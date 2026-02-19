@@ -39,7 +39,7 @@ export function normalizeInfluencerData(inf: any): Partial<InfluencerSuggestion>
   const indiaSplit = aud.india_split || inf.indiaSplit || inf.india_split || null;
   const ageGroup   = aud.age_group   || inf.ageGroup   || inf.age_group   || inf.age_concentration || null;
 
-  const brandFit = inf.brandFit || inf.brand_fit || null;
+  const brandFit = (inf.brandFit || inf.brand_fit || '').replace(/,/g, ', ') || null;
   const vibe     = inf.vibe || null;
   const niche    = (inf.niche || inf.type || '').split(',')[0].trim() || null;
   const location = inf.location || null;
