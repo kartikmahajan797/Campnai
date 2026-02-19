@@ -1,11 +1,11 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, HTMLMotionProps } from "framer-motion";
 import { ArrowUpRight, Heart, Star, Users, Zap } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 import { Avatar, AvatarImage, AvatarFallback } from "./avatar";
 
-export interface FreelancerProfileCardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface FreelancerProfileCardProps extends HTMLMotionProps<"div"> {
   name: string;
   title: string;
   avatarSrc: string;
@@ -26,162 +26,157 @@ export const FreelancerProfileCard = React.forwardRef<
   HTMLDivElement,
   FreelancerProfileCardProps
 >(
-    (
-      {
-        className,
-        name,
-        title,
-        avatarSrc,
-        backupSrc,
-        rating,
-        duration,
-        rate,
-        tools,
-        location,
-        handle,
-        instagramUrl,
-        onGetInTouch,
-        onBookmark,
-        isBookmarked,
-        ...props
-      },
-      ref
-    ) => {
-      const igLink = instagramUrl || (handle ? `https://www.instagram.com/${handle.replace('@', '')}` : null);
+  (
+    {
+      className,
+      name,
+      title,
+      avatarSrc,
+      backupSrc,
+      rating,
+      duration,
+      rate,
+      tools,
+      location,
+      handle,
+      instagramUrl,
+      onGetInTouch,
+      onBookmark,
+      isBookmarked,
+      ...props
+    },
+    ref
+  ) => {
+    const igLink = instagramUrl || (handle ? `https://www.instagram.com/${handle.replace('@', '')}` : null);
 
-      return (
-        <motion.div
-          ref={ref}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={cn(
-            "relative w-full overflow-hidden rounded-[2.5rem] bg-white dark:bg-zinc-900 p-6 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.08)] border border-zinc-100 dark:border-zinc-800 flex flex-col items-center",
-            className
-          )}
-          {...props}
-        >
-        {/* Bookmark Icon Only */}
+    return (
+      <motion.div
+        ref={ref}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={cn(
+          "relative w-full overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 p-8 flex flex-col items-center border border-zinc-200 dark:border-zinc-800 transition-all duration-200 shadow-sm min-h-[450px]",
+          className
+        )}
+        {...props}
+      >
+        {/* Bookmark Icon */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onBookmark?.();
           }}
-          className="absolute top-5 right-5 z-20 p-2.5 rounded-full bg-zinc-50/80 dark:bg-zinc-800/80 backdrop-blur-md border border-zinc-100 dark:border-zinc-700 active:scale-90 transition-all"
+          className="absolute top-5 right-5 z-20 p-2.5 rounded-full bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
         >
           <Heart
             className={cn(
-              "w-4 h-4 transition-colors",
+              "w-5 h-5 transition-colors",
               isBookmarked ? "fill-red-500 text-red-500" : "text-zinc-400"
             )}
           />
         </button>
 
-        {/* Profile Image Area */}
-        <div className="relative mt-2 mb-5">
-          <div className="absolute inset-0 rounded-full border-2 border-zinc-50 dark:border-zinc-800 scale-110" />
-          <Avatar className="h-24 w-24 border-4 border-white dark:border-zinc-900 shadow-xl">
-            <AvatarImage src={avatarSrc} alt={name} className="object-cover" />
-            {backupSrc && <AvatarImage src={backupSrc} alt={name} className="object-cover" />}
-            <AvatarFallback className="text-2xl font-bold bg-zinc-100 dark:bg-zinc-800">{name.charAt(0)}</AvatarFallback>
+        {/* Profile Image Area - Larger */}
+        <div className="relative mt-6 mb-8">
+          <Avatar className="h-28 w-28 border-2 border-zinc-100 dark:border-zinc-800 shadow-sm bg-zinc-100 dark:bg-zinc-800">
+            {/* <AvatarImage src={avatarSrc} alt={name} className="object-cover" /> */}
+            {/* {backupSrc && <AvatarImage src={backupSrc} alt={name} className="object-cover" />} */}
+            <AvatarFallback className="text-4xl font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">{name.charAt(0)}</AvatarFallback>
           </Avatar>
         </div>
 
-          {/* Identity */}
-          <div className="text-center mb-6">
-            <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight leading-tight uppercase">
+          {/* Identity - Larger Text */}
+          <div className="text-center mb-10 w-full px-4">
+            <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight mb-3 uppercase truncate">
               {name}
             </h3>
-            <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mt-1 uppercase tracking-wider">
+            <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4">
               {title}
             </p>
+            
             {(location || handle) && (
-              <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
+               <div className="flex items-center justify-center gap-4 text-xs font-medium text-zinc-400 dark:text-zinc-500">
                 {location && location !== '—' && (
-                  <span className="text-[11px] text-zinc-400 flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  <span className="flex items-center gap-1.5">
+                     <svg className="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     {location}
                   </span>
                 )}
-                {handle && handle !== '—' && (
-                  <span className="text-[11px] text-zinc-400">@ {handle.replace('@', '')}</span>
+                 {handle && handle !== '—' && (
+                  <span className="opacity-80">@ {handle.replace('@', '')}</span>
                 )}
-              </div>
+               </div>
             )}
           </div>
 
-        {/* Stats Section (Based on your image) */}
-        <div className="w-full flex items-center justify-between py-4 px-4 mb-6 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-800/20">
-          <StatBox 
-            icon={<Star className="w-4 h-4 text-[#FBBF24] fill-[#FBBF24]" />} 
-            label="SCORE" 
-            value={rating} 
+        {/* Stats Section - Larger */}
+        <div className="w-full grid grid-cols-3 gap-4 py-4 border-y border-zinc-100 dark:border-zinc-800 mb-8">
+          <StatBox
+            icon={<Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />}
+            label="SCORE"
+            value={rating}
           />
-          <div className="w-px h-8 bg-zinc-200/60 dark:bg-zinc-700/60" />
-          <StatBox 
-            icon={<Users className="w-4 h-4 text-[#3B82F6]" />} 
-            label="FANS" 
-            value={duration} 
+          <StatBox
+            icon={<Users className="w-4 h-4 text-blue-500" />}
+            label="FANS"
+            value={duration}
+            className="border-l border-r border-zinc-100 dark:border-zinc-800"
           />
-          <div className="w-px h-8 bg-zinc-200/60 dark:bg-zinc-700/60" />
-          <StatBox 
-            icon={<Zap className="w-4 h-4 text-[#10B981]" />} 
-            label="RATE" 
-            value={rate} 
+          <StatBox
+            icon={<Zap className="w-4 h-4 text-emerald-500" />}
+            label="RATE"
+            value={rate}
           />
         </div>
 
-        {/* Skills - Clean Pills (Based on your image) */}
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
-          {tools?.map((tool) => (
-            <span 
+        {/* Skills - Standard Pills - Slightly Larger */}
+        <div className="flex flex-wrap justify-center gap-2.5 mb-8 w-full px-2">
+          {tools?.slice(0, 3).map((tool) => (
+            <span
               key={tool}
-              className="px-4 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide"
+              className="px-4 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-800 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide border border-zinc-100 dark:border-zinc-700"
             >
               {tool}
             </span>
           ))}
         </div>
 
-          {/* Primary Action */}
-          <div className="w-full flex gap-2">
-              <Button
-                  onClick={onGetInTouch}
-                  className="flex-1 h-12 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-90 font-bold rounded-2xl text-sm transition-all"
-              >
-                  View Profile
-              </Button>
-              {igLink ? (
-                <a
-                  href={igLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-12 w-12 rounded-full border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-50 transition-colors"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <ArrowUpRight className="w-5 h-5" />
-                </a>
-              ) : (
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-12 w-12 rounded-full border-zinc-200 dark:border-zinc-800 text-zinc-500"
-                >
-                    <ArrowUpRight className="w-5 h-5" />
-                </Button>
-              )}
-          </div>
+        {/* Primary Action - Larger Buttons */}
+        <div className="w-full flex gap-3 mt-auto">
+          <Button
+            onClick={onGetInTouch}
+            className="flex-1 h-12 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-90 font-bold rounded-lg text-sm tracking-wide shadow-sm transition-all"
+          >
+            View Profile
+          </Button>
+          {igLink ? (
+            <a
+              href={igLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-12 w-12 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all bg-transparent"
+              onClick={e => e.stopPropagation()}
+            >
+              <ArrowUpRight className="w-5 h-5" />
+            </a>
+          ) : (
+            <div className="h-12 w-12 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-300 dark:text-zinc-700 cursor-not-allowed">
+              <ArrowUpRight className="w-5 h-5" />
+            </div>
+          )}
+        </div>
       </motion.div>
     );
   }
 );
 
-const StatBox = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) => (
-  <div className="flex flex-col items-center flex-1">
-    <div className="flex items-center gap-1.5 mb-1">
+const StatBox = ({ icon, label, value, className }: { icon: React.ReactNode; label: string; value: string | number; className?: string }) => (
+  <div className={cn("flex flex-col items-center justify-center", className)}>
+    <div className="flex items-center gap-1.5 mb-1.5">
       {icon}
-      <span className="text-[10px] font-bold text-zinc-400 tracking-widest">{label}</span>
+      <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 tracking-widest uppercase">{label}</span>
     </div>
-    <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{value}</span>
+    <span className="text-base font-bold text-zinc-900 dark:text-zinc-100">{value}</span>
   </div>
 );
 

@@ -130,12 +130,19 @@ export const ChatInterface = ({ initialMessage }) => {
       };
       setMessages((prev) => [...prev, aiMessage]);
     } catch (err) {
-      setError(err.message || 'Failed to send message. Please try again.');
+      console.error("Chat Error:", err);
+      let userFriendlyError = "I'm having trouble connecting right now. Please try again in a moment.";
+      
+      if (err.message && (err.message.includes("429") || err.message.toLowerCase().includes("quota") || err.message.toLowerCase().includes("too many requests"))) {
+        userFriendlyError = "I'm receiving too many requests at the moment. Please wait a few seconds and try again.";
+      }
+
+      setError(userFriendlyError);
 
       // Show error message in chat
       const errorMessage = {
         role: 'assistant',
-        content: `⚠️ Sorry, I encountered an error: ${err.message}. Please try again.`,
+        content: `⚠️ ${userFriendlyError}`,
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);

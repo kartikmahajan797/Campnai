@@ -219,5 +219,25 @@ export const CampaignService = {
           console.error("Error fetching user campaigns:", e);
           return [];
       }
+  },
+  /**
+   * Delete campaign by ID
+   */
+  async deleteCampaign(campaignId: string) {
+      const user = auth.currentUser || (await waitForAuth()) as any;
+      if (!user) throw new Error("Login required");
+      const token = await user.getIdToken();
+
+      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`, {
+          method: 'DELETE',
+          headers: {
+              'Authorization': `Bearer ${token}`
+          }
+      });
+
+      if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || "Failed to delete campaign");
+      }
   }
 };

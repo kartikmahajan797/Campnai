@@ -104,7 +104,7 @@ async function fetchInfluencers(preferences: {
         vibe,
       });
 
-      const safeId = inf.id || `inf_${idx}_${(handle || inf.name || 'anon').replace(/[^a-z0-9]/gi, '')}`;
+      const safeId = inf.id ? String(inf.id) : `inf_${idx}_${(handle || inf.name || 'anon').replace(/[^a-z0-9]/gi, '')}`;
 
       return {
         id: safeId,
@@ -167,7 +167,7 @@ const InfoModal: React.FC<{
       onClick={onClose}
     >
       <motion.div
-        className="w-full max-w-5xl h-[90vh] bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-[2rem] relative shadow-2xl flex flex-col md:flex-row overflow-hidden transition-colors duration-300"
+        className="w-full max-w-5xl h-[90vh] bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-2xl relative shadow-2xl flex flex-col md:flex-row overflow-hidden transition-colors duration-300"
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -183,28 +183,28 @@ const InfoModal: React.FC<{
         <div className="w-full md:w-1/3 h-full overflow-y-auto bg-black/5 dark:bg-white/5 border-b md:border-b-0 md:border-r border-black/10 dark:border-white/10 p-8 md:p-10 flex flex-col gap-8 transition-colors custom-scrollbar">
           <div className="flex flex-col items-center text-center">
             {(() => {
-              const handle = influencer.instagramUrl 
+              /* const handle = influencer.instagramUrl 
                 ? influencer.instagramUrl.replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, '').replace(/\/$/, '')
                 : (influencer.handle ? influencer.handle.replace('@', '') : undefined);
-              const igFallback = handle ? `https://unavatar.io/instagram/${handle}?fallback=false` : undefined;
+              const igFallback = handle ? `https://unavatar.io/instagram/${handle}?fallback=false` : undefined; */
               
               return (
-                <div className="relative mb-6">
+                <div className="relative mb-8 mt-4">
                    <div className="absolute inset-0 rounded-full border-2 border-zinc-50 dark:border-zinc-800 scale-110" />
-                   <Avatar className="h-32 w-32 border-4 border-white dark:border-zinc-900 shadow-xl mx-auto">
-                     <AvatarImage src={igFallback || ''} alt={influencer.name} className="object-cover" />
-                     {influencer.avatar && <AvatarImage src={influencer.avatar} alt={influencer.name} className="object-cover" />}
-                     <AvatarFallback className="text-4xl font-bold bg-zinc-100 dark:bg-zinc-800">{influencer.name?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
+                   <Avatar className="h-32 w-32 border-4 border-white dark:border-zinc-900 shadow-xl mx-auto bg-zinc-100 dark:bg-zinc-800">
+                     {/* <AvatarImage src={igFallback || ''} alt={influencer.name} className="object-cover" /> */}
+                     {/* {influencer.avatar && <AvatarImage src={influencer.avatar} alt={influencer.name} className="object-cover" />} */}
+                     <AvatarFallback className="text-5xl font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">{influencer.name?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                    </Avatar>
                 </div>
               );
             })()}
-            <h3 className="text-black dark:text-white text-2xl font-bold leading-tight mb-2 transition-colors">{influencer.name}</h3>
+            <h3 className="text-black dark:text-white text-3xl font-bold leading-tight mb-3 transition-colors px-4 text-center">{influencer.name}</h3>
             <a
               href={`https://www.instagram.com/${influencer.handle?.replace('@', '') || ''}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-black/50 dark:text-white/50 text-base font-medium mb-6 transition-colors hover:text-black dark:hover:text-white hover:underline"
+              className="text-black/50 dark:text-white/50 text-lg font-medium mb-8 transition-colors hover:text-black dark:hover:text-white hover:underline"
             >
               {influencer.handle}
             </a>
@@ -258,7 +258,7 @@ const InfoModal: React.FC<{
               href={`https://www.instagram.com/${influencer.handle?.replace('@', '').replace(/https?:\/\/(www\.)?instagram\.com\//gi, '') || ''}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-4 text-sm font-bold text-white dark:text-black bg-black dark:bg-white rounded-xl hover:bg-gray-800 dark:hover:bg-gray-200 transition-all shadow-lg"
+              className="flex items-center justify-center gap-2 w-full py-4 text-sm font-bold text-white dark:text-black bg-black dark:bg-white rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-all shadow-lg"
             >
               <Instagram className="w-4 h-4" />
               <span>View Profile</span>
@@ -275,7 +275,7 @@ const InfoModal: React.FC<{
                 <span>AI Analysis</span>
               </div>
               <h4 className="text-xl font-semibold text-black dark:text-white mb-3 transition-colors">Why This Creator?</h4>
-              <p className="text-black/70 dark:text-white/70 text-base leading-relaxed bg-black/5 dark:bg-white/5 p-6 rounded-2xl border border-black/5 dark:border-white/5 transition-colors break-words hyphens-auto">
+              <p className="text-black/70 dark:text-white/70 text-base leading-relaxed bg-black/5 dark:bg-white/5 p-8 rounded-2xl border border-black/5 dark:border-white/5 transition-colors break-words hyphens-auto">
                 {influencer.whySuggested}
               </p>
             </section>
@@ -286,7 +286,7 @@ const InfoModal: React.FC<{
                   <TrendingUp className="w-4 h-4 text-black dark:text-white transition-colors" />
                   <span>ROI Projection</span>
                 </div>
-                <div className="bg-black/5 dark:bg-white/5 p-6 rounded-2xl border border-black/5 dark:border-white/5 h-full transition-colors">
+                <div className="bg-black/5 dark:bg-white/5 p-8 rounded-2xl border border-black/5 dark:border-white/5 h-full transition-colors">
                   <p className="text-black/70 dark:text-white/70 text-sm leading-relaxed transition-colors break-words hyphens-auto">{influencer.expectedROI}</p>
                 </div>
               </section>
@@ -296,38 +296,40 @@ const InfoModal: React.FC<{
                   <Zap className="w-4 h-4 text-black dark:text-white transition-colors" />
                   <span>Key Strengths</span>
                 </div>
-                <div className="bg-black/5 dark:bg-white/5 p-6 rounded-2xl border border-black/5 dark:border-white/5 h-full transition-colors">
+                <div className="bg-black/5 dark:bg-white/5 p-8 rounded-2xl border border-black/5 dark:border-white/5 h-full transition-colors">
                   <p className="text-black/70 dark:text-white/70 text-sm leading-relaxed transition-colors break-words hyphens-auto">{influencer.performanceBenefits}</p>
                 </div>
               </section>
             </div>
 
             {/* Execution Plan */}
-            <section>
-              <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
-                <CheckCircle2 className="w-4 h-4 text-black dark:text-white transition-colors" />
-                <span>Recommended Outreach</span>
-              </div>
-              <div className="bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 overflow-hidden transition-colors">
-                {influencer.executionSteps?.map((step, i) => (
-                  <div key={i} className="flex items-center gap-4 p-5 border-b border-black/5 dark:border-white/5 last:border-0 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center text-black/90 dark:text-white/90 text-sm font-bold shrink-0 transition-colors">
-                      {i + 1}
+            {influencer.executionSteps && influencer.executionSteps.length > 0 && (
+              <section>
+                <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
+                  <CheckCircle2 className="w-4 h-4 text-black dark:text-white transition-colors" />
+                  <span>Recommended Outreach</span>
+                </div>
+                <div className="bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 overflow-hidden transition-colors">
+                  {influencer.executionSteps.map((step, i) => (
+                    <div key={i} className="flex items-center gap-4 p-5 border-b border-black/5 dark:border-white/5 last:border-0 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center text-black/90 dark:text-white/90 text-sm font-bold shrink-0 transition-colors">
+                        {i + 1}
+                      </div>
+                      <span className="text-black/80 dark:text-white/80 text-base transition-colors">{step}</span>
                     </div>
-                    <span className="text-black/80 dark:text-white/80 text-base transition-colors">{step}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Audience & Score Details */}
             {((influencer as any).scoreBreakdown || influencer.mfSplit || influencer.ageGroup) && (
-              <section>
+              <section className="mt-12 pt-10 border-t border-black/5 dark:border-white/5">
                 <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
                   <Users className="w-4 h-4 text-black dark:text-white transition-colors" />
                   <span>Audience & Score Details</span>
                 </div>
-                <div className="bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 p-6 space-y-3 transition-colors">
+                <div className="bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 p-8 space-y-5 transition-colors">
                   {influencer.mfSplit && (
                     <div className="flex justify-between text-sm">
                       <span className="text-black/50 dark:text-white/50">Audience M/F Split</span>
@@ -398,7 +400,7 @@ const StepSuggestions: React.FC = () => {
       let norm = normalizeInfluencerData(s) as InfluencerSuggestion;
 
       // 2. Hydrate/Calculate missing display fields
-      if (!norm.whySuggested || norm.whySuggested === '—' || !norm.expectedROI || norm.expectedROI === '—') {
+      if (!norm.whySuggested || norm.whySuggested === '—' || !norm.expectedROI || norm.expectedROI === '—' || !norm.executionSteps) {
         const calculated = calculateInfluencerDisplayFields(norm);
         norm = { ...norm, ...calculated };
       }
@@ -412,8 +414,7 @@ const StepSuggestions: React.FC = () => {
     e.stopPropagation();
     if (window.confirm("Start a new campaign? This will clear your current results.")) {
       resetCampaign();
-      // Reload to ensure a fresh start from the Welcome screen
-      setTimeout(() => window.location.reload(), 100);
+      // No reload needed - context updates generic state and redirects to Welcome
     }
   };
 
