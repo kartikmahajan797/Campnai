@@ -185,7 +185,7 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (data.analysisResult) setAnalysisResult(data.analysisResult);
     if (data.preferences) setPreferences(data.preferences || { primaryGoal: '', budgetRange: '', timeline: '' });
     if (data.suggestions) setSuggestions(data.suggestions || []);
-    if (data.shortlist) setShortlist(data.shortlist || []);
+    if (data.shortlist) setShortlist((data.shortlist || []).map((id: any) => String(id)));
 
     if (stepParam) {
       setCurrentStep(parseInt(stepParam));
