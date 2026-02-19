@@ -8,18 +8,7 @@ import {
     Settings,
     Activity
 } from 'lucide-react';
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarHeader,
-    SidebarFooter,
-    SidebarGroup,
-    SidebarGroupLabel,
-    SidebarGroupContent,
-    SidebarMenu,
-    SidebarMenuItem,
-    SidebarMenuButton,
-} from "@/components/ui/sidebar";
+
 
 interface ActivityItem {
     id: number;
@@ -38,20 +27,20 @@ const defaultActivities: ActivityItem[] = [
     { id: 4, type: 'error', action: 'Instagram DM failed', detail: 'Reason: Message request limit', time: '3 minutes ago', icon: <AlertCircle size={14} className="text-red-500" /> },
 ];
 
-const AgentActivitySidebar = ({ activities = defaultActivities }: { activities?: ActivityItem[] }) => {
+const AgentActivitySidebar = ({ activities = defaultActivities, isOpen = true }: { activities?: ActivityItem[], isOpen?: boolean }) => {
     return (
-        <Sidebar side="right" variant="sidebar" collapsible="none" className="border-l border-border bg-card">
-            <SidebarHeader className="border-b border-border/50 p-4">
+        <div className={`${isOpen ? 'w-80' : 'w-0'} bg-card border-l border-border transition-all duration-300 flex flex-col overflow-hidden flex-shrink-0`}>
+            <div className="border-b border-border/50 p-4">
                 <div className="flex items-center gap-2">
                     <Activity size={16} className="text-primary" />
                     <h2 className="text-sm font-semibold text-foreground">Agent Activity</h2>
                 </div>
                 <p className="text-xs text-muted-foreground">Live execution log</p>
-            </SidebarHeader>
+            </div>
 
-            <SidebarContent className="p-0">
-                <SidebarGroup>
-                    <SidebarGroupContent>
+            <div className="flex-1 overflow-y-auto p-0 custom-scrollbar">
+                <div className="p-2">
+                    <div className="w-full text-sm">
                         <div className="relative space-y-6 pt-4 px-4 pb-4">
                             {activities.map(activity => (
                                 <div key={activity.id} className="relative pl-6 pb-2 last:pb-0 group">
@@ -74,37 +63,37 @@ const AgentActivitySidebar = ({ activities = defaultActivities }: { activities?:
                                 </div>
                             ))}
                         </div>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-            </SidebarContent>
+                    </div>
+                </div>
+            </div>
 
-            <SidebarFooter className="border-t border-border/50 p-4 bg-card">
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton
-                            className="w-full justify-center bg-muted/50 hover:bg-muted text-muted-foreground transition-colors h-9 shadow-sm border border-border"
+            <div className="border-t border-border/50 p-4 bg-card">
+                <ul className="flex w-full min-w-0 flex-col gap-1">
+                    <li className="relative group/menu-item">
+                        <button
+                            className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-colors hover:bg-muted text-muted-foreground h-9 shadow-sm border border-border justify-center"
                         >
                             <PauseCircle size={14} />
                             <span>Pause Agent</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton
-                            className="w-full justify-center text-muted-foreground hover:text-primary transition-colors h-9"
+                        </button>
+                    </li>
+                    <li className="relative group/menu-item">
+                        <button
+                            className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-colors hover:text-primary h-9 justify-center text-muted-foreground"
                         >
                             <Settings size={14} />
                             <span>Rate Limits</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
+                        </button>
+                    </li>
+                </ul>
 
                 <div className="text-center mt-2">
                     <span className="text-[10px] text-primary hover:text-primary/80 cursor-pointer flex items-center justify-center gap-1 transition-colors">
                         View full execution log <ChevronRight size={10} />
                     </span>
                 </div>
-            </SidebarFooter>
-        </Sidebar>
+            </div>
+        </div>
     );
 };
 

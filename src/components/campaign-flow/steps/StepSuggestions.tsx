@@ -11,8 +11,19 @@ import { API_BASE_URL } from '../../../config/api';
 import { CampaignService } from '../../../services/CampaignService';
 import type { InfluencerSuggestion } from '../CampaignContext';
 import { calculateInfluencerDisplayFields, formatFollowers, normalizeInfluencerData, getBanner } from '../../../utils/influencerUtils';
+import { DUMMY_INFLUENCER } from '../../../utils/dummyData';
 import { FreelancerProfileCard } from '../../ui/freelancer-profile-card';
 import { Avatar, AvatarImage, AvatarFallback } from "../../ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 async function fetchInfluencers(preferences: {
@@ -392,30 +403,32 @@ const StepSuggestions: React.FC = () => {
   const ITEMS_PER_PAGE = 6;
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Hydrate suggestions for display - mirrors CampaignDetails logic to fix missing data
   const displaySuggestions = React.useMemo(() => {
-    return suggestions.map(s => {
-      // 1. Normalize (snake_case from API/Pinecone -> camelCase)
+    const hydrated = suggestions.map(s => {
       let norm = normalizeInfluencerData(s) as InfluencerSuggestion;
-
-      // 2. Hydrate/Calculate missing display fields
       if (!norm.whySuggested || norm.whySuggested === '—' || !norm.expectedROI || norm.expectedROI === '—' || !norm.executionSteps) {
         const calculated = calculateInfluencerDisplayFields(norm);
         norm = { ...norm, ...calculated };
       }
       return norm;
     });
+    // Always show dummy influencer first (for demo/testing)
+    return [DUMMY_INFLUENCER, ...hydrated.filter(s => s.id !== DUMMY_INFLUENCER.id)];
   }, [suggestions]);
 
   // Reset Handler
   const handleReset = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (window.confirm("Start a new campaign? This will clear your current results.")) {
-      resetCampaign();
-      // No reload needed - context updates generic state and redirects to Welcome
-    }
+    setShowResetConfirm(true);
+  };
+
+  const confirmReset = () => {
+    resetCampaign();
+    setShowResetConfirm(false);
   };
 
   useEffect(() => {
@@ -715,6 +728,22 @@ const StepSuggestions: React.FC = () => {
           />
         )}
       </AnimatePresence>
+
+
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start a new campaign?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will clear your current results and preferences. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmReset} className="bg-red-600 text-white hover:bg-red-700 border-none">Reset Campaign</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

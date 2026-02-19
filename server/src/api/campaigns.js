@@ -240,7 +240,19 @@ router.delete("/:id", authenticate, async (req, res) => {
         }
 
         await docRef.delete();
-        res.json({ message: "Campaign deleted successfully" });
+
+        // Cascade: delete all outreach docs for this campaign
+        const OUTREACH_COLLECTION = 'campaign_outreaches';
+        const outreachSnap = await db.collection(OUTREACH_COLLECTION)
+            .where('campaignId', '==', id)
+            .get();
+
+        const batch = db.batch();
+        outreachSnap.docs.forEach(doc => batch.delete(doc.ref));
+        if (!outreachSnap.empty) await batch.commit();
+
+        console.log(`[Campaign] Deleted campaign ${id} + ${outreachSnap.size} outreach doc(s)`);
+        res.json({ message: 'Campaign and all outreach data deleted.', outreachesDeleted: outreachSnap.size });
 
     } catch (error) {
         console.error("Error deleting campaign:", error);
