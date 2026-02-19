@@ -11,62 +11,93 @@ import {
     CheckCircle2,
 } from 'lucide-react';
 
+import OutreachReviewModal from './OutreachReviewModal';
+import { CampaignService } from '@/services/CampaignService';
+import { InfluencerSuggestion } from '../campaign-flow/CampaignContext';
+import { normalizeInfluencerData } from '@/utils/influencerUtils';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+
+
 const CampaignCommandCenter = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const decodedId = decodeURIComponent(id || 'Campaign');
+    const [selectedInfluencer, setSelectedInfluencer] = React.useState<any>(null);
 
-    // Mock Kanban Data
+    const handleOutreachSend = (channels: string[], messages: any) => {
+        console.log("Sending outreach via:", channels, messages);
+        alert(`Outreach sent to ${selectedInfluencer?.name} via ${channels.join(' & ')}`);
+        setSelectedInfluencer(null);
+    };
+
+    const [campaign, setCampaign] = React.useState<any>(null);
+    const [loading, setLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        if (id) {
+            CampaignService.getCampaign(id).then(data => {
+                setCampaign(data);
+                setLoading(false);
+            }).catch(err => {
+                console.error(err);
+                setLoading(false);
+            });
+        }
+    }, [id]);
+
+    const shortlistedInfluencers = React.useMemo(() => {
+        if (!campaign || !campaign.suggestions) return [];
+        const all = campaign.suggestions.map((s: any) => normalizeInfluencerData(s));
+        const shortlistIds = campaign.shortlist || [];
+        return all.filter((s: any) => shortlistIds.includes(s.id));
+    }, [campaign]);
+
+    // Dynamic Kanban Data
     const columns = [
         {
             id: 'imported',
             title: 'Imported',
-            count: 3,
-            total: 3,
+            count: shortlistedInfluencers.length,
+            total: shortlistedInfluencers.length,
             accent: 'border-blue-500/50',
             bgAccent: 'bg-blue-500/10',
-            items: [
-                { id: 101, name: 'Aditi Kapoor', handle: '@aditix', city: 'Mumbai', niche: 'Beauty', status: 'ready', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d' },
-                { id: 102, name: 'Rahul Verma', handle: '@rahulv', city: 'Delhi', niche: 'Tech', status: 'ready', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', lastActivity: '1m', activityDetails: 'WhatsApp delivered' },
-                { id: 103, name: 'Simran Sharma', handle: '@simran.s', city: 'Mumbai', niche: 'Fashion', status: 'pending', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026302d', lastActivity: '3m', activityDetails: 'WhatsApp pending' },
-                { id: 104, name: 'Priya Singh', handle: '@priyarg', city: 'Bangalore', niche: 'Lifestyle', status: 'sent', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026702d', lastActivity: '7m', activityDetails: 'Email sent' },
-            ]
+            items: shortlistedInfluencers.map((inf: any) => ({
+                id: inf.id,
+                name: inf.name,
+                handle: inf.handle,
+                city: inf.location || 'Unknown',
+                niche: inf.niche || 'General',
+                status: 'ready',
+                // avatar: inf.avatar || (inf.instagramUrl ? `https://unavatar.io/instagram/${inf.instagramUrl.replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, '').replace(/\/$/, '')}` : null) || `https://ui-avatars.com/api/?name=${inf.name}&background=random`,
+                lastActivity: 'Now'
+            }))
         },
         {
             id: 'outreach',
             title: 'Outreach Sent',
-            count: 7,
-            total: 7,
+            count: 0,
+            total: 0,
             accent: 'border-primary/50',
             bgAccent: 'bg-primary/10',
-            items: [
-                { id: 201, name: 'Reh Yadav', handle: '@ankity_', city: 'Goa', niche: 'Travel', subNiche: 'Food', status: 'sent', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026708c' },
-                { id: 202, name: 'Ravi Patel', handle: '@raviskin', city: 'Ahmedabad', niche: 'Skincare', status: 'replied', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', lastActivity: '6m', activityDetails: 'Replied on WhatsApp' },
-                { id: 203, name: 'Monica Das', handle: '@monica.delhi', city: 'Delhi', niche: 'Fashion', status: 'replied', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026302d', lastActivity: '15m', activityDetails: 'Replied via Email' },
-            ]
+            items: []
         },
         {
             id: 'replied',
             title: 'Replied',
-            count: 5,
-            total: 5,
+            count: 0,
+            total: 0,
             accent: 'border-purple-500/50',
             bgAccent: 'bg-purple-500/10',
-            items: [
-                { id: 301, name: 'Miyo singh', handle: '@desii', city: 'Pune', niche: 'Fashion', subNiche: 'Beauty', status: 'negotiating', avatar: 'https://i.pravatar.cc/150?u=a04258a2462d826712d' },
-                { id: 302, name: 'Nina Mehta', handle: '@glamnina', city: 'Mumbai', niche: 'Beauty', status: 'deal_confirmed', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', lastActivity: '52m', activityDetails: 'Deal confirmed' },
-            ]
+            items: []
         },
         {
             id: 'content',
             title: 'Content Live',
-            count: 2,
-            total: 2,
+            count: 0,
+            total: 0,
             accent: 'border-green-500/50',
             bgAccent: 'bg-green-500/10',
-            items: [
-                { id: 401, name: 'Tarun Soni', handle: '@tarun.fit', city: 'Mumbai', niche: 'Fitness', status: 'live', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', lastActivity: '1h', activityDetails: 'Deal confirmed' },
-            ]
+            items: []
         }
     ];
 
@@ -76,7 +107,7 @@ const CampaignCommandCenter = () => {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span onClick={() => navigate('/campaigns')} className="cursor-pointer hover:text-foreground transition">Campaigns</span>
                     <ChevronRight size={14} />
-                    <span onClick={() => navigate(`/campaigns/${encodeURIComponent(decodedId)}`)} className="cursor-pointer hover:text-foreground transition">{decodedId}</span>
+                    <span onClick={() => navigate(`/campaigns/${encodeURIComponent(decodedId)}`)} className="cursor-pointer hover:text-foreground transition">{campaign?.name || decodedId}</span>
                     <ChevronRight size={14} />
                     <span className="text-foreground">Command Center</span>
                 </div>
@@ -98,7 +129,7 @@ const CampaignCommandCenter = () => {
                                 <div className="flex items-center gap-2 mt-2">
                                     <p className="text-muted-foreground text-sm">Real-time campaign status for</p>
                                     <div className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs border border-primary/20 font-medium">
-                                        {decodedId}
+                                        {campaign?.name || decodedId}
                                     </div>
                                 </div>
                             </div>
@@ -119,13 +150,21 @@ const CampaignCommandCenter = () => {
 
                                     <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                                         {column.items.map(item => (
-                                            <div key={item.id} className="bg-card/80 backdrop-blur-sm border border-border/80 rounded-xl p-4 hover:border-primary/30 hover:shadow-primary/5 transition-all group cursor-pointer shadow-sm relative overflow-hidden">
+                                            <div 
+                                                key={item.id} 
+                                                onClick={() => setSelectedInfluencer(item)}
+                                                className="bg-card/80 backdrop-blur-sm border border-border/80 rounded-xl p-4 hover:border-primary/30 hover:shadow-primary/5 transition-all group cursor-pointer shadow-sm relative overflow-hidden"
+                                            >
                                                 {/* Hover Glow Effect */}
                                                 <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition duration-500 -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%]"></div>
 
                                                 <div className="flex items-start gap-3 mb-3 relative z-10">
                                                     <div className="relative">
-                                                        <img src={item.avatar} alt={item.name} className="w-10 h-10 rounded-full object-cover border border-border/50 shadow-inner" />
+                                                        <Avatar className="w-10 h-10 border border-border/50 shadow-inner">
+                                                            <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                                                                {item.name.charAt(0)}
+                                                            </AvatarFallback>
+                                                        </Avatar>
                                                         <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-background ${item.status === 'ready' || item.status === 'live' ? 'bg-green-500' : 'bg-muted-foreground'}`}></div>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
@@ -165,6 +204,15 @@ const CampaignCommandCenter = () => {
                     <AgentActivitySidebar />
                 </SidebarProvider>
             </div>
+
+
+            {selectedInfluencer && (
+                <OutreachReviewModal
+                    influencer={selectedInfluencer}
+                    onClose={() => setSelectedInfluencer(null)}
+                    onSend={handleOutreachSend}
+                />
+            )}
         </DashboardLayout>
     );
 };

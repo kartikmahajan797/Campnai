@@ -221,4 +221,31 @@ router.post("/:id/generate-suggestions", authenticate, async (req, res) => {
     }
 });
 
+// DELETE /api/v1/campaigns/:id
+router.delete("/:id", authenticate, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = req.user;
+
+        const docRef = db.collection(COLLECTION_NAME).doc(id);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            return res.status(404).json({ detail: "Campaign not found" });
+        }
+
+        const data = docSnap.data();
+        if (data.userId !== user.uid) {
+            return res.status(403).json({ detail: "Not authorized to delete this campaign" });
+        }
+
+        await docRef.delete();
+        res.json({ message: "Campaign deleted successfully" });
+
+    } catch (error) {
+        console.error("Error deleting campaign:", error);
+        res.status(500).json({ detail: "Failed to delete campaign" });
+    }
+});
+
 export default router;

@@ -2,16 +2,41 @@ import React, { useState } from 'react';
 import { ChevronRight, Sparkles } from 'lucide-react';
 import DashboardLayout from '../DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { CampaignService } from '@/services/CampaignService';
 
 const NewCampaignSuccess = () => {
     const navigate = useNavigate();
     const [isNaming, setIsNaming] = useState(false);
     const [campaignName, setCampaignName] = useState("");
 
-    const handleSave = () => {
-        if (campaignName.trim()) {
-            navigate(`/campaigns/${campaignName.trim()}`);
+    const { state } = useLocation();
+    const campaignId = state?.campaignId;
+    
+    // If we don't have an ID (e.g. direct access), we can't really "save" to a campaign.
+    // But for the user's specific "Process not found" error, we need to ensure we don't navigate to a non-existent route.
+
+    const handleSave = async () => {
+        if (!campaignName.trim()) return;
+        
+        try {
+            if (campaignId) {
+                // Update the actual campaign
+                await CampaignService._updateCampaign(campaignId, { name: campaignName.trim() });
+                navigate(`/campaigns/${campaignId}`);
+            } else {
+                // Fallback for testing/direct access without ID:
+                // We could create a dummy campaign, but that might be complex.
+                // For now, let's redirect to dashboard or campaigns with a toast.
+                // Or, assume the user might have entered a name for a *new* campaign context that doesn't exist yet.
+                // Given the error "Process not found", navigating to /campaigns/Name is the issue.
+                // Let's navigate to /campaigns instead.
+                console.warn("No campaign ID found to update. Redirecting to campaigns list.");
+                navigate('/campaigns');
+            }
+        } catch (error) {
+            console.error("Failed to update name:", error);
+            // Optionally show error toast
         }
     };
 
