@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useCampaign } from './CampaignContext';
 
-import { Cloud, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Cloud, Check, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 
 interface CampaignFlowLayoutProps {
   children: React.ReactNode;
@@ -45,6 +46,18 @@ const SyncStatus = () => {
 
 import { PremiumBackground } from '../ui/premium-background';
 
+const BackButton = () => {
+    const navigate = useNavigate();
+    return (
+        <button
+            onClick={() => navigate('/dashboard/history')}
+            className="fixed top-5 left-5 z-50 flex items-center gap-2 px-3 py-2 bg-white/80 dark:bg-black/80 backdrop-blur-md border border-black/10 dark:border-white/10 rounded-full shadow-sm text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-900 transition-all"
+        >
+            <ArrowLeft size={14} /> Back
+        </button>
+    );
+};
+
 const CampaignFlowLayout: React.FC<CampaignFlowLayoutProps> = ({ children }) => {
   const { currentStep } = useCampaign();
 
@@ -52,6 +65,9 @@ const CampaignFlowLayout: React.FC<CampaignFlowLayoutProps> = ({ children }) => 
     <div className="min-h-screen w-full font-sans selection:bg-black/10 dark:selection:bg-white/20 selection:text-black dark:selection:text-white relative">
       <PremiumBackground />
       
+      {/* Back Button — top-left */}
+      <BackButton />
+
       {/* Cloud Sync Status */}
       <div className="fixed top-6 right-6 z-50 pointer-events-none">
          <SyncStatus />
