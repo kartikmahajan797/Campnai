@@ -13,6 +13,9 @@ import searchRouter from "./api/searchAPI.js";
 import brandRouter from "./api/brand.js";
 import campaignRouter from "./api/campaigns.js";
 import reportRouter from "./api/report.js";
+import outreachRouter from "./api/outreach.js";
+import { startNegotiationCron } from "./services/negotiationCron.js";
+import { debugFetchAll } from "./services/emailService.js";
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -58,6 +61,17 @@ app.use("/api/v1", searchRouter);
 app.use("/api/v1", brandRouter);
 app.use("/api/v1/campaigns", campaignRouter);
 app.use("/api/v1/campaigns", reportRouter);
+app.use("/api/v1/campaigns", outreachRouter);
+
+// ── Debug IMAP (dev only) ──────────────────────────────────────────────────────
+app.get('/test-imap', async (_req, res) => {
+    try {
+        const { results, skipped } = await debugFetchAll();
+        res.json({ count: results.length, skipped, messages: results.map(r => ({ from: r.from, subject: r.subject, bodyPreview: r.body?.substring(0, 200), date: r.date })) });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 app.use((err, _req, res, _next) => {
     if (err.code === "LIMIT_FILE_SIZE") {
@@ -73,6 +87,7 @@ app.use((_req, res) => {
 
 app.listen(PORT, () => {
     console.log(`🚀 Campnai server running on http://localhost:${PORT}`);
+    startNegotiationCron();
 });
 
 export default app;
