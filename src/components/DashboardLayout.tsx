@@ -4,15 +4,16 @@ import { auth } from '../firebaseConfig';
 import { useAuth } from '../lib/useAuth';
 import { Plus, Search, User, Briefcase, MessageSquare, Menu, X, LogOut, Sparkles, Trash2, Rocket, Calendar } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import campnaiLogo from '../assets/campnailogo.png';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ModeToggle } from "@/components/mode-toggle";
 
@@ -36,7 +37,7 @@ interface DashboardLayoutProps {
     headerAction?: React.ReactNode;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ 
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     children, title, chatSessions = [], activeSessionId, isLoading = false, onSelectSession, onNewChat, onDeleteSession, headerAction
 }) => {
     const { user } = useAuth();
@@ -76,7 +77,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
     return (
         <div className="flex h-screen bg-transparent text-foreground overflow-hidden relative">
-            
+
             <PremiumBackground />
 
             <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => !open && setSessionToDelete(null)}>
@@ -94,14 +95,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </AlertDialogContent>
             </AlertDialog>
 
-            <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} relative z-10 bg-white/50 dark:bg-black/20 backdrop-blur-xl border-r border-white/20 dark:border-white/5 transition-all duration-300 flex flex-col overflow-hidden flex-shrink-0`}>
+            <aside
+                className={`${sidebarOpen ? 'w-64' : 'w-0'} relative z-10 backdrop-blur-xl border-r border-purple-200 dark:border-purple-900/30 bg-white/80 dark:bg-[rgba(12,3,22,0.72)] transition-all duration-300 flex flex-col overflow-hidden flex-shrink-0`}
+            >
 
-                <Link 
-                    to="/dashboard" 
+                <Link
+                    to="/dashboard"
                     onClick={() => onNewChat?.()}
                     className="h-16 px-6 border-b border-white/20 dark:border-white/5 flex items-center gap-3 hover:bg-white/40 dark:hover:bg-white/5 transition-colors"
                 >
-                    <Sparkles className="text-primary" size={24} />
+                    <img src={campnaiLogo} alt="CampnAI" className="h-8 w-auto object-contain" />
                     <span className="text-foreground font-semibold text-xl tracking-tight">CampnAI</span>
                 </Link>
 
@@ -119,7 +122,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         <span className="text-sm">Search chats</span>
                     </button>
 
-                    <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 hover:text-foreground transition">
+                    <button
+                        onClick={() => navigate('/dashboard/account')}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition ${isActive('/dashboard/account') ? 'bg-white/60 dark:bg-white/20 text-foreground shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 hover:text-foreground'}`}
+                    >
                         <User size={18} />
                         <span className="text-sm">Account</span>
                     </button>
@@ -155,7 +161,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </nav>
 
                 <div className="flex-1 overflow-y-auto min-h-0 border-t border-border mx-3 mt-2  overflow-y-scroll [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    <div className="flex items-center justify-between px-3 py-3 sticky top-0 bg-card/95 backdrop-blur z-10">
+                    <div className="flex items-center justify-between px-3 py-3 sticky top-0 bg-white/90 dark:bg-[rgba(12,3,22,0.95)] backdrop-blur-sm z-10">
                         <span className="text-xs text-muted-foreground uppercase font-medium">Your chats</span>
                     </div>
 
@@ -170,11 +176,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                             chatSessions.map(chat => (
                                 <div
                                     key={chat.session_id}
-                                    className={`group w-full flex items-center justify-between px-3 py-2 rounded-lg transition text-sm cursor-pointer mb-1 ${
-                                        activeSessionId === chat.session_id 
-                                            ? 'bg-white/60 dark:bg-white/20 text-foreground shadow-sm' 
-                                            : 'text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 hover:text-foreground'
-                                    }`}
+                                    className={`group w-full flex items-center justify-between px-3 py-2 rounded-lg transition text-sm cursor-pointer mb-1 ${activeSessionId === chat.session_id
+                                        ? 'bg-white/60 dark:bg-white/20 text-foreground shadow-sm'
+                                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 hover:text-foreground'
+                                        }`}
                                     onClick={() => onSelectSession?.(chat.session_id)}
                                 >
                                     <span className="truncate flex-1">💬 {chat.title}</span>

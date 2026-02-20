@@ -24,7 +24,7 @@ const DeleteConfirmModal = ({
     deleting: boolean;
 }) => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-8 animate-in zoom-in-95 duration-150">
+        <div className="bg-white/80 dark:bg-black/60 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 w-full max-w-md p-8 animate-in zoom-in-95 duration-150">
             {/* Icon */}
             <div className="flex items-center justify-center w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30 mx-auto mb-5">
                 <AlertTriangle size={26} className="text-red-500 dark:text-red-400" />
@@ -164,7 +164,7 @@ const CampaignHistory = () => {
                         <button onClick={fetchCampaigns} className="underline font-medium hover:text-destructive/80">Try Again</button>
                     </div>
                 ) : campaigns.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-sm rounded-2xl border border-dashed border-border/50">
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-white/40 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-dashed border-white/20">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
                             <Calendar size={32} />
                         </div>
@@ -184,15 +184,14 @@ const CampaignHistory = () => {
                         {campaigns.map((campaign) => (
                             <div
                                 key={campaign.id}
-                                className="group relative w-full overflow-hidden rounded-2xl bg-white/80 dark:bg-zinc-900/40 backdrop-blur-sm p-8 flex flex-col items-center border border-zinc-200 dark:border-white/10 transition-all duration-200 shadow-sm min-h-[380px] hover:shadow-md hover:border-zinc-300 dark:hover:border-white/30"
+                                className="group relative w-full overflow-hidden rounded-2xl bg-white/60 dark:bg-black/30 backdrop-blur-md p-8 flex flex-col items-center border border-white/20 transition-all duration-300 shadow-lg min-h-[380px] hover:bg-white/80 dark:hover:bg-black/40 hover:shadow-xl hover:border-white/30 hover:-translate-y-1"
                             >
                                 {/* Top row: status + date */}
                                 <div className="w-full flex justify-between items-center mb-6">
-                                    <span className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide uppercase border ${
-                                        campaign.status === 'completed' ? 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30' :
-                                        campaign.status === 'active'    ? 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' :
-                                        'bg-zinc-50 text-zinc-500 border-zinc-100 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
-                                    }`}>
+                                    <span className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide uppercase border ${campaign.status === 'completed' ? 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30' :
+                                            campaign.status === 'active' ? 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' :
+                                                'bg-zinc-50 text-zinc-500 border-zinc-100 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                        }`}>
                                         {campaign.status || 'DRAFT'}
                                     </span>
                                     <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500 flex items-center gap-1.5 uppercase tracking-wider">
