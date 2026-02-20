@@ -6,7 +6,6 @@
 
 @layer base {
   :root {
-    /* Minimal Monochrome Theme */
     --background: 0 0% 100%;
     --foreground: 0 0% 0%;
 
@@ -37,7 +36,6 @@
 
     --radius: 0.75rem;
 
-    /* Removed Neon Gradients - keeping simple shadows */
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
     --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
@@ -45,33 +43,33 @@
   }
 
   .dark {
-    --background: 0 0% 0%; /* Pure Black */
-    --foreground: 0 0% 98%;
+    --background: 240 40% 4%; /* Dark Blue/Indigo */
+    --foreground: 330 20% 95%; /* Off-white, slightly pink */
 
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card: 240 30% 8%; /* Slightly lighter Dark Blue */
+    --card-foreground: 330 20% 95%;
 
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 240 30% 8%;
+    --popover-foreground: 330 20% 95%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+    --primary: 330 100% 60%; /* Vibrant Pink */
+    --primary-foreground: 0 0% 100%; /* Pure White */
 
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 250 80% 60%; /* Deep Blue/Purple */
+    --secondary-foreground: 0 0% 100%; /* Pure White */
 
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted: 270 30% 15%; /* Dark Violet */
+    --muted-foreground: 270 20% 70%; /* Light Violet/Pink */
 
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 270 30% 15%; /* Dark Violet */
+    --accent-foreground: 0 0% 100%; /* Pure White */
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 350 100% 60%; /* Crimson/Pink-Red */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 270 30% 20%; /* Violet Border */
+    --input: 270 30% 20%;
+    --ring: 330 100% 60%; /* Vibrant Pink Ring */
   }
 }
 
@@ -105,7 +103,7 @@
   }
 
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-secondary via-accent to-primary;
   }
 
   .card-elevated {

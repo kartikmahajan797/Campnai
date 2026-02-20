@@ -3,7 +3,7 @@ import type { InfluencerSuggestion } from '@/components/campaign-flow/CampaignCo
 export const DUMMY_INFLUENCER: InfluencerSuggestion = {
     id: 'dummy_aditya_001',
     name: 'Aditya',
-    handle: '@aditya',
+    handle: '@instagram',
     platform: 'Instagram',
     followers: '52K',
     niche: 'Tech & Lifestyle',

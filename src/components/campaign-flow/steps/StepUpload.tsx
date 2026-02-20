@@ -95,6 +95,8 @@ const StepUpload: React.FC = () => {
         setPreferences({
           primaryGoal: data.analysis.marketing_goal || '',
           budgetRange: data.analysis.price_segment || '',
+          budgetMin: 0,
+          budgetMax: 100000,
           timeline: '30 Days',
           websiteUrl: urlInput || '',
         });
@@ -148,12 +150,6 @@ const StepUpload: React.FC = () => {
              </p>
            </div>
 
-           <div className="fixed inset-0 z-0 pointer-events-none">
-          <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-purple-500/15 rounded-full blur-[120px]" />
-          <div className="absolute top-[20%] right-[-10%] w-[40vw] h-[40vw] bg-pink-500/15 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] left-[20%] w-[60vw] h-[60vw] bg-blue-500/15 rounded-full blur-[140px]" />
-      </div>
-           
            <div className="space-y-4">
               <div className="flex items-start gap-4">
                  <div className="p-2 bg-primary/10 rounded-lg shrink-0">

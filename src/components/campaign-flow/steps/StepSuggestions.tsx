@@ -194,17 +194,10 @@ const InfoModal: React.FC<{
         <div className="w-full md:w-1/3 h-full overflow-y-auto bg-black/5 dark:bg-white/5 border-b md:border-b-0 md:border-r border-black/10 dark:border-white/10 p-8 md:p-10 flex flex-col gap-8 transition-colors custom-scrollbar">
           <div className="flex flex-col items-center text-center">
             {(() => {
-              /* const handle = influencer.instagramUrl 
-                ? influencer.instagramUrl.replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, '').replace(/\/$/, '')
-                : (influencer.handle ? influencer.handle.replace('@', '') : undefined);
-              const igFallback = handle ? `https://unavatar.io/instagram/${handle}?fallback=false` : undefined; */
-              
               return (
                 <div className="relative mb-8 mt-4">
                    <div className="absolute inset-0 rounded-full border-2 border-zinc-50 dark:border-zinc-800 scale-110" />
                    <Avatar className="h-32 w-32 border-4 border-white dark:border-zinc-900 shadow-xl mx-auto bg-zinc-100 dark:bg-zinc-800">
-                     {/* <AvatarImage src={igFallback || ''} alt={influencer.name} className="object-cover" /> */}
-                     {/* {influencer.avatar && <AvatarImage src={influencer.avatar} alt={influencer.name} className="object-cover" />} */}
                      <AvatarFallback className="text-5xl font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">{influencer.name?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                    </Avatar>
                 </div>
@@ -397,7 +390,7 @@ const StepSuggestions: React.FC = () => {
   const navigate = useNavigate();
   const { preferences, suggestions, setSuggestions, resetCampaign, shortlist, addToShortlist, removeFromShortlist, campaignId, nextStep } = useCampaign();
   const [selectedModal, setSelectedModal] = useState<InfluencerSuggestion | null>(null);
-  const [isLoading, setIsLoading] = useState(suggestions.length === 0);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
@@ -431,33 +424,8 @@ const StepSuggestions: React.FC = () => {
     setShowResetConfirm(false);
   };
 
-  useEffect(() => {
-    if (suggestions.length > 0) {
-      setIsLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    const load = async () => {
-      setIsLoading(true);
-      setError('');
-      try {
-        const results = await fetchInfluencers(preferences);
-        if (!cancelled) {
-          setSuggestions(results);
-          setCurrentPage(1);
-        }
-      } catch (err) {
-        if (!cancelled) setError('Failed to load recommendations. Please try again.');
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-
-    load();
-    return () => { cancelled = true; };
-  }, [preferences, suggestions.length, setSuggestions]);
+  // Suggestions come from generate-suggestions endpoint (called in StepPersonalize)
+  // No fallback fetch here — we always use the budget-aware backend endpoint
 
   const handleApprove = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -495,11 +463,11 @@ const StepSuggestions: React.FC = () => {
   const currentPageItems = displaySuggestions.slice(startIndex, endIndex);
 
   return (
-    <div className="flex flex-col lg:flex-row w-full min-h-screen pt-12 px-6 md:px-12 pb-12 gap-10 max-w-[1600px] mx-auto text-black relative" onClick={(e) => e.stopPropagation()}>
+    <div className="flex flex-col lg:flex-row w-full min-h-screen pt-12 px-6 md:px-12 pb-12 gap-10 max-w-[1600px] mx-auto text-foreground relative" onClick={(e) => e.stopPropagation()}>
       {/* Reset Button */}
       <button
         onClick={handleReset}
-        className="absolute top-6 right-6 md:top-12 md:right-12 z-30 flex items-center gap-2 px-4 py-2 text-sm font-medium text-black/60 hover:text-black bg-white/50 backdrop-blur-md rounded-full border border-black/5 hover:bg-black/5 transition-all"
+        className="absolute top-6 right-6 md:top-12 md:right-12 z-30 flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-background/60 backdrop-blur-md rounded-full border border-border hover:bg-muted transition-all"
       >
         <RotateCcw className="w-4 h-4" />
         <span className="hidden md:inline">Reset Campaign</span>
@@ -507,37 +475,37 @@ const StepSuggestions: React.FC = () => {
 
       {/* Left Sidebar - Sticky */}
       <aside className="w-full lg:w-[320px] shrink-0 lg:sticky lg:top-10 lg:h-fit flex flex-col gap-8">
-        <div className="bg-white rounded-3xl p-8 border border-black/10 shadow-sm space-y-6">
+        <div className="bg-card backdrop-blur-xl rounded-3xl p-8 border border-border shadow-md space-y-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <Target className="w-5 h-5 text-black/40" />
-              <span className="text-xs font-bold uppercase tracking-widest text-black/40">Discovery</span>
+              <Target className="w-5 h-5 text-black/40 dark:text-primary" />
+              <span className="text-xs font-bold uppercase tracking-widest text-black/40 dark:text-muted-foreground">Discovery</span>
             </div>
-            <h1 className="text-3xl font-bold text-black leading-tight">
+            <h1 className="text-3xl font-bold text-black dark:text-foreground leading-tight">
               Scout
             </h1>
-            <p className="text-black/40 text-base mt-2">Influencer Discovery AI</p>
+            <p className="text-black/40 dark:text-muted-foreground text-base mt-2">Influencer Discovery AI</p>
           </div>
 
           <div className="flex flex-col gap-3">
-            <div className="flex justify-between items-center p-3 bg-black/[0.04] rounded-xl text-sm">
-              <span className="text-black/60">Analyzed</span>
-              <span className="font-medium text-black">1,842 creators</span>
+            <div className="flex justify-between items-center p-3 bg-muted/40 dark:bg-muted/20 border border-border/50 rounded-xl text-sm">
+              <span className="text-muted-foreground">Analyzed</span>
+              <span className="font-medium text-foreground">1,842 creators</span>
             </div>
-            <div className="flex justify-between items-center p-3 bg-black/[0.04] rounded-xl text-sm">
-              <span className="text-black/60">Matches</span>
-              <span className="font-bold text-black">Top {displaySuggestions.length > 0 ? displaySuggestions.length : '10'}</span>
+            <div className="flex justify-between items-center p-3 bg-muted/40 dark:bg-muted/20 border border-border/50 rounded-xl text-sm">
+              <span className="text-muted-foreground">Matches</span>
+              <span className="font-bold text-foreground">Top {displaySuggestions.length > 0 ? displaySuggestions.length : '10'}</span>
             </div>
-            <div className="flex justify-between items-center p-3 bg-black/[0.04] rounded-xl text-sm">
-              <span className="text-black/60">Goal</span>
-              <span className="font-medium text-black">{preferences.primaryGoal || 'Engagement'}</span>
+            <div className="flex justify-between items-center p-3 bg-muted/40 dark:bg-muted/20 border border-border/50 rounded-xl text-sm">
+              <span className="text-muted-foreground">Goal</span>
+              <span className="font-medium text-foreground">{preferences.primaryGoal || 'Engagement'}</span>
             </div>
           </div>
 
           <div className="pt-4 w-full space-y-3">
             {/* Action Buttons */}
             <button
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-black text-white rounded-2xl font-bold text-sm hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-sm hover:opacity-90 transition-colors shadow-lg hover:shadow-xl cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
               disabled={isGeneratingReport || isSkipping}
               onClick={async (e) => {
                 e.preventDefault();
@@ -551,8 +519,7 @@ const StepSuggestions: React.FC = () => {
                     ]);
                   } catch (err) { console.error('Sync error:', err); }
                 }
-                nextStep(); // Step 5 = Report
-                // State stays true until component unmounts/navigates
+                nextStep(); 
               }}
             >
               {isGeneratingReport ? (
@@ -570,7 +537,7 @@ const StepSuggestions: React.FC = () => {
             </button>
 
             <button
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-black/60 bg-transparent hover:bg-black/5 rounded-2xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-muted-foreground bg-transparent hover:bg-secondary/20 hover:text-foreground rounded-2xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-border/50"
               disabled={isGeneratingReport || isSkipping}
               onClick={async (e) => {
                  e.preventDefault();
@@ -581,7 +548,7 @@ const StepSuggestions: React.FC = () => {
               }}
             >
               {isSkipping ? (
-                 <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                 <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
               ) : (
                 <span>{shortlist.length > 0 ? `Save & View ${shortlist.length} Shortlisted` : 'Skip to Details'}</span>
               )}
@@ -592,11 +559,12 @@ const StepSuggestions: React.FC = () => {
 
       {/* Right Content - Scrollable Grid */}
       <main className="flex-1 flex flex-col min-w-0">
-        <div className="mb-8">
-          <h2 className="text-3xl font-light text-black dark:text-white mb-2 transition-colors">
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10 pb-4 pt-2 mb-4 border-b border-border/40">
+          <h2 className="text-3xl font-light text-foreground mb-1 transition-colors">
             <span className="font-bold">Shortlisted Creators</span>
           </h2>
-          <p className="text-black/40 dark:text-white/40 text-sm max-w-xl transition-colors">
+          <p className="text-muted-foreground text-sm max-w-xl transition-colors">
             Scout has identified the best matches for your campaign based on your brief.
           </p>
         </div>
@@ -627,9 +595,9 @@ const StepSuggestions: React.FC = () => {
         {!isLoading && !error && displaySuggestions.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-6 py-20 text-center flex-1">
             <AlertCircle className="w-12 h-12 text-gray-400" />
-            <p className="text-2xl font-semibold text-black">No matching creators found</p>
-            <p className="text-black text-base max-w-md">
-              We're still building our database for this niche. Try broadening your campaign parameters.
+            <p className="text-2xl font-semibold text-black">No creators found</p>
+            <p className="text-black/50 text-base max-w-md">
+              Please go back to Personalize and click "Find Creators" to search based on your budget and goal.
             </p>
           </div>
         )}

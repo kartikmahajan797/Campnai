@@ -187,25 +187,53 @@ router.post("/:id/generate-suggestions", authenticate, async (req, res) => {
         const p = data.preferences || {};
         const analysis = data.analysisResult || {};
 
-        // Construct a rich natural language query
-        // E.g. "fitness influencer in India for high reach brand awareness"
+        // Construct a rich natural language query incorporating all preferences
         const niche = analysis.niche || analysis.industry || "general";
         const goalText = goalMap[p.primaryGoal] || "";
         const budgetText = budgetMap[p.budgetRange] || "";
-        
-        const searchQuery = `${niche} influencer for ${goalText} ${budgetText} ${analysis.brand_tone || ''}`;
-        
-        // Determine limit (default 10)
+
+        // Include custom budget range if user manually adjusted min/max
+        let budgetRangeText = "";
+        if (p.budgetMin != null && p.budgetMax != null) {
+            const minL = (p.budgetMin / 100000).toFixed(1);
+            const maxL = (p.budgetMax / 100000).toFixed(1);
+            budgetRangeText = `budget between ₹${minL}L and ₹${maxL}L`;
+        }
+
+        const searchQuery = [
+            niche,
+            "influencer for",
+            goalText,
+            budgetText,
+            budgetRangeText,
+            analysis.brand_tone || ''
+        ].filter(Boolean).join(" ");
+
+        // ── Build brand context for direct brand_fit matching ──────────────────
+        // analysis.brand_fit is the new Gemini field: simple comma-separated niche keywords
+        // matching exactly the influencer brand_fit tags (e.g. "food,restaurants,beverages")
+        // This is the PRIMARY signal — prevents Swiggy (food) from returning tech influencers.
+        const brandFitRaw = analysis.brand_fit  // e.g. "food,restaurants,beverages,lifestyle"
+            || [
+                analysis.niche || analysis.industry || "",
+                analysis.recommended_influencer_type || "",
+                ...(analysis.products || []).slice(0, 3).map(p => p?.name || p),
+            ].filter(Boolean).join(",");
+
+        const brandContext = [
+            brandFitRaw ? `brand_fit: ${brandFitRaw}` : "",
+            analysis.brand_tone ? `vibe: ${analysis.brand_tone}` : "",
+            analysis.marketing_goal ? analysis.marketing_goal : "",
+            budgetRangeText,
+        ].filter(Boolean).join(" | ");
+
         const limit = 10;
 
-        // Construct filter context
-        // E.g. "niche: fitness. location: India."
         const filterParts = [];
         if (niche) filterParts.push(`niche: ${niche}`);
-        // We can add more filters if we had structured data for location etc.
-        // For now, let's rely on the semantic query.
-        
-        const rawSuggestions = await searchInfluencers(searchQuery, limit, filterParts.join(". "));
+        if (budgetRangeText) filterParts.push(budgetRangeText);
+
+        const rawSuggestions = await searchInfluencers(searchQuery, limit, filterParts.join(". "), null, brandContext);
         const suggestions = formatForSearchAPI(rawSuggestions);
 
         await docRef.update({
@@ -233,7 +261,6 @@ router.delete("/:id", authenticate, async (req, res) => {
         if (!docSnap.exists) {
             return res.status(404).json({ detail: "Campaign not found" });
         }
-
         const data = docSnap.data();
         if (data.userId !== user.uid) {
             return res.status(403).json({ detail: "Not authorized to delete this campaign" });
