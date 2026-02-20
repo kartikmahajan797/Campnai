@@ -26,6 +26,8 @@ export interface AnalysisResult {
 export interface CampaignPreferences {
   primaryGoal: string;
   budgetRange: string;
+  budgetMin: number;
+  budgetMax: number;
   timeline: string;
   websiteUrl?: string;
 }
@@ -103,6 +105,8 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [preferences, setPreferences] = useState<CampaignPreferences>({
       primaryGoal: '',
       budgetRange: '',
+      budgetMin: 0,
+      budgetMax: 100000,
       timeline: '',
   });
 
@@ -183,18 +187,27 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const restoreCampaignData = (data: any, stepParam: string | null) => {
     if (data.analysisResult) setAnalysisResult(data.analysisResult);
-    if (data.preferences) setPreferences(data.preferences || { primaryGoal: '', budgetRange: '', timeline: '' });
-    if (data.suggestions) setSuggestions(data.suggestions || []);
+    const restoredPrefs = data.preferences || { primaryGoal: '', budgetRange: '', budgetMin: 0, budgetMax: 100000, timeline: '' };
+    if (data.preferences) setPreferences(restoredPrefs);
     if (data.shortlist) setShortlist((data.shortlist || []).map((id: any) => String(id)));
 
     if (stepParam) {
+      if (data.suggestions) setSuggestions(data.suggestions || []);
       setCurrentStep(parseInt(stepParam));
     } else if (data.shortlist && data.shortlist.length > 0) {
-      setCurrentStep(4);
-    } else if (data.suggestions && data.suggestions.length > 0) {
+      if (data.suggestions) setSuggestions(data.suggestions || []);
       setCurrentStep(4);
     } else if (data.analysisResult) {
-      setCurrentStep(3);
+      // Only restore suggestions + go to step 4 if all 3 preferences are filled
+      const prefsComplete = restoredPrefs.primaryGoal && restoredPrefs.budgetRange && restoredPrefs.timeline;
+      if (prefsComplete && data.suggestions && data.suggestions.length > 0) {
+        setSuggestions(data.suggestions || []);
+        setCurrentStep(4);
+      } else {
+        // Preferences incomplete — go back to personalize, clear stale suggestions
+        setSuggestions([]);
+        setCurrentStep(3);
+      }
     } else {
       setCurrentStep(1); // Skip welcome, go to upload
     }
@@ -231,40 +244,8 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         } finally {
           if (!cancelled) setIsInitializing(false);
         }
-      } else if (user) {
-        // No ?id in URL — try loading user's most recent campaign
-        try {
-          const campaigns = await CampaignService.getUserCampaigns();
-          if (!cancelled && campaigns && campaigns.length > 0) {
-            // Sort by updatedAt descending — Firestore Timestamps serialize as { _seconds, _nanoseconds }
-            const sorted = [...campaigns].sort((a: any, b: any) => {
-              const ta = a.updatedAt?._seconds ?? a.updatedAt?.seconds ?? a.updatedAt ?? 0;
-              const tb = b.updatedAt?._seconds ?? b.updatedAt?.seconds ?? b.updatedAt ?? 0;
-              return tb - ta;
-            });
-            const latest = sorted[0];
-            if (latest?.id) {
-              setCampaignId(latest.id);
-              // Update URL so future refreshes restore correctly
-              const url = new URL(window.location.href);
-              url.searchParams.set('id', latest.id);
-              window.history.replaceState({}, '', url.toString());
-
-              const data = await CampaignService.getCampaign(latest.id);
-              if (!cancelled && data) {
-                restoreCampaignData(data, null);
-                setSaveStatus('saved');
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Failed to load latest campaign", err);
-          // Non-fatal — show StepWelcome
-        } finally {
-          if (!cancelled) setIsInitializing(false);
-        }
       } else {
-        // Confirmed: not logged in
+        // Not restoring a specific campaign, so we start fresh
         if (!cancelled) setIsInitializing(false);
       }
     };
@@ -289,6 +270,8 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setPreferences({
       primaryGoal: '',
       budgetRange: '',
+      budgetMin: 0,
+      budgetMax: 100000,
       timeline: '',
     });
     setSuggestions([]);

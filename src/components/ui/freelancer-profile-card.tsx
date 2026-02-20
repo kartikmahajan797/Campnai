@@ -55,7 +55,7 @@ export const FreelancerProfileCard = React.forwardRef<
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          "relative w-full overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 p-8 flex flex-col items-center border border-zinc-200 dark:border-zinc-800 transition-all duration-200 shadow-sm min-h-[450px]",
+          "relative w-full overflow-hidden rounded-2xl bg-card p-8 flex flex-col items-center border border-border transition-all duration-200 shadow-sm min-h-[450px] group hover:border-border/80 hover:shadow-lg",
           className
         )}
         {...props}
@@ -87,10 +87,10 @@ export const FreelancerProfileCard = React.forwardRef<
 
           {/* Identity - Larger Text */}
           <div className="text-center mb-10 w-full px-4">
-            <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight mb-3 uppercase truncate">
+            <h3 className="text-2xl font-bold text-foreground tracking-tight mb-3 uppercase truncate">
               {name}
             </h3>
-            <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4">
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
               {title}
             </p>
             
@@ -134,7 +134,7 @@ export const FreelancerProfileCard = React.forwardRef<
           {tools?.slice(0, 3).map((tool) => (
             <span
               key={tool}
-              className="px-4 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-800 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide border border-zinc-100 dark:border-zinc-700"
+              className="px-4 py-1.5 rounded-lg bg-muted text-xs font-bold text-muted-foreground uppercase tracking-wide border border-border"
             >
               {tool}
             </span>
@@ -145,7 +145,7 @@ export const FreelancerProfileCard = React.forwardRef<
         <div className="w-full flex gap-3 mt-auto">
           <Button
             onClick={onGetInTouch}
-            className="flex-1 h-12 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-90 font-bold rounded-lg text-sm tracking-wide shadow-sm transition-all"
+            className="flex-1 h-12 shadow-sm transition-all shadow-primary/10 hover:shadow-primary/30"
           >
             View Profile
           </Button>
@@ -174,9 +174,9 @@ const StatBox = ({ icon, label, value, className }: { icon: React.ReactNode; lab
   <div className={cn("flex flex-col items-center justify-center", className)}>
     <div className="flex items-center gap-1.5 mb-1.5">
       {icon}
-      <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 tracking-widest uppercase">{label}</span>
+      <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">{label}</span>
     </div>
-    <span className="text-base font-bold text-zinc-900 dark:text-zinc-100">{value}</span>
+    <span className="text-base font-bold text-foreground">{value}</span>
   </div>
 );
 

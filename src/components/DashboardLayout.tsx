@@ -37,6 +37,49 @@ interface DashboardLayoutProps {
     headerAction?: React.ReactNode;
 }
 
+interface SidebarItemProps {
+    icon: React.ReactNode;
+    label: string;
+    onClick: () => void;
+    isActive: boolean;
+    isExpanded: boolean;
+}
+
+const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, onClick, isActive, isExpanded }) => {
+    return (
+        <div className={`relative flex justify-center group ${isExpanded ? 'w-[90%]' : 'w-12 mx-auto'}`}>
+            <button
+                onClick={onClick}
+                className={`flex items-center gap-3 rounded-2xl transition-all duration-300 hover:bg-zinc-100 dark:hover:bg-white/5 overflow-hidden whitespace-nowrap w-full ${
+                    isActive 
+                    ? 'text-zinc-900 dark:text-white font-medium bg-zinc-200 dark:bg-white/10 shadow-sm' 
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                } ${
+                    isExpanded 
+                    ? 'px-4 py-3 justify-start' 
+                    : 'h-12 justify-center'
+                }`}
+            >
+                <div className={`shrink-0 transition-transform duration-200 ${isActive && !isExpanded ? 'scale-110' : ''}`}>
+                    {icon}
+                </div>
+                <span className={`text-sm transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 w-0'}`}>
+                    {label}
+                </span>
+            </button>
+            
+            {/* Custom Tooltip */}
+            {!isExpanded && (
+                <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-medium opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] whitespace-nowrap shadow-xl">
+                    {label}
+                    {/* Tooltip Arrow */}
+                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-y-4 border-r-4 border-y-transparent border-r-zinc-900 dark:border-r-zinc-100" />
+                </div>
+            )}
+        </div>
+    );
+};
+
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     children, title, chatSessions = [], activeSessionId, isLoading = false, onSelectSession, onNewChat, onDeleteSession, headerAction
 }) => {
@@ -95,131 +138,166 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </AlertDialogContent>
             </AlertDialog>
 
-            <aside
-                className={`${sidebarOpen ? 'w-64' : 'w-0'} relative z-10 backdrop-blur-xl border-r border-purple-200 dark:border-purple-900/30 bg-white/80 dark:bg-[rgba(12,3,22,0.72)] transition-all duration-300 flex flex-col overflow-hidden flex-shrink-0`}
-            >
+            {/* Mobile Backdrop */}
+            {sidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-[40] md:hidden backdrop-blur-sm"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
 
+            <aside
+                className={`fixed md:relative top-0 left-0 h-full z-[50] bg-white/80 dark:bg-background/40 backdrop-blur-2xl transition-all duration-300 flex flex-col overflow-x-hidden shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-zinc-200 dark:border-white/5 ${
+                    sidebarOpen ? 'w-[260px] translate-x-0' : 'w-[80px] -translate-x-full md:translate-x-0'
+                }`}
+            >
+                {/* Logo Area */}
                 <Link
                     to="/dashboard"
                     onClick={() => onNewChat?.()}
-                    className="h-16 px-6 border-b border-white/20 dark:border-white/5 flex items-center gap-3 hover:bg-white/40 dark:hover:bg-white/5 transition-colors"
+                    className={`h-16 w-full flex items-center hover:bg-zinc-50/50 dark:hover:bg-white/5 transition-colors border-b border-zinc-200 dark:border-white/5 shrink-0 ${sidebarOpen ? 'px-6 justify-start gap-3' : 'justify-center'}`}
                 >
-                    <img src={campnaiLogo} alt="CampnAI" className="h-8 w-auto object-contain" />
-                    <span className="text-foreground font-semibold text-xl tracking-tight">CampnAI</span>
+                    <img src={campnaiLogo} alt="CampnAI" className="h-8 w-auto object-contain brightness-0 dark:invert shrink-0" />
+                    <span className={`text-foreground font-semibold text-xl tracking-tight dark:text-white whitespace-nowrap overflow-hidden transition-all duration-300 ${sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
+                        CampnAI
+                    </span>
                 </Link>
 
-                <nav className="p-3 space-y-1">
-                    <button
+                {/* Primary Navigation */}
+                <nav className="w-full flex-1 overflow-y-auto overflow-x-hidden scrollbar-none py-4 flex flex-col items-center gap-2">
+                    <SidebarItem
+                        icon={<Plus size={22} strokeWidth={2.5} />}
+                        label="New Chat"
                         onClick={() => { onNewChat?.(); navigate('/dashboard'); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 hover:text-foreground transition"
-                    >
-                        <Plus size={18} />
-                        <span className="text-sm">New chat</span>
-                    </button>
+                        isActive={false}
+                        isExpanded={sidebarOpen}
+                    />
 
-                    <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 hover:text-foreground transition">
-                        <Search size={18} />
-                        <span className="text-sm">Search chats</span>
-                    </button>
+                    <SidebarItem
+                        icon={<Search size={22} strokeWidth={2.5} />}
+                        label="Search"
+                        onClick={() => {}}
+                        isActive={false}
+                        isExpanded={sidebarOpen}
+                    />
 
-                    <button
+                    <SidebarItem
+                        icon={<User size={22} strokeWidth={2.5} />}
+                        label="Account"
                         onClick={() => navigate('/dashboard/account')}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition ${isActive('/dashboard/account') ? 'bg-white/60 dark:bg-white/20 text-foreground shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 hover:text-foreground'}`}
-                    >
-                        <User size={18} />
-                        <span className="text-sm">Account</span>
-                    </button>
+                        isActive={isActive('/dashboard/account')}
+                        isExpanded={sidebarOpen}
+                    />
 
-                    <button
+                    <SidebarItem
+                        icon={<Briefcase size={22} strokeWidth={2.5} />}
+                        label="Find Creators"
                         onClick={() => navigate('/campaigns')}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition ${isActive('/campaigns') ? 'bg-white/60 dark:bg-white/20 text-foreground shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 hover:text-foreground'}`}
-                    >
-                        <Briefcase size={18} />
-                        <span className="text-sm">Find Influencers</span>
-                    </button>
+                        isActive={isActive('/campaigns')}
+                        isExpanded={sidebarOpen}
+                    />
 
-                    <button
+                    <SidebarItem
+                        icon={<Calendar size={22} strokeWidth={2.5} />}
+                        label="Campaigns"
                         onClick={() => navigate('/dashboard/history')}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition ${isActive('/dashboard/history') ? 'bg-white/60 dark:bg-white/20 text-foreground shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 hover:text-foreground'}`}
-                    >
-                        <Calendar size={18} />
-                        <span className="text-sm">My Campaigns</span>
-                    </button>
+                        isActive={isActive('/dashboard/history')}
+                        isExpanded={sidebarOpen}
+                    />
 
-                    <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 hover:text-foreground transition">
-                        <MessageSquare size={18} />
-                        <span className="text-sm">Influencer Profiles</span>
-                    </button>
+                    <SidebarItem
+                        icon={<MessageSquare size={22} strokeWidth={2.5} />}
+                        label="Profiles"
+                        onClick={() => {}}
+                        isActive={false}
+                        isExpanded={sidebarOpen}
+                    />
 
-                    <button
-                        onClick={() => navigate('/campaign/new')}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition mt-1 shadow-lg shadow-primary/25"
-                    >
-                        <Rocket size={18} />
-                        <span className="text-sm font-medium">Create Campaign</span>
-                    </button>
-                </nav>
-
-                <div className="flex-1 overflow-y-auto min-h-0 border-t border-border mx-3 mt-2  overflow-y-scroll [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    <div className="flex items-center justify-between px-3 py-3 sticky top-0 bg-white/90 dark:bg-[rgba(12,3,22,0.95)] backdrop-blur-sm z-10">
-                        <span className="text-xs text-muted-foreground uppercase font-medium">Your chats</span>
+                    <div className="mt-4 w-full flex justify-center px-4">
+                        <button
+                            onClick={() => navigate('/campaign/new')}
+                            className={`flex items-center justify-center rounded-xl bg-gradient-to-r from-secondary to-primary text-white hover:opacity-90 transition-all duration-300 shadow-md shadow-primary/20 overflow-hidden whitespace-nowrap group ${
+                                sidebarOpen ? 'w-[90%] gap-2 py-3 px-4' : 'w-12 h-12 p-0'
+                            }`}
+                        >
+                            <Rocket size={20} className="shrink-0 group-hover:-translate-y-0.5 transition-transform" />
+                            <span className={`font-bold tracking-wide uppercase transition-all duration-300 ${
+                                sidebarOpen ? 'text-sm opacity-100 w-auto' : 'opacity-0 w-0 text-[0px]'
+                            }`}>
+                                Create Campaign
+                            </span>
+                        </button>
                     </div>
 
-                    <div className="pb-3 ">
-                        {isLoading ? (
-                            <div className="space-y-2 px-3">
-                                {[1, 2, 3].map(i => (
-                                    <div key={i} className="h-8 bg-muted/50 rounded animate-pulse" />
-                                ))}
+                    {sidebarOpen && (
+                         <div className="w-full mt-6">
+                            <div className="flex items-center px-6 py-2 mb-2 border-t border-zinc-200 dark:border-white/5 pt-4">
+                                <span className="text-xs text-muted-foreground uppercase font-medium tracking-wider">Your chats</span>
                             </div>
-                        ) : chatSessions.length > 0 ? (
-                            chatSessions.map(chat => (
-                                <div
-                                    key={chat.session_id}
-                                    className={`group w-full flex items-center justify-between px-3 py-2 rounded-lg transition text-sm cursor-pointer mb-1 ${activeSessionId === chat.session_id
-                                        ? 'bg-white/60 dark:bg-white/20 text-foreground shadow-sm'
-                                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 hover:text-foreground'
-                                        }`}
-                                    onClick={() => onSelectSession?.(chat.session_id)}
-                                >
-                                    <span className="truncate flex-1">💬 {chat.title}</span>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setSessionToDelete(chat.session_id); }}
-                                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition ml-2 flex-shrink-0"
-                                        title="Delete chat"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="px-3 text-xs text-muted-foreground">No recent chats</div>
-                        )}
-                    </div>
-                </div>
 
-                <div className="p-3 border-t border-border">
-                    {isLoading ? (
-                        <div className="flex items-center gap-3 px-3 py-2">
-                            <div className="w-8 h-8 rounded-full bg-muted/50 animate-pulse" />
-                            <div className="flex-1 space-y-2">
-                                <div className="h-3 w-20 bg-muted/50 rounded animate-pulse" />
-                                <div className="h-2 w-24 bg-muted/50 rounded animate-pulse" />
+                            <div className="px-4 space-y-1">
+                                {isLoading ? (
+                                    <div className="space-y-2">
+                                        {[1, 2, 3].map(i => (
+                                            <div key={i} className="h-8 bg-muted/50 rounded-lg animate-pulse" />
+                                        ))}
+                                    </div>
+                                ) : chatSessions.length > 0 ? (
+                                    chatSessions.map(chat => (
+                                        <div
+                                            key={chat.session_id}
+                                            className={`group w-full flex items-center justify-between px-3 py-2 rounded-lg transition text-sm cursor-pointer ${activeSessionId === chat.session_id
+                                                ? 'bg-white/10 dark:bg-white/5 text-foreground shadow-sm'
+                                                : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100'
+                                                }`}
+                                            onClick={() => onSelectSession?.(chat.session_id)}
+                                        >
+                                            <span className="truncate flex-1">💬 {chat.title}</span>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setSessionToDelete(chat.session_id); }}
+                                                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition ml-2 flex-shrink-0"
+                                                title="Delete chat"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="px-2 text-xs text-muted-foreground">No recent chats</div>
+                                )}
                             </div>
                         </div>
+                    )}
+                </nav>
+
+                {/* User Profile Footer */}
+                <div className={`w-full p-3 border-t border-zinc-200 dark:border-white/5 mt-auto flex flex-col items-center shrink-0 bg-transparent`}>
+                    {isLoading ? (
+                         <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 animate-pulse bg-white/5" />
                     ) : user && (
-                        <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/40 dark:hover:bg-white/10 transition cursor-pointer">
-                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-semibold">
-                                {getUserInitial()}
+                        <div className="flex flex-col items-center gap-2 w-full">
+                            <div className={`flex items-center w-full overflow-hidden transition-all duration-300 ${sidebarOpen ? 'gap-3 px-2 justify-start' : 'justify-center'}`}>
+                                <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-900 dark:text-zinc-100 font-bold border border-zinc-200 dark:border-zinc-700 shadow-sm transition-transform hover:scale-105 cursor-pointer" title={user.email || ''}>
+                                    {getUserInitial()}
+                                </div>
+                                <div className={`flex flex-col overflow-hidden transition-all duration-300 ${sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
+                                    <span className="text-sm font-medium text-zinc-900 dark:text-white truncate">
+                                        {getUserDisplayName()}
+                                    </span>
+                                    <span className="text-xs text-zinc-500 truncate">
+                                        {user.email}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-foreground text-sm font-medium truncate">
-                                    {getUserDisplayName()}
-                                </p>
-                                <p className="text-muted-foreground text-xs truncate">
-                                    {user.email}
-                                </p>
-                            </div>
+                            
+                            <button
+                                onClick={handleLogout}
+                                className={`flex items-center justify-center rounded-lg text-zinc-500 hover:text-red-500 hover:bg-red-500/10 transition-all duration-300 shrink-0 overflow-hidden whitespace-nowrap ${sidebarOpen ? 'w-[90%] px-4 py-2 gap-2 mt-2 bg-zinc-50 dark:bg-white/5' : 'w-10 h-10 p-0'}`}
+                                title="Sign Out"
+                            >
+                                <LogOut size={18} className="shrink-0" />
+                                <span className={`text-sm font-medium transition-all duration-300 ${sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 text-[0px]'}`}>Logout</span>
+                            </button>
                         </div>
                     )}
                 </div>
@@ -231,17 +309,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <div className="flex items-center gap-4 min-w-0 flex-1 mr-4">
                         <button
                             onClick={() => setSidebarOpen(!sidebarOpen)}
-                            className="text-muted-foreground hover:text-foreground transition flex-shrink-0"
+                            className="text-muted-foreground hover:text-foreground transition flex-shrink-0 md:hidden"
                             aria-label="Toggle sidebar"
                         >
                             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
                         </button>
 
+                        <button
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                            className="text-muted-foreground hover:text-foreground transition flex-shrink-0 hidden md:block"
+                            aria-label="Toggle sidebar desktop"
+                        >
+                            {sidebarOpen ? <Menu size={20} /> : <Menu size={20} />}
+                        </button>
+
                         <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap min-w-0">
-                            {title ? (
+                            {title && (
                                 <div className="text-muted-foreground text-sm font-medium truncate">{title}</div>
-                            ) : (
-                                <span className="text-foreground font-medium truncate">CampnAI</span>
                             )}
                         </div>
                     </div>
@@ -249,13 +333,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <div className="flex items-center gap-3 flex-shrink-0">
                         {headerAction}
                         <ModeToggle />
-                        <button
-                            onClick={handleLogout}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-white/40 dark:hover:bg-white/10 transition text-sm font-medium"
-                        >
-                            <LogOut size={18} />
-                            <span className="hidden sm:inline">Sign Out</span>
-                        </button>
                     </div>
                 </header>
 
