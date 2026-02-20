@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCampaign } from '../CampaignContext';
 import {
   ArrowRight, Sparkles, Target, Zap,
   Users, DollarSign, Clock,
-  CheckCircle2, ChevronRight, ChevronLeft
+  ChevronRight, ChevronLeft, IndianRupee
 } from 'lucide-react';
 
 const GOAL_OPTIONS = [
@@ -15,11 +15,12 @@ const GOAL_OPTIONS = [
   { id: 'Creator Seeding',     label: 'Creator Seeding',   desc: 'Gift products to many',          icon: Sparkles   },
 ];
 
+// Budget presets: each has a label, description, and auto min/max in ₹
 const BUDGET_OPTIONS = [
-  { id: 'Under ₹1 Lakh', label: '< ₹1 Lakh',   desc: 'Micro — testing waters'   },
-  { id: '₹1-5 Lakh',     label: '₹1 – 5 Lakh', desc: 'Growth — scaling up'      },
-  { id: '₹5-10 Lakh',    label: '₹5 – 10 Lakh',desc: 'Scale — dominating niche' },
-  { id: '₹10 Lakh+',     label: '₹10 Lakh+',   desc: 'Enterprise — full force'  },
+  { id: 'Under ₹1 Lakh', label: '< ₹1 Lakh',   desc: 'Micro — testing waters',     min: 10000,   max: 100000  },
+  { id: '₹1-5 Lakh',     label: '₹1 – 5 Lakh', desc: 'Growth — scaling up',         min: 100000,  max: 500000  },
+  { id: '₹5-10 Lakh',    label: '₹5 – 10 Lakh',desc: 'Scale — dominating niche',    min: 500000,  max: 1000000 },
+  { id: '₹10 Lakh+',     label: '₹10 Lakh+',   desc: 'Enterprise — full force',     min: 1000000, max: 5000000 },
 ];
 
 const TIMELINE_OPTIONS = [
@@ -28,16 +29,189 @@ const TIMELINE_OPTIONS = [
   { id: '30 Days',  label: '30 Days',  desc: 'Marathon — long-term building'  },
 ];
 
+// Sub-step 0 = Goal, 1 = Budget, 2 = Timeline
 const STEPS = [
-  { key: 'primaryGoal', label: 'Primary Goal',       options: GOAL_OPTIONS    },
-  { key: 'budgetRange', label: 'Budget Range',        options: BUDGET_OPTIONS  },
-  { key: 'timeline',    label: 'Campaign Duration',   options: TIMELINE_OPTIONS},
+  { key: 'primaryGoal', label: 'Primary Goal',     options: GOAL_OPTIONS    },
+  { key: 'budgetRange', label: 'Budget Range',      options: BUDGET_OPTIONS  },
+  { key: 'timeline',    label: 'Campaign Duration', options: TIMELINE_OPTIONS},
 ];
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 40 : -40, opacity: 0 }),
   center: { x: 0, opacity: 1 },
   exit:  (dir: number) => ({ x: dir > 0 ? -40 : 40, opacity: 0 }),
+};
+
+// Format number as ₹ with K/L suffix for display
+function formatRupees(val: number): string {
+  if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
+  if (val >= 100000)   return `₹${(val / 100000).toFixed(1)}L`;
+  if (val >= 1000)     return `₹${(val / 1000).toFixed(0)}K`;
+  return `₹${val}`;
+}
+
+// Parse a ₹ string back to number (for manual input)
+function parseRupeeInput(raw: string): number {
+  const clean = raw.replace(/[₹,\s]/g, '');
+  const n = parseFloat(clean);
+  return isNaN(n) ? 0 : Math.max(0, n);
+}
+
+// Budget step — shown only when wizardStep === 1
+const BudgetStep: React.FC<{
+  preferences: any;
+  setPreferences: (p: any) => void;
+}> = ({ preferences, setPreferences }) => {
+  // local edit values (strings so user can type freely)
+  const [minStr, setMinStr] = useState(String(preferences.budgetMin ?? 0));
+  const [maxStr, setMaxStr] = useState(String(preferences.budgetMax ?? 100000));
+
+  // When preset is selected, update min/max
+  const handlePreset = (opt: typeof BUDGET_OPTIONS[0]) => {
+    setPreferences({ ...preferences, budgetRange: opt.id, budgetMin: opt.min, budgetMax: opt.max });
+    setMinStr(String(opt.min));
+    setMaxStr(String(opt.max));
+  };
+
+  // When user blurs a manual field, persist to context
+  const commitMin = () => {
+    const v = parseRupeeInput(minStr);
+    setMinStr(String(v));
+    setPreferences({ ...preferences, budgetMin: v });
+  };
+  const commitMax = () => {
+    const v = parseRupeeInput(maxStr);
+    setMaxStr(String(v));
+    setPreferences({ ...preferences, budgetMax: v });
+  };
+
+  // Keep local state in sync if restored from URL
+  useEffect(() => {
+    setMinStr(String(preferences.budgetMin ?? 0));
+    setMaxStr(String(preferences.budgetMax ?? 100000));
+  }, [preferences.budgetMin, preferences.budgetMax]);
+
+  return (
+    <div className="space-y-2">
+      {/* Preset tiles */}
+      {BUDGET_OPTIONS.map((opt, idx) => {
+        const isSelected = preferences.budgetRange === opt.id;
+        return (
+          <motion.button
+            key={opt.id}
+            onClick={() => handlePreset(opt)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.04 }}
+            className={`
+              group w-full flex items-center justify-between gap-4
+              px-5 py-4 rounded-2xl border text-left
+              transition-all duration-200
+              ${isSelected
+                ? 'bg-black text-white border-black'
+                : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02]'
+              }
+            `}
+          >
+            <div>
+              <div className={`font-semibold text-[15px] ${isSelected ? 'text-white' : 'text-black'}`}>
+                {opt.label}
+              </div>
+              <div className={`text-[12px] mt-0.5 ${isSelected ? 'text-white/60' : 'text-black/40'}`}>
+                {opt.desc}
+              </div>
+            </div>
+            <div className={`
+              w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center
+              transition-all duration-200
+              ${isSelected ? 'border-white bg-white' : 'border-black/15'}
+            `}>
+              {isSelected && (
+                <motion.div
+                  layoutId="budget-sel-dot"
+                  className="w-2 h-2 rounded-full bg-black"
+                />
+              )}
+            </div>
+          </motion.button>
+        );
+      })}
+
+      {/* Manual min/max fields — visible after preset selected */}
+      <AnimatePresence>
+        {preferences.budgetRange && (
+          <motion.div
+            key="minmax"
+            initial={{ opacity: 0, y: 8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: 8, height: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-4 pt-4 border-t border-black/8">
+              <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-black/40 mb-3">
+                Fine-tune your budget
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Min */}
+                <div className="relative">
+                  <label className="block text-[11px] font-semibold text-black/40 mb-1.5 uppercase tracking-wider">
+                    Minimum
+                  </label>
+                  <div className="relative flex items-center">
+                    <IndianRupee size={13} className="absolute left-3 text-black/40 pointer-events-none" />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={minStr}
+                      onChange={e => setMinStr(e.target.value)}
+                      onBlur={commitMin}
+                      className="
+                        w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12
+                        bg-black/[0.02] text-sm font-semibold text-black
+                        focus:outline-none focus:border-black/40 focus:bg-white
+                        transition-all
+                      "
+                    />
+                  </div>
+                  {/* hint */}
+                  <p className="text-[10px] text-black/30 mt-1 font-medium">
+                    {formatRupees(parseRupeeInput(minStr) || 0)}
+                  </p>
+                </div>
+
+                {/* Max */}
+                <div className="relative">
+                  <label className="block text-[11px] font-semibold text-black/40 mb-1.5 uppercase tracking-wider">
+                    Maximum
+                  </label>
+                  <div className="relative flex items-center">
+                    <IndianRupee size={13} className="absolute left-3 text-black/40 pointer-events-none" />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={maxStr}
+                      onChange={e => setMaxStr(e.target.value)}
+                      onBlur={commitMax}
+                      className="
+                        w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12
+                        bg-black/[0.02] text-sm font-semibold text-black
+                        focus:outline-none focus:border-black/40 focus:bg-white
+                        transition-all
+                      "
+                    />
+                  </div>
+                  <p className="text-[10px] text-black/30 mt-1 font-medium">
+                    {formatRupees(parseRupeeInput(maxStr) || 0)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 };
 
 const StepPersonalize: React.FC = () => {
@@ -68,21 +242,21 @@ const StepPersonalize: React.FC = () => {
     setWizardStep(s => s - 1);
   };
 
-    const handleFindCreators = async () => {
-      if (!campaignId) return;
-      setIsGenerating(true);
-      try {
-        const { API_BASE_URL } = await import('../../../config/api');
-        const { auth }         = await import('../../../firebaseConfig');
-        
-        let user = auth.currentUser;
-        if (!user) {
-          user = await new Promise<any>((resolve) => {
-            const unsub = auth.onAuthStateChanged(u => { unsub(); resolve(u); });
-          });
-        }
-        if (!user) throw new Error('Please log in to continue.');
-        const token = await user.getIdToken();
+  const handleFindCreators = async () => {
+    if (!campaignId) return;
+    setIsGenerating(true);
+    try {
+      const { API_BASE_URL } = await import('../../../config/api');
+      const { auth }         = await import('../../../firebaseConfig');
+      
+      let user = auth.currentUser;
+      if (!user) {
+        user = await new Promise<any>((resolve) => {
+          const unsub = auth.onAuthStateChanged(u => { unsub(); resolve(u); });
+        });
+      }
+      if (!user) throw new Error('Please log in to continue.');
+      const token = await user.getIdToken();
 
       const response = await fetch(
         `${API_BASE_URL}/campaigns/${campaignId}/generate-suggestions`,
@@ -111,7 +285,6 @@ const StepPersonalize: React.FC = () => {
   return (
     <div className="min-h-screen bg-white text-black font-sans relative overflow-hidden">
 
-      
       {/* Subtle Neon Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
           <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-purple-500/15 rounded-full blur-[120px]" />
@@ -211,6 +384,14 @@ const StepPersonalize: React.FC = () => {
                 const val = preferences[step.key as keyof typeof preferences] as string;
                 const done   = i < wizardStep;
                 const active = i === wizardStep;
+
+                // Show budget range + custom range if set
+                const displayVal = step.key === 'budgetRange' && val
+                  ? `${val}${preferences.budgetMin || preferences.budgetMax
+                      ? ` (${formatRupees(preferences.budgetMin)} – ${formatRupees(preferences.budgetMax)})`
+                      : ''}`
+                  : val;
+
                 return (
                   <div key={step.key} className="flex items-start gap-3">
                     {/* dot */}
@@ -225,9 +406,9 @@ const StepPersonalize: React.FC = () => {
                       }`}>
                         {step.label}
                       </span>
-                      {val && (
+                      {displayVal && (
                         <p className="text-[13px] text-black/45 font-medium mt-0.5 leading-snug">
-                          {val}
+                          {displayVal}
                         </p>
                       )}
                     </div>
@@ -260,7 +441,7 @@ const StepPersonalize: React.FC = () => {
             </h3>
           </motion.div>
 
-          {/* Options list */}
+          {/* Options / Budget panel */}
           <div className="relative overflow-hidden">
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div
@@ -273,72 +454,77 @@ const StepPersonalize: React.FC = () => {
                 transition={{ duration: 0.22, ease: 'easeInOut' }}
                 className="space-y-2"
               >
-                {currentStepConfig.options.map((opt, idx) => {
-                  const isSelected = currentValue === opt.id;
-                  const Icon = 'icon' in opt ? (opt as any).icon : null;
+                {/* Budget step gets special component */}
+                {wizardStep === 1 ? (
+                  <BudgetStep preferences={preferences} setPreferences={setPreferences} />
+                ) : (
+                  currentStepConfig.options.map((opt, idx) => {
+                    const isSelected = currentValue === opt.id;
+                    const Icon = 'icon' in opt ? (opt as any).icon : null;
 
-                  return (
-                    <motion.button
-                      key={opt.id}
-                      onClick={() => handleSelect(opt.id)}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.04 }}
-                      className={`
-                        group w-full flex items-center justify-between gap-4
-                        px-5 py-4 rounded-2xl border text-left
-                        transition-all duration-200
-                        ${isSelected
-                          ? 'bg-black text-white border-black'
-                          : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02]'
-                        }
-                      `}
-                    >
-                      <div className="flex items-center gap-4">
-                        {Icon && (
-                          <div
-                            className={`
-                              w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
-                              ${isSelected ? 'bg-white/15' : 'bg-black/5 group-hover:bg-black/8'}
-                            `}
-                          >
-                            <Icon
-                              size={17}
-                              className={isSelected ? 'text-white' : 'text-black/50'}
-                            />
-                          </div>
-                        )}
-                        <div>
-                          <div className={`font-semibold text-[15px] ${isSelected ? 'text-white' : 'text-black'}`}>
-                            {opt.label}
-                          </div>
-                          <div className={`text-[12px] mt-0.5 ${isSelected ? 'text-white/60' : 'text-black/40'}`}>
-                            {opt.desc}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Selection indicator */}
-                      <div
+                    return (
+                      <motion.button
+                        key={opt.id}
+                        onClick={() => handleSelect(opt.id)}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.04 }}
                         className={`
-                          w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center
+                          group w-full flex items-center justify-between gap-4
+                          px-5 py-4 rounded-2xl border text-left
                           transition-all duration-200
                           ${isSelected
-                            ? 'border-white bg-white'
-                            : 'border-black/15'
+                            ? 'bg-black text-white border-black'
+                            : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02]'
                           }
                         `}
                       >
-                        {isSelected && (
-                          <motion.div
-                            layoutId="sel-dot"
-                            className="w-2 h-2 rounded-full bg-black"
-                          />
-                        )}
-                      </div>
-                    </motion.button>
-                  );
-                })}
+                        <div className="flex items-center gap-4">
+                          {Icon && (
+                            <div
+                              className={`
+                                w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
+                                ${isSelected ? 'bg-white/15' : 'bg-black/5 group-hover:bg-black/8'}
+                              `}
+                            >
+                              <Icon
+                                size={17}
+                                className={isSelected ? 'text-white' : 'text-black/50'}
+                              />
+                            </div>
+                          )}
+                          <div>
+                            <div className={`font-semibold text-[15px] ${isSelected ? 'text-white' : 'text-black'}`}>
+                              {opt.label}
+                            </div>
+                            <div className={`text-[12px] mt-0.5 ${isSelected ? 'text-white/60' : 'text-black/40'}`}>
+                              {opt.desc}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Selection indicator */}
+                        <div
+                          className={`
+                            w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center
+                            transition-all duration-200
+                            ${isSelected
+                              ? 'border-white bg-white'
+                              : 'border-black/15'
+                            }
+                          `}
+                        >
+                          {isSelected && (
+                            <motion.div
+                              layoutId="sel-dot"
+                              className="w-2 h-2 rounded-full bg-black"
+                            />
+                          )}
+                        </div>
+                      </motion.button>
+                    );
+                  })
+                )}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -357,8 +543,6 @@ const StepPersonalize: React.FC = () => {
             ) : (
               <div />
             )}
-
-            
 
             {wizardStep < STEPS.length - 1 ? (
               <button
