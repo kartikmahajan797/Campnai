@@ -36,7 +36,7 @@ const Dashboard = () => {
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false); 
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(routeSessionId || null);
   const [error, setError] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<any[]>([]);
@@ -65,11 +65,11 @@ const Dashboard = () => {
   // Effect to load sessions when user authenticates
   useEffect(() => {
     if (user) {
-        loadSessions();
+      loadSessions();
     } else if (!authLoading) {
-        // User not logged in and not loading
-        setChatSessions([]);
-        setIsSessionsLoading(false);
+      // User not logged in and not loading
+      setChatSessions([]);
+      setIsSessionsLoading(false);
     }
   }, [user, authLoading]);
 
@@ -78,18 +78,18 @@ const Dashboard = () => {
     if (authLoading) return; // Wait for auth check
 
     if (!user) {
-        setMessages([]);
-        return;
+      setMessages([]);
+      return;
     }
 
     if (routeSessionId) {
-        setSessionId(routeSessionId);
-        loadChatHistory(routeSessionId);
+      setSessionId(routeSessionId);
+      loadChatHistory(routeSessionId);
     } else {
-        // New chat mode
-        setSessionId(null);
-        setMessages([]);
-        setIsHistoryLoading(false);
+      // New chat mode
+      setSessionId(null);
+      setMessages([]);
+      setIsHistoryLoading(false);
     }
   }, [routeSessionId, user, authLoading]);
 
@@ -131,47 +131,47 @@ const Dashboard = () => {
     setError(null);
 
     try {
-        const currentSessionId = sessionId;
-        
-        // Add placeholder for assistant message
-        setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toISOString() }]);
-        
-        let accumulatedResponse = "";
+      const currentSessionId = sessionId;
 
-        const res = await chatService.sendMessage(msg, currentSessionId, (chunk) => {
-            accumulatedResponse += chunk;
-            setMessages(prev => {
-                const newMessages = [...prev];
-                const lastMsgIndex = newMessages.length - 1;
-                if (lastMsgIndex >= 0 && newMessages[lastMsgIndex].role === 'assistant') {
-                    // Update the last message content
-                    newMessages[lastMsgIndex] = {
-                        ...newMessages[lastMsgIndex],
-                        content: accumulatedResponse
-                    };
-                }
-                return newMessages;
-            });
-            // Stop loading as soon as we start getting text
-            setIsLoading(false); 
+      // Add placeholder for assistant message
+      setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date().toISOString() }]);
+
+      let accumulatedResponse = "";
+
+      const res = await chatService.sendMessage(msg, currentSessionId, (chunk) => {
+        accumulatedResponse += chunk;
+        setMessages(prev => {
+          const newMessages = [...prev];
+          const lastMsgIndex = newMessages.length - 1;
+          if (lastMsgIndex >= 0 && newMessages[lastMsgIndex].role === 'assistant') {
+            // Update the last message content
+            newMessages[lastMsgIndex] = {
+              ...newMessages[lastMsgIndex],
+              content: accumulatedResponse
+            };
+          }
+          return newMessages;
         });
-      
+        // Stop loading as soon as we start getting text
+        setIsLoading(false);
+      });
+
       if (res.session_id) {
         if (!currentSessionId) {
-            navigate(`/dashboard/${res.session_id}`, { replace: true });
+          navigate(`/dashboard/${res.session_id}`, { replace: true });
         }
-        setSessionId(res.session_id); 
+        setSessionId(res.session_id);
       }
-      
+
       // Ensure final state is set (redundant but safe)
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMsgIndex = newMessages.length - 1;
-         if (lastMsgIndex >= 0 && newMessages[lastMsgIndex].role === 'assistant') {
-            newMessages[lastMsgIndex] = {
-                ...newMessages[lastMsgIndex],
-                content: res.response
-            };
+        if (lastMsgIndex >= 0 && newMessages[lastMsgIndex].role === 'assistant') {
+          newMessages[lastMsgIndex] = {
+            ...newMessages[lastMsgIndex],
+            content: res.response
+          };
         }
         return newMessages;
       });
@@ -286,27 +286,27 @@ const Dashboard = () => {
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm, remarkBreaks]}
                           components={{
-                            p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
-                            strong: ({children}) => <strong className="font-semibold text-foreground">{children}</strong>,
-                            h1: ({children}) => <h3 className="text-lg font-bold mt-4 mb-2 text-foreground">{children}</h3>,
-                            h2: ({children}) => <h4 className="text-base font-bold mt-3 mb-2 text-foreground">{children}</h4>,
-                            h3: ({children}) => <h5 className="text-sm font-bold mt-3 mb-1 text-foreground">{children}</h5>,
-                            ul: ({children}) => <ul className="list-disc pl-5 mb-2 space-y-1">{children}</ul>,
-                            ol: ({children}) => <ol className="list-decimal pl-5 mb-2 space-y-1">{children}</ol>,
-                            li: ({children}) => <li>{children}</li>,
-                            a: ({href, children}) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">{children}</a>,
-                            code: ({children}) => <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>,
+                            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                            strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+                            h1: ({ children }) => <h3 className="text-lg font-bold mt-4 mb-2 text-foreground">{children}</h3>,
+                            h2: ({ children }) => <h4 className="text-base font-bold mt-3 mb-2 text-foreground">{children}</h4>,
+                            h3: ({ children }) => <h5 className="text-sm font-bold mt-3 mb-1 text-foreground">{children}</h5>,
+                            ul: ({ children }) => <ul className="list-disc pl-5 mb-2 space-y-1">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 space-y-1">{children}</ol>,
+                            li: ({ children }) => <li>{children}</li>,
+                            a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">{children}</a>,
+                            code: ({ children }) => <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>,
                             hr: () => <hr className="my-3 border-border" />,
-                            table: ({children}) => (
+                            table: ({ children }) => (
                               <div className="overflow-x-auto my-3 rounded-lg border border-border">
                                 <table className="w-full border-collapse text-sm">{children}</table>
                               </div>
                             ),
-                            thead: ({children}) => <thead className="bg-muted/50">{children}</thead>,
-                            tbody: ({children}) => <tbody>{children}</tbody>,
-                            tr: ({children}) => <tr className="border-b border-border last:border-0">{children}</tr>,
-                            th: ({children}) => <th className="px-3 py-2 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wider">{children}</th>,
-                            td: ({children}) => <td className="px-3 py-2 text-foreground">{children}</td>,
+                            thead: ({ children }) => <thead className="bg-muted/50">{children}</thead>,
+                            tbody: ({ children }) => <tbody>{children}</tbody>,
+                            tr: ({ children }) => <tr className="border-b border-border last:border-0">{children}</tr>,
+                            th: ({ children }) => <th className="px-3 py-2 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wider">{children}</th>,
+                            td: ({ children }) => <td className="px-3 py-2 text-foreground">{children}</td>,
                           }}
                         >
                           {msg.content}
@@ -334,22 +334,21 @@ const Dashboard = () => {
                   <div className="flex items-center gap-3 bg-muted/50 border border-border/50 rounded-2xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-ring focus-within:border-ring transition-all">
                     <Plus size={20} className="text-muted-foreground cursor-pointer flex-shrink-0 hover:text-foreground transition-colors" />
                     <input
-                      type="text" 
-                      value={inputValue} 
+                      type="text"
+                      value={inputValue}
                       onChange={e => setInputValue(e.target.value)}
-                      placeholder="Ask anything..." 
+                      placeholder="Ask anything..."
                       disabled={isLoading}
                       className="flex-1 bg-transparent border-none outline-none text-foreground text-base placeholder:text-muted-foreground disabled:opacity-50"
                     />
                     <Mic size={18} className="text-muted-foreground cursor-pointer flex-shrink-0 hover:text-foreground transition-colors" />
-                    <button 
-                      type="submit" 
-                      disabled={!inputValue.trim() || isLoading} 
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
-                        inputValue.trim() && !isLoading 
-                          ? 'bg-primary text-primary-foreground hover:opacity-90 cursor-pointer shadow-sm' 
+                    <button
+                      type="submit"
+                      disabled={!inputValue.trim() || isLoading}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${inputValue.trim() && !isLoading
+                          ? 'bg-primary text-primary-foreground hover:opacity-90 cursor-pointer shadow-sm'
                           : 'bg-muted text-muted-foreground cursor-not-allowed'
-                      }`}
+                        }`}
                     >
                       {isLoading ? (
                         <Loader2 size={16} className="animate-spin" />

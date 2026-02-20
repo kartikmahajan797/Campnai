@@ -14,6 +14,7 @@ import CampaignDetails from "./components/campaigns/CampaignDetails";
 import CampaignCommandCenter from "./components/campaigns/CampaignCommandCenter";
 import CampaignHistory from "./components/dashboard/CampaignHistory";
 import CampaignFlowPage from "./pages/CampaignFlowPage";
+import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/:sessionId" element={<Dashboard />} />
             <Route path="/dashboard/history" element={<CampaignHistory />} />
+            <Route path="/dashboard/account" element={<Account />} />
             <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/campaigns/new/success" element={<NewCampaignSuccess />} />
             <Route path="/campaigns/:id" element={<CampaignDetails />} />
