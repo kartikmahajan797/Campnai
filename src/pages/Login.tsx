@@ -3,6 +3,7 @@ import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { useNavigate } from 'react-router-dom';
+import { CampaignService } from '../services/CampaignService';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -16,6 +17,26 @@ const Login = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const redirectAfterLogin = async () => {
+    setIsRestoring(true);
+    try {
+      const campaigns = await CampaignService.getUserCampaigns();
+      if (campaigns && campaigns.length > 0) {
+        const sorted = [...campaigns].sort((a: any, b: any) => {
+          const ta = a.createdAt?._seconds ?? (a.createdAt?.toDate?.()?.getTime?.() ?? 0) / 1000;
+          const tb = b.createdAt?._seconds ?? (b.createdAt?.toDate?.()?.getTime?.() ?? 0) / 1000;
+          return tb - ta;
+        });
+        navigate(`/campaign/new?id=${sorted[0].id}`, { replace: true });
+      } else {
+        navigate('/dashboard/history', { replace: true });
+      }
+    } catch {
+      navigate('/dashboard/history', { replace: true });
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -23,7 +44,7 @@ const Login = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!mounted) return;
       if (user) {
-        navigate('/campaign/new', { replace: true });
+        redirectAfterLogin();
       } else {
         setIsCheckingAuth(false);
       }
@@ -45,8 +66,7 @@ const Login = () => {
       await setPersistence(auth, formData.remember ? browserLocalPersistence : browserSessionPersistence);
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       console.log('Login successful:', userCredential.user);
-      alert('Login successful!');
-      navigate('/campaign/new', { replace: true });
+      await redirectAfterLogin();
     } catch (error: any) {
       console.error('Login error:', error);
       const message = error?.message || 'Login failed';
@@ -67,7 +87,7 @@ const Login = () => {
 
       const result = await signInWithPopup(auth, provider);
       console.log('Google login valid:', result.user.uid);
-      navigate('/campaign/new', { replace: true });
+      await redirectAfterLogin();
 
     } catch (error: any) {
       console.error('[Auth Debug] Popup error:', error);
@@ -88,13 +108,23 @@ const Login = () => {
     });
   };
 
-  if (isCheckingAuth) {
+  if (isCheckingAuth || isRestoring) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-slate-800">Checking authentication...</h2>
-          <p className="text-slate-500 mt-2">Please wait while we secure your session</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center flex flex-col items-center gap-5">
+          {/* Spinning ring */}
+          <div className="relative w-20 h-20">
+            <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+            <div className="absolute inset-0 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">
+              {isRestoring ? 'Restoring session…' : 'Checking authentication…'}
+            </h2>
+            <p className="text-muted-foreground text-sm mt-1">
+              {isRestoring ? 'Opening your latest campaign' : 'Please wait while we secure your session'}
+            </p>
+          </div>
         </div>
       </div>
     );

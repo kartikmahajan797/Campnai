@@ -35,7 +35,7 @@ const NICHE_KEYWORDS = {
     haircare:    ["haircare","hair care","shampoo","conditioner","hair oil","hair mask","hair growth","hairstyle"],
     fitness:     ["fitness","gym","workout","health","wellness","yoga","exercise","bodybuilding","protein","run","weight loss","nutrition","diet"],
     lifestyle:   ["lifestyle","daily","vlog","routine","living","home","decor","motivation","mindset","productivity","travel"],
-    food:        ["food","recipe","cooking","chef","baking","restaurant","cuisine","eat","kitchen","foodie","snack","beverage","drink"],
+    food:        ["food","recipe","cooking","chef","baking","restaurant","cuisine","eat","kitchen","foodie","snack","beverage","drink","delivery","healthy food","fmcg","packaged food","order food","meal","nutrition","homemade","street food","dessert","sweet"],
     tech:        ["tech","technology","gadget","phone","laptop","review","unboxing","coding","software","ai","app","computer","gaming"],
     travel:      ["travel","wanderlust","explore","destination","trip","adventure","tourism","hotel","backpack","trek"],
     gaming:      ["gaming","game","esports","twitch","stream","playstation","xbox","pc","fps","pubg","bgmi","mobile game"],
@@ -53,7 +53,8 @@ const NICHE_KEYWORDS = {
     pets:        ["pets","dog","cat","animals","pet care","vet","puppy","kitten"],
     sustainability: ["sustainability","eco","green","organic","environment","natural","vegan","zero waste"],
     events:      ["events","wedding","party","celebration","festival","concerts","nightlife"],
-    restaurants: ["restaurant","cafe","dining","food","eatery","bistro","bar","lounge"],
+    restaurants: ["restaurant","cafe","dining","food","eatery","bistro","bar","lounge","fmcg","packaged","beverage","café","diner"],
+
 };
 
 function extractNiches(text) {
@@ -105,40 +106,108 @@ const WEIGHTS = {
     consistency: 0.10,
 };
 
-// ─── Factor 1: Relevance (0–100) ─────────────────────────────────────────────
-// Combines niche keyword match (30%) + vector similarity (70%)
-// brand_fit is comma-separated (e.g. "fast fashion,skincare,haircare,footwear")
-// — each brand category is exploded into the keyword match pool
-function scoreRelevance(queryNiches, influencer, pineconeScore) {
-    let categoryScore;
+// ─── Direct brand_fit tag matching ───────────────────────────────────────────
+// Extracts brand's required niche categories from brandContext, normalizes them.
+// Two-pass approach:
+//   Pass 1 — raw comma-separated tags from "brand_fit: ..." (e.g. ["food","restaurants"])
+//   Pass 2 — extractNiches() expansion of each tag to handle verbose phrases
+//             e.g. "online food delivery" → ['food', 'restaurants']
+// Returns a deduped array of known niche keyword strings.
+function extractBrandCategories(brandContext) {
+    if (!brandContext) return [];
 
-    if (queryNiches.length === 0) {
-        categoryScore = 50; // No niche filter = neutral
+    let rawTags = [];
+
+    // Parse "brand_fit: food,restaurants,lifestyle" from brandContext
+    const m = brandContext.match(/brand_fit:\s*([^|\n]+)/i);
+    if (m) {
+        rawTags = m[1].split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
     } else {
-        // Combine niche + brand_fit + vibe + text for rich matching
-        // brand_fit is comma-separated brand categories — treat each as a keyword
-        const brandFitExpanded = (influencer.brand_fit || "")
-            .split(",")
-            .map(s => s.trim())
-            .join(" ");
+        // No brand_fit prefix — treat whole context as free text
+        rawTags = [brandContext.toLowerCase()];
+    }
 
+    // For each raw tag, also run extractNiches() to normalize verbose phrases
+    // e.g. "online food delivery" → ['food', 'restaurants']
+    const expanded = new Set(rawTags);
+    for (const tag of rawTags) {
+        const niches = extractNiches(tag);
+        niches.forEach(n => expanded.add(n));
+    }
+
+    return [...expanded].filter(Boolean);
+}
+
+// ─── Factor 1: Relevance (0–100) ─────────────────────────────────────────────
+// Combines:
+//   A. Direct brand_fit tag overlap (brand category ∩ influencer brand_fit)  — 50%
+//   B. Niche keyword match (query niches ∩ influencer niches)                — 20%
+//   C. Vector similarity from Pinecone                                        — 30%
+//
+// Key fix: brand_fit direct match is now the PRIMARY signal.
+// If an influencer's brand_fit has ZERO direct tags matching the brand's categories,
+// they receive a heavy penalty even if Pinecone vector score is high.
+function scoreRelevance(queryNiches, influencer, pineconeScore, brandContext) {
+    // ── A. Direct brand_fit tag overlap ──────────────────────────────────────
+    const brandCategories = extractBrandCategories(brandContext || "");
+    const infBrandFitTags = (influencer.brand_fit || "")
+        .split(",")
+        .map(s => s.trim().toLowerCase())
+        .filter(Boolean);
+    // Also check influencer.niche directly
+    const infNicheTag = (influencer.niche || "").toLowerCase().trim();
+
+    let directOverlapScore;
+    if (brandCategories.length === 0) {
+        directOverlapScore = 50; // No brand context = neutral
+    } else {
+        // Count how many brand categories appear in influencer's brand_fit or niche
+        const matches = brandCategories.filter(cat => {
+            // Check exact or partial match in brand_fit tags
+            if (infBrandFitTags.some(tag => tag.includes(cat) || cat.includes(tag))) return true;
+            // Check against influencer niche
+            if (infNicheTag.includes(cat) || cat.includes(infNicheTag)) return true;
+            // Check using NICHE_KEYWORDS expansion (e.g. "food" → ["foodie","recipe","restaurant"])
+            const kwSet = NICHE_KEYWORDS[cat] || [];
+            const fullText = [...infBrandFitTags, infNicheTag, (influencer.vibe || "").toLowerCase()].join(" ");
+            if (kwSet.some(kw => fullText.includes(kw))) return true;
+            return false;
+        });
+
+        if (matches.length === 0) {
+            // Zero overlap: hard penalty — wrong category influencer
+            directOverlapScore = 5;
+        } else {
+            directOverlapScore = Math.round((matches.length / brandCategories.length) * 100);
+            directOverlapScore = Math.max(directOverlapScore, 40); // At least 1 match = acceptable
+        }
+    }
+
+    // ── B. Niche keyword match ────────────────────────────────────────────────
+    let keywordScore;
+    if (queryNiches.length === 0) {
+        keywordScore = 50;
+    } else {
+        const brandFitExpanded = infBrandFitTags.join(" ");
         const infText = [
-            influencer.niche     || "",
+            infNicheTag,
             brandFitExpanded,
-            influencer.vibe      || "",
-            influencer.text      || "",
-        ].join(" ").toLowerCase();
-
+            (influencer.vibe  || "").toLowerCase(),
+            (influencer.text  || "").toLowerCase(),
+        ].join(" ");
         const infNiches = extractNiches(infText);
         const overlap   = queryNiches.filter(n => infNiches.includes(n));
-
-        categoryScore = overlap.length === 0
-            ? 20
+        keywordScore = overlap.length === 0
+            ? 15
             : Math.round((overlap.length / queryNiches.length) * 100);
     }
 
-    // 30% category keyword match + 70% vector similarity
-    return Math.round(categoryScore * 0.3 + (pineconeScore * 100) * 0.7);
+    // ── C. Combined: 50% direct brand_fit + 20% keyword + 30% vector ─────────
+    return Math.round(
+        directOverlapScore   * 0.50 +
+        keywordScore         * 0.20 +
+        (pineconeScore * 100) * 0.30
+    );
 }
 
 // ─── Factor 2: Engagement (0–100) ────────────────────────────────────────────
@@ -341,7 +410,7 @@ function scoreConsistency(inf) {
 export function computeMatchScore(queryText, influencer, pineconeScore, brandContext = "") {
     const qNiches = extractNiches(`${queryText} ${brandContext}`);
 
-    const relevance   = scoreRelevance(qNiches, influencer, pineconeScore);
+    const relevance   = scoreRelevance(qNiches, influencer, pineconeScore, brandContext);
     const engagement  = scoreEngagement(influencer);
     const audience    = scoreAudience(queryText, influencer, brandContext);
     const pricing     = scorePricingFit(influencer, brandContext);
@@ -460,7 +529,7 @@ export async function searchInfluencers(query, topK = 10, context = "", explicit
                 continue;
             }
             // Minimum overall quality bar
-            if (result.total < 15) {
+            if (result.total < 10) {
                 rejected++;
                 continue;
             }

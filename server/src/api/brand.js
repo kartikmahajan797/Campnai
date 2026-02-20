@@ -126,6 +126,8 @@ OUTPUT FORMAT — STRICT JSON ONLY:
     "preferred_channels": []
   },
   "marketing_goal": "",
+  "niche": "food|fashion|beauty|skincare|fitness|lifestyle|tech|travel|gaming|finance|education|luxury|events|restaurants|parenting|comedy",
+  "brand_fit": "comma-separated list of influencer niche categories that fit this brand e.g. food,restaurants,beverages,lifestyle OR fashion,skincare,haircare,ethnic clothing",
   "best_platforms": [],
   "recommended_influencer_type": "",
   "influencer_tiers": ["nano","micro","macro","celebrity"],
