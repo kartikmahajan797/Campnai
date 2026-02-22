@@ -79,7 +79,8 @@ const Navbar = () => {
               </Button>
             </Link>
             <Button
-              className="rounded-full px-6 font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+              variant="ghost"
+              className="rounded-full px-6 font-bold bg-zinc-900 border-0 text-white hover:bg-black hover:text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 dark:hover:text-zinc-900 shadow-lg shadow-black/10 transition-all transform hover:scale-105"
               size="sm"
             >
               Start Building
@@ -122,7 +123,7 @@ const Navbar = () => {
                   <Link to="/login" onClick={() => setIsOpen(false)}>
                     <Button variant="ghost" className="w-full text-foreground/90 hover:text-foreground font-bold">Sign in</Button>
                   </Link>
-                  <Button className="w-full rounded-2xl font-bold" onClick={() => setIsOpen(false)}>Start Building</Button>
+                  <Button variant="ghost" className="w-full rounded-2xl font-bold bg-zinc-900 text-white hover:bg-black hover:text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 dark:hover:text-zinc-900 border-0 shadow-lg shadow-black/10" onClick={() => setIsOpen(false)}>Start Building</Button>
                 </div>
               </div>
             </motion.div>

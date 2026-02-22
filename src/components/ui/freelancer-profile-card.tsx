@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, HTMLMotionProps } from "framer-motion";
-import { ArrowUpRight, Heart, Star, Users, Zap } from "lucide-react";
+import { ArrowUpRight, Heart, Star, Users, Zap, Instagram } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 import { Avatar, AvatarImage, AvatarFallback } from "./avatar";
@@ -144,8 +144,9 @@ export const FreelancerProfileCard = React.forwardRef<
         {/* Primary Action - Larger Buttons */}
         <div className="w-full flex gap-3 mt-auto">
           <Button
+            variant="ghost"
             onClick={onGetInTouch}
-            className="flex-1 h-12 shadow-sm transition-all shadow-primary/10 hover:shadow-primary/30"
+            className="flex-1 h-12 shadow-sm transition-all bg-zinc-900 text-white hover:bg-black hover:text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 dark:hover:text-zinc-900 border-0 hover:shadow-none"
           >
             View Profile
           </Button>
@@ -157,11 +158,11 @@ export const FreelancerProfileCard = React.forwardRef<
               className="h-12 w-12 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all bg-transparent"
               onClick={e => e.stopPropagation()}
             >
-              <ArrowUpRight className="w-5 h-5" />
+              <Instagram className="w-5 h-5" />
             </a>
           ) : (
             <div className="h-12 w-12 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-300 dark:text-zinc-700 cursor-not-allowed">
-              <ArrowUpRight className="w-5 h-5" />
+              <Instagram className="w-5 h-5" />
             </div>
           )}
         </div>
