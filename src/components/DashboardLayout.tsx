@@ -216,7 +216,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <div className="mt-4 w-full flex justify-center px-4">
                         <button
                             onClick={() => navigate('/campaign/new')}
-                            className={`flex items-center justify-center rounded-xl bg-gradient-to-r from-secondary to-primary text-white hover:opacity-90 transition-all duration-300 shadow-md shadow-primary/20 overflow-hidden whitespace-nowrap group ${
+                            className={`flex items-center justify-center rounded-xl bg-black text-white hover:opacity-90 transition-all duration-300 shadow-md shadow-primary/20 overflow-hidden whitespace-nowrap group ${
                                 sidebarOpen ? 'w-[90%] gap-2 py-3 px-4' : 'w-12 h-12 p-0'
                             }`}
                         >

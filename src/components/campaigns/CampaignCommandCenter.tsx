@@ -31,6 +31,14 @@ const fmtDate = (ts: string) => {
     } catch { return ''; }
 };
 
+// Indian rupee formatter — handles string/number, always adds commas
+const fmtINR = (val: number | string | undefined | null): string => {
+    const raw = typeof val === 'string' ? val.replace(/,/g, '') : String(val ?? 0);
+    const n = parseInt(raw, 10);
+    if (isNaN(n)) return '0';
+    return n.toLocaleString('en-IN');
+};
+
 // Strip quoted reply lines — handles both > lines and Gmail-style "On ... wrote:" headers
 const cleanBody = (body: string) => {
     if (!body) return '';
@@ -105,10 +113,10 @@ const ConversationModal = ({
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Budget</span>
                             <div className="text-right">
-                                <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
-                                    ₹{(outreach.minBudget || 0).toLocaleString('en-IN')}
-                                </p>
-                                <p className="text-[10px] text-zinc-400">to ₹{(outreach.maxBudget || 0).toLocaleString('en-IN')}</p>
+                                  <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                                      ₹{fmtINR(outreach.minBudget)}
+                                  </p>
+                                  <p className="text-[10px] text-zinc-400">to ₹{fmtINR(outreach.maxBudget)}</p>
                             </div>
                         </div>
 
@@ -156,8 +164,11 @@ const ConversationModal = ({
                     <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Live Conversation</span>
+                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Email Thread</span>
                         </div>
+                        <span className="flex items-center gap-1.5 text-[10px] text-zinc-400 bg-zinc-50 dark:bg-zinc-900 px-2.5 py-1 rounded-full border border-zinc-200 dark:border-zinc-800">
+                            <Mail size={10} /> Email only · WhatsApp coming soon
+                        </span>
                     </div>
 
                     {/* Messages */}
@@ -379,7 +390,7 @@ const OutreachCard = ({ outreach, onClick }: { outreach: any; onClick: () => voi
                     {isDone ? <CheckCircle2 size={10} /> : isNeg ? <><Sparkles size={10} /></> : <Clock size={10} />}
                     {isDone ? 'Deal Closed' : isNeg ? 'Negotiating' : 'Awaiting Reply'}
                 </div>
-                <span className="text-[10px] text-zinc-400 font-medium">₹{(outreach.minBudget||0).toLocaleString('en-IN').slice(0, -3)}k–{(outreach.maxBudget||0).toLocaleString('en-IN').slice(0, -3)}k</span>
+                <span className="text-[10px] text-zinc-400 font-medium">₹{fmtINR(outreach.minBudget)}–₹{fmtINR(outreach.maxBudget)}</span>
             </div>
         </div>
     );

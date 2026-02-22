@@ -1,39 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCampaign } from '../CampaignContext';
 import {
-  ArrowRight, Sparkles, Target, Zap,
-  Users, DollarSign, Clock,
-  ChevronRight, ChevronLeft, IndianRupee
+  ArrowRight, Sparkles, Users, DollarSign, Clock,
+  ChevronRight, ChevronLeft, IndianRupee, Zap, Target, Check
 } from 'lucide-react';
 
 const GOAL_OPTIONS = [
-  { id: 'Awareness',           label: 'Brand Awareness',   desc: 'Maximize reach & visibility',  icon: Users      },
-  { id: 'Sales / Conversions', label: 'Sales & Conversions', desc: 'Drive purchases & ROI',       icon: DollarSign },
-  { id: 'Product Launch',      label: 'Product Launch',    desc: 'Hype for new products',          icon: Zap        },
-  { id: 'App Installs',        label: 'App Installs',      desc: 'Drive downloads',                icon: Target     },
-  { id: 'Creator Seeding',     label: 'Creator Seeding',   desc: 'Gift products to many',          icon: Sparkles   },
+  { id: 'Awareness',           label: 'Brand Awareness',    desc: 'Maximize reach & visibility',  icon: Users      },
+  { id: 'Sales / Conversions', label: 'Sales & Conversions', desc: 'Drive purchases & ROI',        icon: DollarSign },
+  { id: 'Product Launch',      label: 'Product Launch',     desc: 'Hype for new products',         icon: Zap        },
+  { id: 'App Installs',        label: 'App Installs',       desc: 'Drive downloads',               icon: Target     },
+  { id: 'Creator Seeding',     label: 'Creator Seeding',    desc: 'Gift products to many',         icon: Sparkles   },
 ];
 
-// Budget presets: each has a label, description, and auto min/max in ₹
 const BUDGET_OPTIONS = [
-  { id: 'Under ₹1 Lakh', label: '< ₹1 Lakh',   desc: 'Micro — testing waters',     min: 10000,   max: 100000  },
-  { id: '₹1-5 Lakh',     label: '₹1 – 5 Lakh', desc: 'Growth — scaling up',         min: 100000,  max: 500000  },
-  { id: '₹5-10 Lakh',    label: '₹5 – 10 Lakh',desc: 'Scale — dominating niche',    min: 500000,  max: 1000000 },
-  { id: '₹10 Lakh+',     label: '₹10 Lakh+',   desc: 'Enterprise — full force',     min: 1000000, max: 5000000 },
+  { id: 'Under ₹1 Lakh', label: '< ₹1 Lakh',    desc: 'Micro — testing waters',      min: 10000,   max: 100000  },
+  { id: '₹1-5 Lakh',     label: '₹1 – 5 Lakh',  desc: 'Growth — scaling up',          min: 100000,  max: 500000  },
+  { id: '₹5-10 Lakh',    label: '₹5 – 10 Lakh', desc: 'Scale — dominating niche',     min: 500000,  max: 1000000 },
+  { id: '₹10 Lakh+',     label: '₹10 Lakh+',    desc: 'Enterprise — full force',      min: 1000000, max: 5000000 },
 ];
 
 const TIMELINE_OPTIONS = [
-  { id: '1 Week',   label: '1 Week',   desc: 'Sprint — quick burst'           },
-  { id: '15 Days',  label: '15 Days',  desc: 'Campaign — sustained push'      },
-  { id: '30 Days',  label: '30 Days',  desc: 'Marathon — long-term building'  },
+  { id: '1 Week',  label: '1 Week',  desc: 'Sprint — quick burst'          },
+  { id: '15 Days', label: '15 Days', desc: 'Campaign — sustained push'     },
+  { id: '30 Days', label: '30 Days', desc: 'Marathon — long-term building' },
 ];
 
-// Sub-step 0 = Goal, 1 = Budget, 2 = Timeline
 const STEPS = [
-  { key: 'primaryGoal', label: 'Primary Goal',     options: GOAL_OPTIONS    },
-  { key: 'budgetRange', label: 'Budget Range',      options: BUDGET_OPTIONS  },
-  { key: 'timeline',    label: 'Campaign Duration', options: TIMELINE_OPTIONS},
+  { key: 'primaryGoal', label: 'Primary Goal',      options: GOAL_OPTIONS    },
+  { key: 'budgetRange', label: 'Budget Range',       options: BUDGET_OPTIONS  },
+  { key: 'timeline',    label: 'Campaign Duration',  options: TIMELINE_OPTIONS},
 ];
 
 const slideVariants = {
@@ -42,7 +39,13 @@ const slideVariants = {
   exit:  (dir: number) => ({ x: dir > 0 ? -40 : 40, opacity: 0 }),
 };
 
-// Format number as ₹ with K/L suffix for display
+// Format with Indian commas  e.g. 1000000 → "10,00,000"
+function fmtIN(val: number): string {
+  if (!val || isNaN(val)) return '0';
+  return val.toLocaleString('en-IN');
+}
+
+// Format as ₹ short form for hints
 function formatRupees(val: number): string {
   if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
   if (val >= 100000)   return `₹${(val / 100000).toFixed(1)}L`;
@@ -50,50 +53,63 @@ function formatRupees(val: number): string {
   return `₹${val}`;
 }
 
-// Parse a ₹ string back to number (for manual input)
-function parseRupeeInput(raw: string): number {
-  const clean = raw.replace(/[₹,\s]/g, '');
-  const n = parseFloat(clean);
+// Strip commas/₹/spaces → number
+function parseInput(raw: string): number {
+  const n = parseFloat(raw.replace(/[₹,\s]/g, ''));
   return isNaN(n) ? 0 : Math.max(0, n);
 }
 
-// Budget step — shown only when wizardStep === 1
-const BudgetStep: React.FC<{
-  preferences: any;
-  setPreferences: (p: any) => void;
-}> = ({ preferences, setPreferences }) => {
-  // local edit values (strings so user can type freely)
-  const [minStr, setMinStr] = useState(String(preferences.budgetMin ?? 0));
-  const [maxStr, setMaxStr] = useState(String(preferences.budgetMax ?? 100000));
+// Format a raw number string with Indian commas while typing
+function applyIndianCommas(raw: string): string {
+  const digits = raw.replace(/[^0-9]/g, '');
+  if (!digits) return '';
+  return Number(digits).toLocaleString('en-IN');
+}
 
-  // When preset is selected, update min/max
+// ── Budget Step ──────────────────────────────────────────────────────────────
+const BudgetStep: React.FC<{ preferences: any; setPreferences: (p: any) => void }> = ({
+  preferences, setPreferences,
+}) => {
+  const [minStr, setMinStr] = useState(
+    preferences.budgetMin ? fmtIN(preferences.budgetMin) : ''
+  );
+  const [maxStr, setMaxStr] = useState(
+    preferences.budgetMax ? fmtIN(preferences.budgetMax) : ''
+  );
+
   const handlePreset = (opt: typeof BUDGET_OPTIONS[0]) => {
     setPreferences({ ...preferences, budgetRange: opt.id, budgetMin: opt.min, budgetMax: opt.max });
-    setMinStr(String(opt.min));
-    setMaxStr(String(opt.max));
+    setMinStr(fmtIN(opt.min));
+    setMaxStr(fmtIN(opt.max));
   };
 
-  // When user blurs a manual field, persist to context
+  const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = applyIndianCommas(e.target.value);
+    setMinStr(formatted);
+  };
+  const handleMaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = applyIndianCommas(e.target.value);
+    setMaxStr(formatted);
+  };
+
   const commitMin = () => {
-    const v = parseRupeeInput(minStr);
-    setMinStr(String(v));
+    const v = parseInput(minStr);
+    setMinStr(v ? fmtIN(v) : '');
     setPreferences({ ...preferences, budgetMin: v });
   };
   const commitMax = () => {
-    const v = parseRupeeInput(maxStr);
-    setMaxStr(String(v));
+    const v = parseInput(maxStr);
+    setMaxStr(v ? fmtIN(v) : '');
     setPreferences({ ...preferences, budgetMax: v });
   };
 
-  // Keep local state in sync if restored from URL
   useEffect(() => {
-    setMinStr(String(preferences.budgetMin ?? 0));
-    setMaxStr(String(preferences.budgetMax ?? 100000));
+    if (preferences.budgetMin) setMinStr(fmtIN(preferences.budgetMin));
+    if (preferences.budgetMax) setMaxStr(fmtIN(preferences.budgetMax));
   }, [preferences.budgetMin, preferences.budgetMax]);
 
   return (
     <div className="space-y-2">
-      {/* Preset tiles */}
       {BUDGET_OPTIONS.map((opt, idx) => {
         const isSelected = preferences.budgetRange === opt.id;
         return (
@@ -105,12 +121,10 @@ const BudgetStep: React.FC<{
             transition={{ delay: idx * 0.04 }}
             className={`
               group w-full flex items-center justify-between gap-4
-              px-5 py-4 rounded-2xl border text-left
-              transition-all duration-200
+              px-5 py-4 rounded-2xl border text-left transition-all duration-200
               ${isSelected
                 ? 'bg-black text-white border-black'
-                : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02]'
-              }
+                : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02]'}
             `}
           >
             <div>
@@ -127,17 +141,13 @@ const BudgetStep: React.FC<{
               ${isSelected ? 'border-white bg-white' : 'border-black/15'}
             `}>
               {isSelected && (
-                <motion.div
-                  layoutId="budget-sel-dot"
-                  className="w-2 h-2 rounded-full bg-black"
-                />
+                <motion.div layoutId="budget-sel-dot" className="w-2 h-2 rounded-full bg-black" />
               )}
             </div>
           </motion.button>
         );
       })}
 
-      {/* Manual min/max fields — visible after preset selected */}
       <AnimatePresence>
         {preferences.budgetRange && (
           <motion.div
@@ -153,8 +163,7 @@ const BudgetStep: React.FC<{
                 Fine-tune your budget
               </p>
               <div className="grid grid-cols-2 gap-3">
-                {/* Min */}
-                <div className="relative">
+                <div>
                   <label className="block text-[11px] font-semibold text-black/40 mb-1.5 uppercase tracking-wider">
                     Minimum
                   </label>
@@ -164,24 +173,18 @@ const BudgetStep: React.FC<{
                       type="text"
                       inputMode="numeric"
                       value={minStr}
-                      onChange={e => setMinStr(e.target.value)}
+                      onChange={handleMinChange}
                       onBlur={commitMin}
-                      className="
-                        w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12
+                      className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12
                         bg-black/[0.02] text-sm font-semibold text-black
-                        focus:outline-none focus:border-black/40 focus:bg-white
-                        transition-all
-                      "
+                        focus:outline-none focus:border-black/40 focus:bg-white transition-all"
                     />
                   </div>
-                  {/* hint */}
                   <p className="text-[10px] text-black/30 mt-1 font-medium">
-                    {formatRupees(parseRupeeInput(minStr) || 0)}
+                    {formatRupees(parseInput(minStr) || 0)}
                   </p>
                 </div>
-
-                {/* Max */}
-                <div className="relative">
+                <div>
                   <label className="block text-[11px] font-semibold text-black/40 mb-1.5 uppercase tracking-wider">
                     Maximum
                   </label>
@@ -191,18 +194,15 @@ const BudgetStep: React.FC<{
                       type="text"
                       inputMode="numeric"
                       value={maxStr}
-                      onChange={e => setMaxStr(e.target.value)}
+                      onChange={handleMaxChange}
                       onBlur={commitMax}
-                      className="
-                        w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12
+                      className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12
                         bg-black/[0.02] text-sm font-semibold text-black
-                        focus:outline-none focus:border-black/40 focus:bg-white
-                        transition-all
-                      "
+                        focus:outline-none focus:border-black/40 focus:bg-white transition-all"
                     />
                   </div>
                   <p className="text-[10px] text-black/30 mt-1 font-medium">
-                    {formatRupees(parseRupeeInput(maxStr) || 0)}
+                    {formatRupees(parseInput(maxStr) || 0)}
                   </p>
                 </div>
               </div>
@@ -214,6 +214,7 @@ const BudgetStep: React.FC<{
   );
 };
 
+// ── Main Component ────────────────────────────────────────────────────────────
 const StepPersonalize: React.FC = () => {
   const [wizardStep, setWizardStep] = useState(0);
   const [direction, setDirection]   = useState(1);
@@ -226,21 +227,39 @@ const StepPersonalize: React.FC = () => {
   } = useCampaign();
 
   const currentStepConfig = STEPS[wizardStep];
-  const currentValue = preferences[currentStepConfig.key as keyof typeof preferences] as string;
+
+  // Multi-select for Goal (step 0), single-select for others
+  const isGoalStep = wizardStep === 0;
+  const selectedGoals: string[] = isGoalStep
+    ? (Array.isArray(preferences.primaryGoal)
+        ? preferences.primaryGoal
+        : preferences.primaryGoal
+          ? [preferences.primaryGoal]
+          : [])
+    : [];
 
   const handleSelect = (value: string) => {
-    setPreferences({ ...preferences, [currentStepConfig.key]: value });
+    if (isGoalStep) {
+      const already = selectedGoals.includes(value);
+      const next = already
+        ? selectedGoals.filter(g => g !== value)
+        : [...selectedGoals, value];
+      setPreferences({ ...preferences, primaryGoal: next.length === 1 ? next[0] : next });
+    } else {
+      setPreferences({ ...preferences, [currentStepConfig.key]: value });
+    }
   };
 
-  const goNext = () => {
-    setDirection(1);
-    setWizardStep(s => s + 1);
-  };
+  const currentSingleValue = !isGoalStep
+    ? preferences[currentStepConfig.key as keyof typeof preferences] as string
+    : '';
 
-  const goBack = () => {
-    setDirection(-1);
-    setWizardStep(s => s - 1);
-  };
+  const canProceed = isGoalStep
+    ? selectedGoals.length > 0
+    : !!currentSingleValue;
+
+  const goNext = () => { setDirection(1);  setWizardStep(s => s + 1); };
+  const goBack = () => { setDirection(-1); setWizardStep(s => s - 1); };
 
   const handleFindCreators = async () => {
     if (!campaignId) return;
@@ -248,7 +267,6 @@ const StepPersonalize: React.FC = () => {
     try {
       const { API_BASE_URL } = await import('../../../config/api');
       const { auth }         = await import('../../../firebaseConfig');
-      
       let user = auth.currentUser;
       if (!user) {
         user = await new Promise<any>((resolve) => {
@@ -257,15 +275,11 @@ const StepPersonalize: React.FC = () => {
       }
       if (!user) throw new Error('Please log in to continue.');
       const token = await user.getIdToken();
-
       const response = await fetch(
         `${API_BASE_URL}/campaigns/${campaignId}/generate-suggestions`,
         {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         }
       );
       if (!response.ok) throw new Error('Failed to generate suggestions');
@@ -280,315 +294,158 @@ const StepPersonalize: React.FC = () => {
     }
   };
 
-  const canProceed = !!currentValue;
-
   return (
-    <div className="min-h-screen bg-white text-black font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-white text-black font-sans relative overflow-hidden flex items-start justify-center">
 
-      {/* Subtle Neon Background */}
+      {/* Subtle background blobs */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-          <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-purple-500/15 rounded-full blur-[120px]" />
-          <div className="absolute top-[20%] right-[-10%] w-[40vw] h-[40vw] bg-pink-500/15 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] left-[20%] w-[60vw] h-[60vw] bg-blue-500/15 rounded-full blur-[140px]" />
+        <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-purple-500/15 rounded-full blur-[120px]" />
+        <div className="absolute top-[20%] right-[-10%] w-[40vw] h-[40vw] bg-pink-500/15 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[60vw] h-[60vw] bg-blue-500/15 rounded-full blur-[140px]" />
       </div>
 
-      <div className="relative z-10">
-          {/* ── Top rule ── */}
-      <div className="h-px w-full bg-black/10" />
+      <div className="relative z-10 w-full max-w-xl px-6 py-14">
 
-      <div className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+        {/* Step indicator */}
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-black/35">
+            Step {wizardStep + 1} / {STEPS.length}
+          </span>
+        </div>
 
-        {/* ═══════════════════════════════════════
-            LEFT — Intelligence Panel
-        ═══════════════════════════════════════ */}
-        <motion.aside
-          className="lg:sticky lg:top-12 space-y-8"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          {/* Eyebrow */}
-          <div>
-            <p className="text-xs font-semibold tracking-[0.16em] uppercase text-black/40 mb-1">
-              Campaign Intelligence
-            </p>
-            <h2 className="text-3xl font-black tracking-tight leading-none">
-              {analysisResult?.brand_name || 'Your Brand'}
-            </h2>
-            <p className="mt-1.5 text-[15px] text-black/50">
-              {analysisResult?.industry || 'Industry'} · {analysisResult?.brand_tone || 'Brand tone'}
-            </p>
-          </div>
-
-          {/* Divider */}
-          <div className="h-px bg-black/8" />
-
-          {/* Target Audience */}
-          <div>
-            <p className="text-xs font-bold tracking-[0.14em] uppercase text-black/40 mb-3">
-              Target Audience
-            </p>
-            <div className="border border-black/10 rounded-2xl p-5 bg-black/[0.02]">
-              <p className="text-[15px] font-semibold">
-                {analysisResult?.target_audience?.age_range || 'General Audience'}
-              </p>
-              <p className="text-[14px] text-black/50 mt-1.5 leading-relaxed">
-                {analysisResult?.target_audience?.lifestyle || 'No lifestyle data'}
-              </p>
-              {analysisResult?.target_audience?.interests?.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {analysisResult.target_audience.interests.slice(0, 4).map((tag: string) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1 rounded-full border border-black/12 text-xs font-medium text-black/55 bg-white"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Strategic Hooks */}
-          {analysisResult?.campaign_hooks?.length > 0 && (
-            <div>
-              <p className="text-xs font-bold tracking-[0.14em] uppercase text-black/40 mb-4">
-                Strategic Hooks
-              </p>
-              <ol className="space-y-3">
-                {analysisResult.campaign_hooks.slice(0, 3).map((hook: string, i: number) => (
-                  <li
-                    key={i}
-                    className="flex gap-3 items-start"
-                  >
-                    <span className="mt-0.5 flex-shrink-0 w-6 h-6 rounded-full border border-black/15 flex items-center justify-center text-xs font-bold text-black/40">
-                      {i + 1}
-                    </span>
-                    <span className="text-[15px] text-black/75 leading-snug font-medium">
-                      {hook}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-
-          {/* Progress / Selection summary */}
-          <div>
-            <p className="text-xs font-bold tracking-[0.14em] uppercase text-black/40 mb-4">
-              Your Selection
-            </p>
-            <div className="space-y-3">
-              {STEPS.map((step, i) => {
-                const val = preferences[step.key as keyof typeof preferences] as string;
-                const done   = i < wizardStep;
-                const active = i === wizardStep;
-
-                // Show budget range + custom range if set
-                const displayVal = step.key === 'budgetRange' && val
-                  ? `${val}${preferences.budgetMin || preferences.budgetMax
-                      ? ` (${formatRupees(preferences.budgetMin)} – ${formatRupees(preferences.budgetMax)})`
-                      : ''}`
-                  : val;
-
-                return (
-                  <div key={step.key} className="flex items-start gap-3">
-                    {/* dot */}
-                    <div className={`mt-[5px] w-2 h-2 rounded-full flex-shrink-0 ${
-                      done   ? 'bg-black' :
-                      active ? 'bg-black/35 ring-2 ring-offset-1 ring-black/20' :
-                               'bg-black/10'
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <span className={`text-[15px] font-semibold leading-tight ${
-                        done || active ? 'text-black' : 'text-black/30'
-                      }`}>
-                        {step.label}
-                      </span>
-                      {displayVal && (
-                        <p className="text-[13px] text-black/45 font-medium mt-0.5 leading-snug">
-                          {displayVal}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </motion.aside>
-
-        {/* ═══════════════════════════════════════
-            RIGHT — Wizard Panel
-        ═══════════════════════════════════════ */}
-        <div>
-
-          {/* Step header */}
-          <motion.div
-            className="mb-7"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
+        {/* Step title */}
+        <AnimatePresence mode="wait">
+          <motion.h3
+            key={wizardStep + '-title'}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="text-2xl font-black tracking-tight mb-7"
           >
-            <div className="flex items-center gap-2.5 mb-1">
-              <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-black/35">
-                Step {wizardStep + 1} / {STEPS.length}
+            {currentStepConfig.label}
+            {isGoalStep && (
+              <span className="ml-2 text-[13px] font-medium text-black/35 tracking-normal">
+                (multiple select)
               </span>
-            </div>
-            <h3 className="text-2xl font-black tracking-tight">
-              {currentStepConfig.label}
-            </h3>
-          </motion.div>
+            )}
+          </motion.h3>
+        </AnimatePresence>
 
-          {/* Options / Budget panel */}
-          <div className="relative overflow-hidden">
-            <AnimatePresence mode="wait" custom={direction}>
-              <motion.div
-                key={wizardStep}
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.22, ease: 'easeInOut' }}
-                className="space-y-2"
-              >
-                {/* Budget step gets special component */}
-                {wizardStep === 1 ? (
-                  <BudgetStep preferences={preferences} setPreferences={setPreferences} />
-                ) : (
-                  currentStepConfig.options.map((opt, idx) => {
-                    const isSelected = currentValue === opt.id;
-                    const Icon = 'icon' in opt ? (opt as any).icon : null;
+        {/* Options */}
+        <div className="relative overflow-hidden">
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={wizardStep}
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.22, ease: 'easeInOut' }}
+              className="space-y-2"
+            >
+              {wizardStep === 1 ? (
+                <BudgetStep preferences={preferences} setPreferences={setPreferences} />
+              ) : (
+                currentStepConfig.options.map((opt, idx) => {
+                  const isSelected = isGoalStep
+                    ? selectedGoals.includes(opt.id)
+                    : currentSingleValue === opt.id;
+                  const Icon = 'icon' in opt ? (opt as any).icon : null;
 
-                    return (
-                      <motion.button
-                        key={opt.id}
-                        onClick={() => handleSelect(opt.id)}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.04 }}
-                        className={`
-                          group w-full flex items-center justify-between gap-4
-                          px-5 py-4 rounded-2xl border text-left
-                          transition-all duration-200
-                          ${isSelected
-                            ? 'bg-black text-white border-black'
-                            : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02]'
-                          }
-                        `}
-                      >
-                        <div className="flex items-center gap-4">
-                          {Icon && (
-                            <div
-                              className={`
-                                w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
-                                ${isSelected ? 'bg-white/15' : 'bg-black/5 group-hover:bg-black/8'}
-                              `}
-                            >
-                              <Icon
-                                size={17}
-                                className={isSelected ? 'text-white' : 'text-black/50'}
-                              />
-                            </div>
-                          )}
-                          <div>
-                            <div className={`font-semibold text-[15px] ${isSelected ? 'text-white' : 'text-black'}`}>
-                              {opt.label}
-                            </div>
-                            <div className={`text-[12px] mt-0.5 ${isSelected ? 'text-white/60' : 'text-black/40'}`}>
-                              {opt.desc}
-                            </div>
+                  return (
+                    <motion.button
+                      key={opt.id}
+                      onClick={() => handleSelect(opt.id)}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.04 }}
+                      className={`
+                        group w-full flex items-center justify-between gap-4
+                        px-5 py-4 rounded-2xl border text-left transition-all duration-200
+                        ${isSelected
+                          ? 'bg-black text-white border-black'
+                          : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02]'}
+                      `}
+                    >
+                      <div className="flex items-center gap-4">
+                        {Icon && (
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
+                            ${isSelected ? 'bg-white/15' : 'bg-black/5 group-hover:bg-black/8'}`}>
+                            <Icon size={17} className={isSelected ? 'text-white' : 'text-black/50'} />
+                          </div>
+                        )}
+                        <div>
+                          <div className={`font-semibold text-[15px] ${isSelected ? 'text-white' : 'text-black'}`}>
+                            {opt.label}
+                          </div>
+                          <div className={`text-[12px] mt-0.5 ${isSelected ? 'text-white/60' : 'text-black/40'}`}>
+                            {opt.desc}
                           </div>
                         </div>
+                      </div>
 
-                        {/* Selection indicator */}
-                        <div
-                          className={`
-                            w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center
-                            transition-all duration-200
-                            ${isSelected
-                              ? 'border-white bg-white'
-                              : 'border-black/15'
-                            }
-                          `}
-                        >
-                          {isSelected && (
-                            <motion.div
-                              layoutId="sel-dot"
-                              className="w-2 h-2 rounded-full bg-black"
-                            />
-                          )}
-                        </div>
-                      </motion.button>
-                    );
-                  })
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          {/* ── Action Bar ── */}
-          <div className="mt-8 pt-5 border-t border-black/8 flex items-center justify-between">
-
-            {wizardStep > 0 ? (
-              <button
-                onClick={goBack}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-black/40 hover:text-black hover:bg-black/5 transition-all"
-              >
-                <ChevronLeft size={15} />
-                Back
-              </button>
-            ) : (
-              <div />
-            )}
-
-            {wizardStep < STEPS.length - 1 ? (
-              <button
-                onClick={goNext}
-                disabled={!canProceed}
-                className="
-                  flex items-center gap-2 px-6 py-2.5 rounded-xl
-                  bg-black text-white text-sm font-bold
-                  hover:bg-black/85 active:scale-[0.98]
-                  disabled:opacity-25 disabled:cursor-not-allowed
-                  transition-all duration-150
-                "
-              >
-                Continue
-                <ChevronRight size={15} />
-              </button>
-            ) : (
-              <button
-                onClick={handleFindCreators}
-                disabled={!canProceed || isGenerating}
-                className="
-                  flex items-center gap-2 px-7 py-2.5 rounded-xl
-                  bg-black text-white text-sm font-bold
-                  hover:bg-black/85 active:scale-[0.98]
-                  disabled:opacity-25 disabled:cursor-not-allowed
-                  transition-all duration-150
-                  shadow-[0_2px_12px_rgba(0,0,0,0.18)]
-                "
-              >
-                {isGenerating ? (
-                  <>
-                    <Sparkles size={15} className="animate-spin" />
-                    Analyzing…
-                  </>
-                ) : (
-                  <>
-                    Find Creators
-                    <ArrowRight size={15} />
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+                      {/* Indicator — checkbox style for multi, radio for single */}
+                      <div className={`
+                        flex-shrink-0 flex items-center justify-center transition-all duration-200
+                        ${isGoalStep
+                          ? `w-5 h-5 rounded-md border-2 ${isSelected ? 'bg-white border-white' : 'border-black/20'}`
+                          : `w-5 h-5 rounded-full border ${isSelected ? 'border-white bg-white' : 'border-black/15'}`
+                        }
+                      `}>
+                        {isSelected && (
+                          isGoalStep
+                            ? <Check size={12} className="text-black" strokeWidth={3} />
+                            : <motion.div layoutId="sel-dot" className="w-2 h-2 rounded-full bg-black" />
+                        )}
+                      </div>
+                    </motion.button>
+                  );
+                })
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
-      </div>
 
+        {/* Action Bar */}
+        <div className="mt-8 pt-5 border-t border-black/8 flex items-center justify-between">
+          {wizardStep > 0 ? (
+            <button
+              onClick={goBack}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-black/40 hover:text-black hover:bg-black/5 transition-all"
+            >
+              <ChevronLeft size={15} />
+              Back
+            </button>
+          ) : <div />}
+
+          {wizardStep < STEPS.length - 1 ? (
+            <button
+              onClick={goNext}
+              disabled={!canProceed}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-black text-white text-sm font-bold
+                hover:bg-black/85 active:scale-[0.98] disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150"
+            >
+              Continue
+              <ChevronRight size={15} />
+            </button>
+          ) : (
+            <button
+              onClick={handleFindCreators}
+              disabled={!canProceed || isGenerating}
+              className="flex items-center gap-2 px-7 py-2.5 rounded-xl bg-black text-white text-sm font-bold
+                hover:bg-black/85 active:scale-[0.98] disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150
+                shadow-[0_2px_12px_rgba(0,0,0,0.18)]"
+            >
+              {isGenerating ? (
+                <><Sparkles size={15} className="animate-spin" /> Analyzing…</>
+              ) : (
+                <><ArrowRight size={15} /> Find Creators</>
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCampaign } from '../CampaignContext';
 import { useNavigate } from 'react-router-dom';
 import {
-  X, CheckCircle2, TrendingUp, Target, Zap, Info,
+  X, TrendingUp, Target, Zap, Info,
   Instagram, Youtube, MapPin, Users, ArrowRight, AlertCircle, RotateCcw, FileText
 } from 'lucide-react';
 import { auth } from '../../../firebaseConfig';
@@ -306,27 +306,7 @@ const InfoModal: React.FC<{
               </section>
             </div>
 
-            {/* Execution Plan */}
-            {influencer.executionSteps && influencer.executionSteps.length > 0 && (
-              <section>
-                <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
-                  <CheckCircle2 className="w-4 h-4 text-black dark:text-white transition-colors" />
-                  <span>Recommended Outreach</span>
-                </div>
-                <div className="bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 overflow-hidden transition-colors">
-                  {influencer.executionSteps.map((step, i) => (
-                    <div key={i} className="flex items-center gap-4 p-5 border-b border-black/5 dark:border-white/5 last:border-0 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                      <div className="w-8 h-8 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center text-black/90 dark:text-white/90 text-sm font-bold shrink-0 transition-colors">
-                        {i + 1}
-                      </div>
-                      <span className="text-black/80 dark:text-white/80 text-base transition-colors">{step}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Audience & Score Details */}
+              {/* Audience & Score Details */}
             {((influencer as any).scoreBreakdown || influencer.mfSplit || influencer.ageGroup) && (
               <section className="mt-12 pt-10 border-t border-black/5 dark:border-white/5">
                 <div className="flex items-center gap-3 text-black/40 dark:text-white/40 text-xs font-bold tracking-widest uppercase mb-4 transition-colors">
@@ -452,7 +432,7 @@ const StepSuggestions: React.FC = () => {
       // Proceed anyway? Or alert?
     }
 
-    navigate(`/campaigns/${campaignId}`);
+      navigate(`/campaigns/${campaignId}/track`);
   };
 
   const topScore = displaySuggestions.length > 0 ? Math.max(...displaySuggestions.map(s => s.matchScore)) : 0;
@@ -463,7 +443,7 @@ const StepSuggestions: React.FC = () => {
   const currentPageItems = displaySuggestions.slice(startIndex, endIndex);
 
   return (
-    <div className="flex flex-col lg:flex-row w-full min-h-screen pt-12 px-6 md:px-12 pb-12 gap-10 max-w-[1600px] mx-auto text-foreground relative" onClick={(e) => e.stopPropagation()}>
+    <div className="flex flex-col lg:flex-row w-full min-h-screen pt-12 px-6 md:px-12 pb-32 gap-10 max-w-[1600px] mx-auto text-foreground relative" onClick={(e) => e.stopPropagation()}>
       {/* Reset Button */}
       <button
         onClick={handleReset}
@@ -474,7 +454,7 @@ const StepSuggestions: React.FC = () => {
       </button>
 
       {/* Left Sidebar - Sticky */}
-      <aside className="w-full lg:w-[320px] shrink-0 lg:sticky lg:top-10 lg:h-fit flex flex-col gap-8">
+      <aside className="w-full lg:w-[320px] shrink-0 lg:sticky lg:top-24 lg:h-fit flex flex-col gap-8 z-10">
         <div className="bg-card backdrop-blur-xl rounded-3xl p-8 border border-border shadow-md space-y-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -504,37 +484,7 @@ const StepSuggestions: React.FC = () => {
 
           <div className="pt-4 w-full space-y-3">
             {/* Action Buttons */}
-            <button
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-sm hover:opacity-90 transition-colors shadow-lg hover:shadow-xl cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-              disabled={isGeneratingReport || isSkipping}
-              onClick={async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsGeneratingReport(true);
-                if (campaignId) {
-                  try {
-                    await Promise.all([
-                      CampaignService.updateSuggestions(campaignId, suggestions),
-                      CampaignService.saveShortlist(campaignId, shortlist),
-                    ]);
-                  } catch (err) { console.error('Sync error:', err); }
-                }
-                nextStep(); 
-              }}
-            >
-              {isGeneratingReport ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Generating...</span>
-                </>
-              ) : (
-                <>
-                  <FileText className="w-4 h-4" />
-                  <span>Generate Report</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+            {/* Generate Report button temporarily removed as requested */}
 
             <button
               className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-muted-foreground bg-transparent hover:bg-secondary/20 hover:text-foreground rounded-2xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-border/50"
@@ -559,7 +509,8 @@ const StepSuggestions: React.FC = () => {
 
       {/* Right Content - Scrollable Grid */}
       <main className="flex-1 flex flex-col min-w-0">
-        {/* Sticky header */}
+        {/* Sticky header (Hidden since the new layout uses sections) */}
+        {/* 
         <div className="sticky top-0 z-10 pb-4 pt-2 mb-4 border-b border-border/40">
           <h2 className="text-3xl font-light text-foreground mb-1 transition-colors">
             <span className="font-bold">Shortlisted Creators</span>
@@ -568,6 +519,7 @@ const StepSuggestions: React.FC = () => {
             Scout has identified the best matches for your campaign based on your brief.
           </p>
         </div>
+        */}
 
         {/* Loading State */}
         {isLoading && (
@@ -591,20 +543,77 @@ const StepSuggestions: React.FC = () => {
           </div>
         )}
 
-        {/* Empty State */}
-        {!isLoading && !error && displaySuggestions.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-6 py-20 text-center flex-1">
-            <AlertCircle className="w-12 h-12 text-gray-400" />
-            <p className="text-2xl font-semibold text-black">No creators found</p>
-            <p className="text-black/50 text-base max-w-md">
+        {/* Empty State - No influencers matched at all */}
+        {!isLoading && !error && displaySuggestions.length === 1 && (
+          <div className="flex flex-col items-center justify-start pt-32 pb-20 gap-6 text-center flex-1 w-full">
+            <AlertCircle className="w-16 h-16 text-zinc-600 mb-2" />
+            <p className="text-3xl font-semibold text-foreground">No creators found</p>
+            <p className="text-muted-foreground text-lg max-w-md">
               Please go back to Personalize and click "Find Creators" to search based on your budget and goal.
             </p>
           </div>
         )}
 
+        {/* Top Shortlist Section */}
+        {!isLoading && !error && displaySuggestions.length > 1 && (
+          <div className="mb-12">
+            <h3 className="text-[22px] font-bold text-white mb-6 flex items-center gap-2 tracking-tight">
+              Shortlisted Influencers <span className="text-white/40 font-normal">{shortlist.length}</span>
+            </h3>
+            
+            {shortlist.length === 0 ? (
+              <div className="w-full bg-[#0F0A19]/50 border border-white/[0.03] rounded-2xl p-16 flex flex-col items-center justify-center gap-4 text-center">
+                <Users className="w-8 h-8 text-white/20" />
+                <p className="text-sm font-medium text-white/40">No influencers shortlisted yet.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-6 w-full">
+                {displaySuggestions.filter(inf => shortlist.includes(inf.id)).map((inf) => {
+                  const isShortlisted = true; 
+                  const handle = inf.instagramUrl 
+                    ? inf.instagramUrl.replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, '').replace(/\/$/, '')
+                    : (inf.handle ? inf.handle.replace('@', '') : undefined);
+                  const igFallback = handle ? `https://unavatar.io/instagram/${handle}?fallback=false` : undefined;
+                  
+                  return (
+                    <FreelancerProfileCard
+                      key={`shortlist-${inf.id}`}
+                      name={inf.name}
+                      title={inf.niche || inf.handle}
+                      avatarSrc={igFallback || ''}
+                      backupSrc={inf.avatar || undefined}
+                      rating={inf.matchScore ? `${inf.matchScore}%` : "New"}
+                      duration={inf.followers}
+                      rate={inf.engagementRate || '—'}
+                      location={inf.location !== '—' ? inf.location : undefined}
+                      handle={inf.handle}
+                      instagramUrl={inf.instagramUrl || undefined}
+                      isBookmarked={isShortlisted}
+                      onBookmark={() => removeFromShortlist(inf.id)}
+                      onGetInTouch={() => setSelectedModal(inf)}
+                      tools={
+                        (inf.brandFit || "").split(',').filter(Boolean).slice(0, 3).map((tag) => tag.trim())
+                      }
+                      className="w-full"
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Title for All Suggested */}
+        {!isLoading && !error && displaySuggestions.length > 1 && (
+          <h3 className="text-[22px] font-bold text-white mb-6 flex items-center gap-2 tracking-tight">
+            All Suggested <span className="text-white/40 font-normal">{displaySuggestions.length > 0 ? displaySuggestions.length - 1 : 0}</span>
+          </h3>
+        )}
+
         {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 w-full">
-          {currentPageItems.map((inf, i) => {
+        {!isLoading && !error && displaySuggestions.length > 1 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-6 w-full">
+            {currentPageItems.map((inf, i) => {
             const isShortlisted = shortlist.includes(inf.id);
             // Construct fallback URL - use strict instagram unavatar with no fallback to avoid generic logos/twitch
             const handle = inf.instagramUrl 
@@ -636,6 +645,7 @@ const StepSuggestions: React.FC = () => {
             );
           })}
         </div>
+        )}
 
         {!isLoading && displaySuggestions.length > 0 && totalPages > 1 && (
           <div className="flex justify-center gap-2 mt-12 pt-8 border-t border-black/5 dark:border-white/5">
@@ -694,6 +704,47 @@ const StepSuggestions: React.FC = () => {
               setSelectedModal(null);
             }}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {!isLoading && !error && shortlist.length > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed bottom-0 left-0 right-0 z-40 bg-[#0A0A0A] border-t border-white/5 shadow-2xl p-4 px-6 md:px-12 flex flex-col sm:flex-row items-center justify-between gap-4"
+          >
+            <div className="flex items-center gap-4">
+              <div className="px-5 py-2 bg-white text-black font-bold text-sm rounded-full shadow-md whitespace-nowrap">
+                {shortlist.length} Imported
+              </div>
+              <span className="text-sm font-medium text-zinc-500 hidden sm:inline-block">
+                Ready for outreach sequence
+              </span>
+            </div>
+
+            <button
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-black rounded-xl text-sm font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+              disabled={isSkipping}
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsSkipping(true);
+                await handleApprove(e);
+              }}
+            >
+              {isSkipping ? (
+                <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+              ) : (
+                <>
+                  Launch Outreach Campaign
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
 
