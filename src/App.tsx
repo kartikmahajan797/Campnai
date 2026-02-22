@@ -39,18 +39,18 @@ const App = () => (
             <Route path="/" element={<Index />} />
 
             {/* Auth & app routes — gated behind maintenance mode */}
-            <Route path="/login"                    element={<Maintained element={<Login />} />} />
-            <Route path="/signup"                   element={<Maintained element={<Signup />} />} />
-            <Route path="/dashboard"                element={<Maintained element={<Dashboard />} />} />
-            <Route path="/dashboard/:sessionId"     element={<Maintained element={<Dashboard />} />} />
-            <Route path="/dashboard/history"        element={<Maintained element={<CampaignHistory />} />} />
-            <Route path="/dashboard/account"        element={<Maintained element={<Account />} />} />
-            <Route path="/campaigns"                element={<Maintained element={<Campaigns />} />} />
-            <Route path="/campaigns/new/success"    element={<Maintained element={<NewCampaignSuccess />} />} />
-            <Route path="/campaigns/:id"            element={<Maintained element={<CampaignDetails />} />} />
-            <Route path="/campaigns/:id/track"      element={<Maintained element={<CampaignCommandCenter />} />} />
-            <Route path="/campaign/new"             element={<Maintained element={<CampaignFlowPage />} />} />
-            <Route path="*"                         element={<NotFound />} />
+            <Route path="/login" element={<Maintained element={<Login />} />} />
+            <Route path="/signup" element={<Maintained element={<Signup />} />} />
+            <Route path="/dashboard" element={<Maintained element={<Dashboard />} />} />
+            <Route path="/dashboard/:sessionId" element={<Maintained element={<Dashboard />} />} />
+            <Route path="/dashboard/history" element={<Maintained element={<CampaignHistory />} />} />
+            <Route path="/dashboard/account" element={<Maintained element={<Account />} />} />
+            <Route path="/campaigns" element={<Maintained element={<Campaigns />} />} />
+            <Route path="/campaigns/new/success" element={<Maintained element={<NewCampaignSuccess />} />} />
+            <Route path="/campaigns/:id" element={<Maintained element={<CampaignDetails />} />} />
+            <Route path="/campaigns/:id/track" element={<Maintained element={<CampaignCommandCenter />} />} />
+            <Route path="/campaign/new" element={<Maintained element={<CampaignFlowPage />} />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
