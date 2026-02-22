@@ -189,13 +189,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         isExpanded={sidebarOpen}
                     />
 
-                    <SidebarItem
+                    {/* <SidebarItem
                         icon={<Briefcase size={22} strokeWidth={2.5} />}
                         label="Find Creators"
                         onClick={() => navigate('/campaigns')}
                         isActive={isActive('/campaigns')}
                         isExpanded={sidebarOpen}
-                    />
+                    /> */}
 
                     <SidebarItem
                         icon={<Calendar size={22} strokeWidth={2.5} />}

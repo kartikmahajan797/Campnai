@@ -123,25 +123,25 @@ const BudgetStep: React.FC<{ preferences: any; setPreferences: (p: any) => void 
               group w-full flex items-center justify-between gap-4
               px-5 py-4 rounded-2xl border text-left transition-all duration-200
               ${isSelected
-                ? 'bg-black text-white border-black'
-                : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02]'}
+                ? 'bg-black text-white border-black dark:bg-white dark:text-black dark:border-white'
+                : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02] dark:bg-[#111] dark:text-white dark:border-white/10 dark:hover:border-white/25 dark:hover:bg-white/[0.02]'}
             `}
           >
             <div>
-              <div className={`font-semibold text-[15px] ${isSelected ? 'text-white' : 'text-black'}`}>
+              <div className={`font-semibold text-[15px] ${isSelected ? 'text-white dark:text-black' : 'text-black dark:text-white'}`}>
                 {opt.label}
               </div>
-              <div className={`text-[12px] mt-0.5 ${isSelected ? 'text-white/60' : 'text-black/40'}`}>
+              <div className={`text-[12px] mt-0.5 ${isSelected ? 'text-white/60 dark:text-black/60' : 'text-black/40 dark:text-white/40'}`}>
                 {opt.desc}
               </div>
             </div>
             <div className={`
               w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center
               transition-all duration-200
-              ${isSelected ? 'border-white bg-white' : 'border-black/15'}
+              ${isSelected ? 'border-white bg-white dark:border-black dark:bg-black' : 'border-black/15 dark:border-white/15'}
             `}>
               {isSelected && (
-                <motion.div layoutId="budget-sel-dot" className="w-2 h-2 rounded-full bg-black" />
+                <motion.div layoutId="budget-sel-dot" className="w-2 h-2 rounded-full bg-black dark:bg-white" />
               )}
             </div>
           </motion.button>
@@ -158,50 +158,50 @@ const BudgetStep: React.FC<{ preferences: any; setPreferences: (p: any) => void 
             transition={{ duration: 0.25 }}
             className="overflow-hidden"
           >
-            <div className="mt-4 pt-4 border-t border-black/8">
-              <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-black/40 mb-3">
+            <div className="mt-4 pt-4 border-t border-black/8 dark:border-white/10">
+              <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-black/40 dark:text-white/40 mb-3">
                 Fine-tune your budget
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-black/40 mb-1.5 uppercase tracking-wider">
+                  <label className="block text-[11px] font-semibold text-black/40 dark:text-white/40 mb-1.5 uppercase tracking-wider">
                     Minimum
                   </label>
                   <div className="relative flex items-center">
-                    <IndianRupee size={13} className="absolute left-3 text-black/40 pointer-events-none" />
+                    <IndianRupee size={13} className="absolute left-3 text-black/40 dark:text-white/40 pointer-events-none" />
                     <input
                       type="text"
                       inputMode="numeric"
                       value={minStr}
                       onChange={handleMinChange}
                       onBlur={commitMin}
-                      className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12
-                        bg-black/[0.02] text-sm font-semibold text-black
-                        focus:outline-none focus:border-black/40 focus:bg-white transition-all"
+                      className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12 dark:border-white/10
+                        bg-black/[0.02] dark:bg-white/[0.02] text-sm font-semibold text-black dark:text-white
+                        focus:outline-none focus:border-black/40 dark:focus:border-white/40 focus:bg-white dark:focus:bg-[#1A1A1A] transition-all"
                     />
                   </div>
-                  <p className="text-[10px] text-black/30 mt-1 font-medium">
+                  <p className="text-[10px] text-black/30 dark:text-white/30 mt-1 font-medium">
                     {formatRupees(parseInput(minStr) || 0)}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-black/40 mb-1.5 uppercase tracking-wider">
+                  <label className="block text-[11px] font-semibold text-black/40 dark:text-white/40 mb-1.5 uppercase tracking-wider">
                     Maximum
                   </label>
                   <div className="relative flex items-center">
-                    <IndianRupee size={13} className="absolute left-3 text-black/40 pointer-events-none" />
+                    <IndianRupee size={13} className="absolute left-3 text-black/40 dark:text-white/40 pointer-events-none" />
                     <input
                       type="text"
                       inputMode="numeric"
                       value={maxStr}
                       onChange={handleMaxChange}
                       onBlur={commitMax}
-                      className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12
-                        bg-black/[0.02] text-sm font-semibold text-black
-                        focus:outline-none focus:border-black/40 focus:bg-white transition-all"
+                      className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12 dark:border-white/10
+                        bg-black/[0.02] dark:bg-white/[0.02] text-sm font-semibold text-black dark:text-white
+                        focus:outline-none focus:border-black/40 dark:focus:border-white/40 focus:bg-white dark:focus:bg-[#1A1A1A] transition-all"
                     />
                   </div>
-                  <p className="text-[10px] text-black/30 mt-1 font-medium">
+                  <p className="text-[10px] text-black/30 dark:text-white/30 mt-1 font-medium">
                     {formatRupees(parseInput(maxStr) || 0)}
                   </p>
                 </div>
@@ -295,7 +295,7 @@ const StepPersonalize: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans relative overflow-hidden flex items-start justify-center">
+    <div className="w-full min-h-[calc(100vh-80px)] bg-white dark:bg-[#0A0A0A] text-black dark:text-white font-sans relative overflow-x-hidden flex items-start justify-center pt-8">
 
       {/* Subtle background blobs */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -308,7 +308,7 @@ const StepPersonalize: React.FC = () => {
 
         {/* Step indicator */}
         <div className="mb-2 flex items-center gap-2">
-          <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-black/35">
+          <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-black/35 dark:text-white/35">
             Step {wizardStep + 1} / {STEPS.length}
           </span>
         </div>
@@ -325,7 +325,7 @@ const StepPersonalize: React.FC = () => {
           >
             {currentStepConfig.label}
             {isGoalStep && (
-              <span className="ml-2 text-[13px] font-medium text-black/35 tracking-normal">
+              <span className="ml-2 text-[13px] font-medium text-black/35 dark:text-white/35 tracking-normal">
                 (multiple select)
               </span>
             )}
@@ -365,22 +365,22 @@ const StepPersonalize: React.FC = () => {
                         group w-full flex items-center justify-between gap-4
                         px-5 py-4 rounded-2xl border text-left transition-all duration-200
                         ${isSelected
-                          ? 'bg-black text-white border-black'
-                          : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02]'}
+                          ? 'bg-black text-white border-black dark:bg-white dark:text-black dark:border-white'
+                          : 'bg-white text-black border-black/10 hover:border-black/25 hover:bg-black/[0.02] dark:bg-[#111] dark:text-white dark:border-white/10 dark:hover:border-white/25 dark:hover:bg-white/[0.02]'}
                       `}
                     >
                       <div className="flex items-center gap-4">
                         {Icon && (
                           <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
-                            ${isSelected ? 'bg-white/15' : 'bg-black/5 group-hover:bg-black/8'}`}>
-                            <Icon size={17} className={isSelected ? 'text-white' : 'text-black/50'} />
+                            ${isSelected ? 'bg-white/15 dark:bg-black/15' : 'bg-black/5 group-hover:bg-black/8 dark:bg-white/5 dark:group-hover:bg-white/8'}`}>
+                            <Icon size={17} className={isSelected ? 'text-white dark:text-black' : 'text-black/50 dark:text-white/50'} />
                           </div>
                         )}
                         <div>
-                          <div className={`font-semibold text-[15px] ${isSelected ? 'text-white' : 'text-black'}`}>
+                          <div className={`font-semibold text-[15px] ${isSelected ? 'text-white dark:text-black' : 'text-black dark:text-white'}`}>
                             {opt.label}
                           </div>
-                          <div className={`text-[12px] mt-0.5 ${isSelected ? 'text-white/60' : 'text-black/40'}`}>
+                          <div className={`text-[12px] mt-0.5 ${isSelected ? 'text-white/60 dark:text-black/60' : 'text-black/40 dark:text-white/40'}`}>
                             {opt.desc}
                           </div>
                         </div>
@@ -390,14 +390,14 @@ const StepPersonalize: React.FC = () => {
                       <div className={`
                         flex-shrink-0 flex items-center justify-center transition-all duration-200
                         ${isGoalStep
-                          ? `w-5 h-5 rounded-md border-2 ${isSelected ? 'bg-white border-white' : 'border-black/20'}`
-                          : `w-5 h-5 rounded-full border ${isSelected ? 'border-white bg-white' : 'border-black/15'}`
+                          ? `w-5 h-5 rounded-md border-2 ${isSelected ? 'bg-white border-white dark:bg-black dark:border-black' : 'border-black/20 dark:border-white/20'}`
+                          : `w-5 h-5 rounded-full border ${isSelected ? 'border-white bg-white dark:border-black dark:bg-black' : 'border-black/15 dark:border-white/15'}`
                         }
                       `}>
                         {isSelected && (
                           isGoalStep
-                            ? <Check size={12} className="text-black" strokeWidth={3} />
-                            : <motion.div layoutId="sel-dot" className="w-2 h-2 rounded-full bg-black" />
+                            ? <Check size={12} className={isSelected ? 'text-black dark:text-white' : 'text-black/50 dark:text-white/50'} strokeWidth={3} />
+                            : <motion.div layoutId="sel-dot" className="w-2 h-2 rounded-full bg-black dark:bg-white" />
                         )}
                       </div>
                     </motion.button>
@@ -409,11 +409,11 @@ const StepPersonalize: React.FC = () => {
         </div>
 
         {/* Action Bar */}
-        <div className="mt-8 pt-5 border-t border-black/8 flex items-center justify-between">
+        <div className="mt-8 pt-5 border-t border-black/8 dark:border-white/10 flex items-center justify-between">
           {wizardStep > 0 ? (
             <button
               onClick={goBack}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-black/40 hover:text-black hover:bg-black/5 transition-all"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all"
             >
               <ChevronLeft size={15} />
               Back
@@ -424,8 +424,8 @@ const StepPersonalize: React.FC = () => {
             <button
               onClick={goNext}
               disabled={!canProceed}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-black text-white text-sm font-bold
-                hover:bg-black/85 active:scale-[0.98] disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-sm font-bold
+                hover:bg-black/85 dark:hover:bg-white/85 active:scale-[0.98] disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150"
             >
               Continue
               <ChevronRight size={15} />
@@ -434,8 +434,8 @@ const StepPersonalize: React.FC = () => {
             <button
               onClick={handleFindCreators}
               disabled={!canProceed || isGenerating}
-              className="flex items-center gap-2 px-7 py-2.5 rounded-xl bg-black text-white text-sm font-bold
-                hover:bg-black/85 active:scale-[0.98] disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150
+              className="flex items-center gap-2 px-7 py-2.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-sm font-bold
+                hover:bg-black/85 dark:hover:bg-white/85 active:scale-[0.98] disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150
                 shadow-[0_2px_12px_rgba(0,0,0,0.18)]"
             >
               {isGenerating ? (

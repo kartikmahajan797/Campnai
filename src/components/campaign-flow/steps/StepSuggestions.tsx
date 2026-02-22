@@ -476,18 +476,13 @@ const StepSuggestions: React.FC = () => {
               <span className="text-muted-foreground">Matches</span>
               <span className="font-bold text-foreground">Top {displaySuggestions.length > 0 ? displaySuggestions.length : '10'}</span>
             </div>
-            <div className="flex justify-between items-center p-3 bg-muted/40 dark:bg-muted/20 border border-border/50 rounded-xl text-sm">
-              <span className="text-muted-foreground">Goal</span>
-              <span className="font-medium text-foreground">{preferences.primaryGoal || 'Engagement'}</span>
-            </div>
           </div>
 
           <div className="pt-4 w-full space-y-3">
-            {/* Action Buttons */}
-            {/* Generate Report button temporarily removed as requested */}
+
 
             <button
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-muted-foreground bg-transparent hover:bg-secondary/20 hover:text-foreground rounded-2xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-border/50"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-muted-foreground bg-transparent hover:bg-secondary/20 hover:text-foreground rounded-2xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-border/80 dark:border-border/50 hover:border-border transition-colors shadow-sm"
               disabled={isGeneratingReport || isSkipping}
               onClick={async (e) => {
                  e.preventDefault();
@@ -557,14 +552,14 @@ const StepSuggestions: React.FC = () => {
         {/* Top Shortlist Section */}
         {!isLoading && !error && displaySuggestions.length > 1 && (
           <div className="mb-12">
-            <h3 className="text-[22px] font-bold text-white mb-6 flex items-center gap-2 tracking-tight">
-              Shortlisted Influencers <span className="text-white/40 font-normal">{shortlist.length}</span>
+            <h3 className="text-[22px] font-bold text-black dark:text-white mb-6 flex items-center gap-2 tracking-tight">
+              Shortlisted Influencers <span className="text-black/40 dark:text-white/40 font-normal">{shortlist.length}</span>
             </h3>
             
             {shortlist.length === 0 ? (
-              <div className="w-full bg-[#0F0A19]/50 border border-white/[0.03] rounded-2xl p-16 flex flex-col items-center justify-center gap-4 text-center">
-                <Users className="w-8 h-8 text-white/20" />
-                <p className="text-sm font-medium text-white/40">No influencers shortlisted yet.</p>
+              <div className="w-full bg-[#0F0A19]/50 dark:bg-[#0F0A19]/50 border border-black/10 dark:border-white/[0.03] rounded-2xl p-16 flex flex-col items-center justify-center gap-4 text-center">
+                <Users className="w-8 h-8 text-black/20 dark:text-white/20" />
+                <p className="text-sm font-medium text-black/40 dark:text-white/40">No influencers shortlisted yet.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-6 w-full">
@@ -605,8 +600,8 @@ const StepSuggestions: React.FC = () => {
 
         {/* Title for All Suggested */}
         {!isLoading && !error && displaySuggestions.length > 1 && (
-          <h3 className="text-[22px] font-bold text-white mb-6 flex items-center gap-2 tracking-tight">
-            All Suggested <span className="text-white/40 font-normal">{displaySuggestions.length > 0 ? displaySuggestions.length - 1 : 0}</span>
+          <h3 className="text-[22px] font-bold text-black dark:text-white mb-6 flex items-center gap-2 tracking-tight">
+            All Suggested <span className="text-black/40 dark:text-white/40 font-normal">{displaySuggestions.length > 0 ? displaySuggestions.length - 1 : 0}</span>
           </h3>
         )}
 
