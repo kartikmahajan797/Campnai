@@ -1,484 +1,298 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import DashboardLayout from '../DashboardLayout';
+import { CampaignService } from '@/services/CampaignService';
+import { normalizeInfluencerData, formatFollowers } from '@/utils/influencerUtils';
+import { DUMMY_INFLUENCER } from '@/utils/dummyData';
 import {
-  X, Instagram, MapPin, Users, TrendingUp, Zap, Target,
-  CheckCircle2, Phone, Mail, ExternalLink, ArrowLeft, ChevronDown, ChevronUp, FileText, ArrowRight, LayoutDashboard
+  ArrowLeft, Send, Heart, X, Users, TrendingUp, MapPin, Bookmark, BookmarkCheck,
+  ChevronRight, Sparkles, Instagram,
 } from 'lucide-react';
-import { CampaignService } from '../../services/CampaignService';
-import type { InfluencerSuggestion } from '../campaign-flow/CampaignContext';
-import { calculateInfluencerDisplayFields, formatFollowers, normalizeInfluencerData, getBanner } from '../../utils/influencerUtils';
-import { FreelancerProfileCard } from '../ui/freelancer-profile-card';
-import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { PremiumBackground } from '../ui/premium-background';
-import OutreachReviewModal from './OutreachReviewModal';
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-function parseER(val: string | number | null | undefined): string {
-  if (!val) return '—';
-  const n = parseFloat(String(val));
-  if (isNaN(n) || n === 0) return '—';
-  return `${n}%`;
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface CampaignInfo {
+  id: string;
+  name?: string;
+  status?: string;
+  analysisResult?: any;
+  preferences?: any;
+  suggestions?: any[];
+  shortlist?: string[];
 }
 
-// ── Full-detail modal ─────────────────────────────────────────────────────────
-const InfluencerModal: React.FC<{
-  influencer: InfluencerSuggestion;
-  onClose: () => void;
-  onOutreach: () => void;
-}> = ({ influencer: inf, onClose, onOutreach }) => {
-  const igUsername = inf.handle?.replace('@', '') || '';
-  const igLink = (inf as any).instagramUrl || (igUsername ? `https://www.instagram.com/${igUsername}` : '#');
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
-  return (
-    <motion.div
-      className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
-      <motion.div
-        className="relative w-full max-w-4xl max-h-[90vh] bg-card rounded-3xl shadow-2xl flex flex-col md:flex-row overflow-hidden border border-border"
-        initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Close */}
-        <button onClick={onClose} className="absolute top-5 right-5 z-10 p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors">
-          <X className="w-5 h-5 text-muted-foreground" />
-        </button>
-
-        {/* LEFT PANEL */}
-        <div className="w-full md:w-[280px] shrink-0 bg-muted/30 border-b md:border-b-0 md:border-r border-border p-7 flex flex-col gap-5">
-          <div className="flex flex-col items-center text-center gap-3">
-            <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-3xl font-bold text-foreground">
-              {inf.name?.charAt(0).toUpperCase() ?? '?'}
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-foreground leading-tight">{inf.name}</h3>
-              <p className="text-muted-foreground text-sm mt-0.5">{inf.handle || '—'}</p>
-            </div>
-            {inf.matchScore > 0 && (
-              <div className="px-4 py-1.5 bg-foreground text-background rounded-full text-sm font-bold">
-                {inf.matchScore}% Match
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-background rounded-2xl p-3 text-center border border-border">
-              <Users className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
-              <div className="font-bold text-foreground text-base">{inf.followers || '—'}</div>
-              <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Followers</div>
-            </div>
-            <div className="bg-background rounded-2xl p-3 text-center border border-border">
-              <TrendingUp className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
-              <div className="font-bold text-foreground text-base">{parseER(inf.engagementRate)}</div>
-              <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Engagement</div>
-            </div>
-          </div>
-
-          <div className="space-y-2 text-sm">
-            {inf.location && inf.location !== '—' && (
-              <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="w-4 h-4 text-muted-foreground/60 shrink-0" /><span>{inf.location}</span></div>
-            )}
-            {inf.niche && inf.niche !== '—' && (
-              <div className="flex items-center gap-2 text-muted-foreground"><Zap className="w-4 h-4 text-muted-foreground/60 shrink-0" /><span>{inf.niche}</span></div>
-            )}
-            {inf.pricePerPost && inf.pricePerPost !== '—' && (
-              <div className="flex items-center gap-2 text-foreground font-semibold">
-                <span className="text-muted-foreground text-xs">Est.</span><span>{inf.pricePerPost}</span>
-              </div>
-            )}
-            {(inf as any).phone && (
-              <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-4 h-4 text-muted-foreground/60 shrink-0" /><span>{(inf as any).phone}</span></div>
-            )}
-            {(inf as any).email && (
-              <div className="flex items-center gap-2 text-muted-foreground break-all"><Mail className="w-4 h-4 text-muted-foreground/60 shrink-0" /><span className="text-xs">{(inf as any).email}</span></div>
-            )}
-          </div>
-
-          <button 
-              onClick={onOutreach}
-              className="flex items-center justify-center gap-2 py-3 bg-primary text-primary-foreground rounded-2xl font-semibold text-sm hover:bg-primary/90 transition-colors mt-auto mb-3"
-          >
-            <Zap className="w-4 h-4" /> Send Outreach
-          </button>
-
-          <a href={igLink} target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 py-3 bg-foreground text-background rounded-2xl font-semibold text-sm hover:opacity-80 transition-colors">
-            <Instagram className="w-4 h-4" /> View Profile
-          </a>
-        </div>
-
-        {/* RIGHT PANEL */}
-        <div className="flex-1 overflow-y-auto p-7 space-y-7">
-          {/* Why This Creator */}
-          <section>
-            <Label icon={<Target className="w-4 h-4 text-muted-foreground" />} text="Why This Creator?" />
-            <p className="text-muted-foreground text-sm leading-relaxed bg-muted/30 rounded-2xl p-5 border border-border">
-              {inf.whySuggested || '—'}
-            </p>
-          </section>
-
-          {/* ROI + Strengths */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <section>
-              <Label icon={<TrendingUp className="w-4 h-4 text-muted-foreground" />} text="ROI Projection" />
-              <div className="bg-muted/30 rounded-2xl p-5 border border-border h-full">
-                <p className="text-muted-foreground text-sm leading-relaxed">{inf.expectedROI || '—'}</p>
-              </div>
-            </section>
-            <section>
-              <Label icon={<Zap className="w-4 h-4 text-muted-foreground" />} text="Key Strengths" />
-              <div className="bg-muted/30 rounded-2xl p-5 border border-border h-full">
-                <p className="text-muted-foreground text-sm leading-relaxed">{inf.performanceBenefits || '—'}</p>
-              </div>
-            </section>
-          </div>
-
-          {/* Audience Details */}
-          {((inf as any).mfSplit || (inf as any).indiaSplit || (inf as any).ageGroup || (inf as any).avgViews) && (
-            <section>
-              <Label icon={<Users className="w-4 h-4 text-muted-foreground" />} text="Audience Details" />
-              <div className="bg-muted/30 rounded-2xl p-5 border border-border space-y-3">
-                {[(inf as any).mfSplit && ['M/F Split', (inf as any).mfSplit],
-                  (inf as any).indiaSplit && ['India / Global', (inf as any).indiaSplit],
-                  (inf as any).ageGroup && ['Age Group', (inf as any).ageGroup],
-                  (inf as any).avgViews && ['Avg Views/Post', (inf as any).avgViews]
-                ].filter(Boolean).map(([label, value]: any) => (
-                  <div key={label} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{label}</span>
-                    <span className="font-semibold text-foreground">{value}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Brand Fit + Vibe */}
-          {((inf as any).brandFit || (inf as any).vibe) && (
-            <section>
-              <Label icon={<Zap className="w-4 h-4 text-muted-foreground" />} text="Brand Fit" />
-              <div className="bg-muted/30 rounded-2xl p-5 border border-border space-y-3">
-                {(inf as any).brandFit && (
-                  <div>
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-2">Categories</p>
-                    <div className="flex flex-wrap gap-2">
-                      {(inf as any).brandFit.split(',').map((tag: string) => (
-                        <span key={tag} className="px-3 py-1 bg-muted rounded-full text-xs text-muted-foreground">{tag.trim()}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {(inf as any).vibe && (
-                  <p className="text-muted-foreground text-sm italic leading-relaxed">"{(inf as any).vibe}"</p>
-                )}
-              </div>
-            </section>
-          )}
-
-          {/* Score Breakdown */}
-          {(inf as any).scoreBreakdown && Object.keys((inf as any).scoreBreakdown).length > 0 && (
-            <section>
-              <Label icon={<CheckCircle2 className="w-4 h-4 text-muted-foreground" />} text="Score Breakdown" />
-              <div className="bg-muted/30 rounded-2xl p-5 border border-border space-y-3">
-                {Object.entries((inf as any).scoreBreakdown).map(([key, val]: [string, any]) => (
-                  <div key={key} className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground w-24 capitalize">{key}</span>
-                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-foreground rounded-full" style={{ width: `${val?.score ?? 0}%` }} />
-                    </div>
-                    <span className="text-xs font-bold text-foreground w-7 text-right">{val?.score ?? 0}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
-
-const Label: React.FC<{ icon: React.ReactNode; text: string }> = ({ icon, text }) => (
-  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
-    {icon}<span>{text}</span>
-  </div>
-);
-
-
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
 const CampaignDetails: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [campaign, setCampaign] = useState<any>(null);
+  const [campaign, setCampaign] = useState<CampaignInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedModal, setSelectedModal] = useState<InfluencerSuggestion | null>(null);
-  const [outreachInfluencer, setOutreachInfluencer] = useState<InfluencerSuggestion | null>(null);
-
-  const handleOutreachSend = (channels: string[], messages: any) => {
-      console.log("Sending outreach via:", channels, messages);
-      // Simulate API call
-      setTimeout(() => {
-        setOutreachInfluencer(null);
-        if (id) {
-            navigate(`/campaigns/${id}/track`);
-        }
-      }, 500);
-  };
+  const [shortlist, setShortlist] = useState<string[]>([]);
 
   useEffect(() => {
     if (!id) return;
-    CampaignService.getCampaign(id)
-      .then(data => { setCampaign(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    (async () => {
+      try {
+        const data = await CampaignService.getCampaign(id);
+        if (data) {
+          setCampaign({ id, ...data } as any);
+          setShortlist(data.shortlist || []);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [id]);
+
+  const allInfluencers = useMemo(() => {
+    if (!campaign?.suggestions) return [DUMMY_INFLUENCER];
+    const normalized = campaign.suggestions.map((s: any) => normalizeInfluencerData(s));
+    return [DUMMY_INFLUENCER, ...normalized.filter(s => s.id !== DUMMY_INFLUENCER.id)];
+  }, [campaign]);
+
+  const shortlistedInfluencers = useMemo(
+    () => allInfluencers.filter(inf => shortlist.includes(inf.id)),
+    [allInfluencers, shortlist]
+  );
+
+  const toggleShortlist = async (infId: string) => {
+    const isAdding = !shortlist.includes(infId);
+    const newList = isAdding
+      ? [...shortlist, infId]
+      : shortlist.filter(x => x !== infId);
+    setShortlist(newList);
+    if (id) {
+      try { await CampaignService.saveShortlist(id, newList); }
+      catch (e) { console.error(e); }
+    }
+  };
+
+  const brandName = campaign?.name || campaign?.analysisResult?.brand_name || 'Campaign';
+  const industry = campaign?.analysisResult?.industry || '';
+  const budget = campaign?.preferences?.budgetRange || campaign?.analysisResult?.budget_range || '—';
+  const goal = campaign?.preferences?.primaryGoal || campaign?.analysisResult?.marketing_goal || '—';
+  const timeline = campaign?.preferences?.timeline || '—';
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-black/10 border-t-black rounded-full animate-spin" />
-      </div>
+      <DashboardLayout title="Campaign">
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="w-8 h-8 border-3 border-zinc-300 border-t-zinc-700 rounded-full animate-spin" />
+        </div>
+      </DashboardLayout>
     );
   }
 
   if (!campaign) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-black/40 text-lg">Campaign not found.</p>
-        <button onClick={() => navigate('/dashboard')} className="px-5 py-2 bg-black text-white rounded-full text-sm font-semibold">Back to Dashboard</button>
-      </div>
+      <DashboardLayout title="Campaign">
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+          <p className="text-zinc-500 text-lg">Campaign not found</p>
+          <button onClick={() => navigate('/campaigns')} className="text-sm underline text-zinc-400 hover:text-zinc-200">
+            Back to Campaigns
+          </button>
+        </div>
+      </DashboardLayout>
     );
   }
 
-  // Get shortlisted influencers (filter from suggestions using shortlist IDs, or use all suggestions)
-  const rawSuggestions: InfluencerSuggestion[] = campaign.suggestions || [];
-  
-  const allSuggestions = rawSuggestions.map(s => {
-      let norm = normalizeInfluencerData(s) as InfluencerSuggestion;
-
-      if (!norm.whySuggested || norm.whySuggested === '—' || !norm.expectedROI || norm.expectedROI === '—') {
-        const calculated = calculateInfluencerDisplayFields(norm);
-        norm = { ...norm, ...calculated };
-      }
-      return norm;
-  });
-
-  const shortlistIds: string[] = campaign.shortlist || [];
-
-  const shortlisted = shortlistIds.length > 0
-    ? allSuggestions.filter(s => shortlistIds.includes(s.id))
-    : allSuggestions;
-
-  const analysis = campaign.analysisResult?.analysis || {};
-  const meta = campaign.analysisResult?.meta || {};
-
-  const toggleShortlist = async (infId: string) => {
-      const isShortlisted = shortlistIds.includes(infId);
-      let newShortlistIds;
-      if (isShortlisted) {
-          newShortlistIds = shortlistIds.filter(id => id !== infId);
-      } else {
-          newShortlistIds = [...shortlistIds, infId];
-      }
-      
-      setCampaign((prev: any) => ({ ...prev, shortlist: newShortlistIds }));
-      
-      try {
-          if (id) await CampaignService.saveShortlist(id, newShortlistIds);
-      } catch (err) {
-          console.error("Failed to update shortlist", err);
-      }
-  };
-
   return (
-    <div className="min-h-screen py-10 px-4 md:px-10 flex flex-col lg:flex-row gap-10 max-w-[1600px] mx-auto relative font-sans selection:bg-black/10 dark:selection:bg-white/20 selection:text-black dark:selection:text-white">
-      <PremiumBackground />
-      
-      {/* Left Sidebar - Sticky */}
-      <aside className="w-full lg:w-[320px] shrink-0 lg:sticky lg:top-10 lg:h-fit flex flex-col gap-8">
-        {/* Back */}
-        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm font-medium transition-colors w-fit">
-          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-        </button>
-
-        {/* Campaign Info Card */}
-        <div className="bg-card rounded-3xl p-8 border border-border shadow-sm space-y-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <LayoutDashboard className="w-5 h-5 text-muted-foreground" />
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Campaign</span>
-            </div>
-            <h1 className="text-3xl font-bold text-foreground leading-tight">
-              {analysis.brand_name || campaign.name || 'Campaign Details'}
-            </h1>
-            <p className="text-muted-foreground text-base mt-2">{analysis.industry || ''}</p>
-          </div>
-
-          <div className="flex flex-col gap-3">
-             {meta.top_match_score > 0 && (
-                <div className="flex justify-between items-center p-3 bg-muted/40 border border-border/50 rounded-xl text-sm">
-                  <span className="text-muted-foreground">Top Match Score</span>
-                  <span className="font-bold text-foreground">{meta.top_match_score}%</span>
-                </div>
-              )}
-              {campaign.preferences?.budgetRange && (
-                <div className="flex justify-between items-center p-3 bg-muted/40 border border-border/50 rounded-xl text-sm">
-                  <span className="text-muted-foreground">Budget</span>
-                  <span className="font-medium text-foreground">{campaign.preferences.budgetRange}</span>
-                </div>
-              )}
-              {campaign.preferences?.primaryGoal && (
-                <div className="flex justify-between items-center p-3 bg-muted/40 border border-border/50 rounded-xl text-sm">
-                  <span className="text-muted-foreground">Goal</span>
-                  <span className="font-medium text-foreground">{campaign.preferences.primaryGoal}</span>
-                </div>
-              )}
-              {campaign.preferences?.timeline && (
-                <div className="flex justify-between items-center p-3 bg-muted/40 border border-border/50 rounded-xl text-sm">
-                   <span className="text-muted-foreground">Timeline</span>
-                   <span className="font-medium text-foreground">{campaign.preferences.timeline}</span>
-                </div>
-              )}
-          </div>
-
-          {/* Action Button */}
-
-
-          
-          <button
-              onClick={() => navigate(`/campaign/new?id=${id}&step=5`)}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg hover:shadow-primary/20"
-            >
-              <FileText className="w-4 h-4" />
-              Generate Report
-              <ArrowRight className="w-4 h-4" />
-          </button>
+    <DashboardLayout
+      title={
+        <div className="flex items-center gap-2 text-sm text-zinc-400">
+          <span onClick={() => navigate('/campaigns')} className="cursor-pointer hover:text-zinc-200 transition">Campaigns</span>
+          <ChevronRight size={14} />
+          <span className="text-zinc-200">{brandName}</span>
         </div>
-      </aside>
+      }
+    >
+      <div className="h-[calc(100vh-64px)] flex flex-col overflow-hidden">
 
-      {/* Right Content */}
-      <main className="flex-1 space-y-12">
-        
-        {/* Shortlisted Influencers */}
-        <div>
-          <div className="flex items-center gap-3 mb-6">
-            <h2 className="text-2xl font-bold text-foreground">
-              Shortlisted Influencers <span className="text-muted-foreground ml-2">{shortlisted.length}</span>
-            </h2>
+        {/* ── Main layout: left sidebar + right grid ── */}
+        <div className="flex-1 flex overflow-hidden">
+
+          {/* LEFT SIDEBAR */}
+          <div className="w-64 shrink-0 border-r border-white/10 bg-zinc-950/40 backdrop-blur-sm flex flex-col">
+            {/* Brand card */}
+            <div className="p-6 border-b border-white/5">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3">
+                <Sparkles size={12} />
+                Campaign
+              </div>
+              <h2 className="text-xl font-black text-white mb-1">{brandName}</h2>
+              {industry && <p className="text-xs text-zinc-500 font-medium">{industry}</p>}
+            </div>
+
+            {/* Details */}
+            <div className="p-6 space-y-5 flex-1">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Budget</span>
+                <span className="text-sm font-semibold text-white">{budget}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Goal</span>
+                <span className="text-sm font-semibold text-white capitalize">{goal}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Timeline</span>
+                <span className="text-sm font-semibold text-white capitalize">{timeline}</span>
+              </div>
+            </div>
+
+            {/* Outreach button */}
+            <div className="p-4 border-t border-white/5">
+              <button
+                onClick={() => navigate(`/campaigns/${id}/track`)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-zinc-900 rounded-xl text-sm font-bold hover:bg-white/90 transition-all shadow-lg"
+              >
+                <Send size={14} />
+                Outreach
+              </button>
+            </div>
           </div>
 
-          {shortlisted.length === 0 ? (
-            <div className="bg-card rounded-3xl p-12 border border-border text-center">
-              <Users className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground font-medium">No influencers shortlisted yet.</p>
-            </div>
-          ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {shortlisted.map(inf => (
-                  <FreelancerProfileCard
-                    key={inf.id}
-                    name={inf.name}
-                    title={inf.niche || inf.handle}
-                    avatarSrc={(inf.avatar && inf.avatar !== '') ? inf.avatar : ((inf as any).instagramUrl ? `https://unavatar.io/instagram/${(inf as any).instagramUrl.replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, '').replace(/\/$/, '')}` : `https://unavatar.io/instagram/${(inf.handle || '').replace('@', '')}`)}
-                    rating={inf.matchScore ? `${inf.matchScore}%` : "New"}
-                    duration={inf.followers || '—'}
-                    rate={inf.engagementRate || '—'}
-                    location={inf.location !== '—' ? inf.location : undefined}
-                    handle={inf.handle}
-                    instagramUrl={(inf as any).instagramUrl || undefined}
-                    isBookmarked={true}
-                    onBookmark={() => toggleShortlist(inf.id)}
-                    onGetInTouch={() => setSelectedModal(inf)}
-                    tools={(inf.brandFit || "").split(',').filter(Boolean).slice(0, 3).map((tag: string) => tag.trim())}
-                    className="w-full"
-                  />
-                ))}
+          {/* RIGHT CONTENT — All Suggested */}
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-white">All Suggested</h3>
+                <p className="text-xs text-zinc-500 mt-0.5">{allInfluencers.length} creators found</p>
               </div>
-          )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {allInfluencers.map((inf) => {
+                const isSelected = shortlist.includes(inf.id);
+                return (
+                  <div
+                    key={inf.id}
+                    className={`
+                      relative rounded-2xl border p-5 transition-all duration-200 cursor-pointer group
+                      ${isSelected
+                        ? 'border-white/30 bg-white/[0.08] shadow-lg shadow-white/5'
+                        : 'border-white/[0.08] bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
+                      }
+                    `}
+                  >
+                    {/* Bookmark toggle */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleShortlist(inf.id); }}
+                      className={`absolute top-4 right-4 p-1.5 rounded-full transition-all ${
+                        isSelected
+                          ? 'text-pink-400 bg-pink-500/20'
+                          : 'text-zinc-500 opacity-0 group-hover:opacity-100 hover:text-pink-400 hover:bg-pink-500/10'
+                      }`}
+                    >
+                      <Heart size={16} fill={isSelected ? 'currentColor' : 'none'} />
+                    </button>
+
+                    {/* Avatar */}
+                    <div className="flex justify-center mb-4">
+                      <div className="w-16 h-16 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-2xl font-black text-zinc-400">
+                        {inf.name?.charAt(0)?.toLowerCase() || '?'}
+                      </div>
+                    </div>
+
+                    {/* Name & niche */}
+                    <div className="text-center mb-4">
+                      <h4 className="text-sm font-bold text-white uppercase tracking-wide">{inf.name}</h4>
+                      <p className="text-[11px] text-zinc-500 font-medium mt-0.5">{inf.niche || '—'}</p>
+                      {inf.location && inf.location !== '—' && (
+                        <p className="text-[10px] text-zinc-600 flex items-center justify-center gap-1 mt-1">
+                          <MapPin size={9} />{inf.location}
+                        </p>
+                      )}
+                      {inf.handle && (
+                        <p className="text-[10px] text-zinc-600 mt-0.5">@{inf.handle?.replace('@', '')}</p>
+                      )}
+                    </div>
+
+                    {/* Stats row */}
+                    <div className="flex items-center justify-center gap-5 mb-4">
+                      <div className="text-center">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-yellow-500/70 flex items-center gap-1">
+                          <span>★</span> Score
+                        </p>
+                        <p className="text-sm font-black text-white">{inf.matchScore || 0}%</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-pink-500/70 flex items-center gap-1">
+                          <Users size={8} /> Fans
+                        </p>
+                        <p className="text-sm font-black text-white">{inf.followers || '—'}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-green-500/70 flex items-center gap-1">
+                          <TrendingUp size={8} /> Rate
+                        </p>
+                        <p className="text-sm font-black text-white">{inf.engagementRate || '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Tags */}
+                    {inf.brandFit && (
+                      <div className="flex flex-wrap justify-center gap-1.5">
+                        {inf.brandFit.split(',').filter(Boolean).slice(0, 3).map((tag: string) => (
+                          <span key={tag} className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.06] border border-white/[0.08] text-zinc-400 font-medium uppercase tracking-wide">
+                            {tag.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        {/* All Suggestions (if shortlist is different) */}
-        {shortlistIds.length > 0 && allSuggestions.length > shortlisted.length && (
-          <div>
-            <div className="flex items-center gap-3 mb-6 pt-10 border-t border-border">
-               <h2 className="text-2xl font-bold text-foreground">
-                All Suggested <span className="text-muted-foreground ml-2">{allSuggestions.length}</span>
-              </h2>
-            </div>
-            
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {allSuggestions.filter(s => !shortlistIds.includes(s.id)).map(inf => (
-                  <FreelancerProfileCard
-                    key={inf.id}
-                    name={inf.name}
-                    title={inf.niche || inf.handle}
-                    avatarSrc={(inf.avatar && inf.avatar !== '') ? inf.avatar : ((inf as any).instagramUrl ? `https://unavatar.io/instagram/${(inf as any).instagramUrl.replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, '').replace(/\/$/, '')}` : `https://unavatar.io/instagram/${(inf.handle || '').replace('@', '')}`)}
-                    rating={inf.matchScore ? `${inf.matchScore}%` : "New"}
-                    duration={inf.followers || '—'}
-                    rate={inf.engagementRate || '—'}
-                    location={inf.location !== '—' ? inf.location : undefined}
-                    handle={inf.handle}
-                    instagramUrl={(inf as any).instagramUrl || undefined}
-                    isBookmarked={false}
-                    onBookmark={() => toggleShortlist(inf.id)}
-                    onGetInTouch={() => setSelectedModal(inf)}
-                    tools={(inf.brandFit || "").split(',').filter(Boolean).slice(0, 3).map((tag: string) => tag.trim())}
-                    className="w-full"
-                  />
-                ))}
-              </div>
-          </div>
-        )}
-      </main>
-
-      <AnimatePresence>
-        {selectedModal && (
-          <InfluencerModal
-            influencer={selectedModal}
-            onClose={() => setSelectedModal(null)}
-            onOutreach={() => {
-                setOutreachInfluencer(selectedModal);
-                setSelectedModal(null);
-            }}
-          />
-        )}
-        
-        {outreachInfluencer && (
-            <OutreachReviewModal
-                influencer={outreachInfluencer}
-                onClose={() => setOutreachInfluencer(null)}
-                onSend={(channels, messages) => {
-                   handleOutreachSend(channels, messages);
-                }}
-            />
-        )}
-      </AnimatePresence>
-
-      {/* Fixed Bottom Bar for Outreach Launch */}
-      {shortlisted.length > 0 && (
-        <motion.div 
-            initial={{ y: 100 }} animate={{ y: 0 }} 
-            className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-xl border-t border-border flex justify-between items-center px-10 shadow-2xl z-40"
-        >
+        {/* ── BOTTOM BAR: Shortlisted influencers ── */}
+        {shortlistedInfluencers.length > 0 && (
+          <div className="shrink-0 border-t border-white/10 bg-zinc-950/60 backdrop-blur-xl px-8 py-4">
             <div className="flex items-center gap-4">
-                <div className="bg-foreground text-background px-3 py-1 rounded-full text-xs font-bold">
-                    {shortlisted.length} Imported
-                </div>
-                <span className="text-muted-foreground text-sm font-medium">Ready for outreach sequence</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <BookmarkCheck size={14} className="text-pink-400" />
+                <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+                  Selected ({shortlistedInfluencers.length})
+                </span>
+              </div>
+
+              <div className="flex-1 flex items-center gap-3 overflow-x-auto py-1">
+                {shortlistedInfluencers.map(inf => (
+                  <div
+                    key={inf.id}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/10 shrink-0 group"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-300">
+                      {inf.name?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                    <span className="text-xs font-semibold text-zinc-300 whitespace-nowrap">{inf.name}</span>
+                    <button
+                      onClick={() => toggleShortlist(inf.id)}
+                      className="p-0.5 text-zinc-600 hover:text-red-400 transition opacity-0 group-hover:opacity-100"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => navigate(`/campaigns/${id}/track`)}
+                className="shrink-0 flex items-center gap-2 px-5 py-2.5 bg-white text-zinc-900 rounded-xl text-xs font-bold hover:bg-white/90 transition shadow-lg"
+              >
+                <Send size={12} />
+                Start Outreach
+              </button>
             </div>
-            
-             <button
-              onClick={() => navigate(`/campaigns/${id}/track`)}
-              className="flex items-center justify-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg hover:shadow-primary/20"
-            >
-              Launch Outreach Campaign <ArrowRight className="w-4 h-4" />
-            </button>
-        </motion.div>
-      )}
-    </div>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 };
-
 
 export default CampaignDetails;
