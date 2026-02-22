@@ -60,7 +60,7 @@ function extractBody(rawSource) {
         }
     }
 
-    // Plain body — strip quoted reply lines
+    // Plain body — strip quoted reply lines (lines starting with > or "On ... wrote:")
     const lines = body.replace(/\r\n/g, '\n').split('\n');
     const cleanLines = [];
     for (const line of lines) {
@@ -70,9 +70,9 @@ function extractBody(rawSource) {
     return cleanLines.join('\n').trim().substring(0, 2000);
 }
 
-// ─── Core IMAP fetch (shared) ──────────────────────────────────────────────────
+// ─── Core IMAP fetch ───────────────────────────────────────────────────────────
 
-async function _doImapFetch({ subjectContains, since, debugAll = false }) {
+async function _doImapFetch({ subjectContains, since, expectedSender = null, debugAll = false }) {
     const client = new ImapFlow({
         host: 'imap.gmail.com',
         port: 993,
@@ -87,25 +87,24 @@ async function _doImapFetch({ subjectContains, since, debugAll = false }) {
     const results = [];
     const skipped = { own: 0, subject: 0 };
 
-    console.log(`[EmailService] 🔍 IMAP search since: ${since.toISOString()}, subject contains: "${subjectContains}"`);
+    console.log(`[EmailService] 🔍 IMAP search since: ${since.toISOString()}, subject: "${subjectContains}"`);
 
     try {
         await client.connect();
         const lock = await client.getMailboxLock('INBOX');
         try {
-            // ── UID search ──
             const uids = await client.search({ since }, { uid: true });
-            console.log(`[EmailService] Found ${uids.length} UIDs in INBOX since ${since.toISOString()}`);
+            console.log(`[EmailService] Found ${uids.length} UIDs since ${since.toISOString()}`);
 
             if (uids.length === 0) return { results, skipped };
 
-            // Take last 100 (newest) — use UID mode in fetch
-            const fetchUids = uids.slice(-100);
+            // Take last 200 UIDs (newest) — large enough to cover delayed replies
+            const fetchUids = uids.slice(-200);
 
             for await (const msg of client.fetch(
                 fetchUids,
                 { uid: true, envelope: true, source: true },
-                { uid: true }   // ← Treat range as UIDs, NOT sequence numbers
+                { uid: true }
             )) {
                 try {
                     const { from, subject: subj, messageId, inReplyTo, date } = msg.envelope;
@@ -114,30 +113,33 @@ async function _doImapFetch({ subjectContains, since, debugAll = false }) {
                     const msgId = messageId || '';
                     const ownEmail = (process.env.GMAIL_USER || '').toLowerCase();
 
-                    // Debug: log ALL non-own messages when asked
                     if (debugAll && fromAddr !== ownEmail) {
                         console.log(`[EmailService] 📨 Non-own: from="${fromAddr}", subj="${subjectStr}"`);
                     }
 
-                    // Skip our own outbound emails
+                    // Skip own outbound emails
                     if (fromAddr === ownEmail) {
                         skipped.own++;
                         continue;
                     }
 
-                    // Subject filter
-                    const strip = (s) => (s || '').replace(/^(Re:|Fwd:)\s*/gi, '').trim().toLowerCase();
-                    const normSubj = strip(subjectStr);
-                    const normKey = strip(subjectContains);
+                      // Subject filter — EXACT match after stripping Re:/Fwd:
+                      // Must also match sender email to avoid cross-campaign mixing
+                      const strip = (s) => (s || '').replace(/^(Re:|Fwd:)\s*/gi, '').trim().toLowerCase();
+                      if (subjectContains && strip(subjectStr) !== strip(subjectContains)) {
+                          skipped.subject++;
+                          continue;
+                      }
 
-                    if (subjectContains && !normSubj.includes(normKey)) {
-                        skipped.subject++;
-                        continue;
-                    }
+                      // Sender filter — only accept from expected influencer
+                      if (expectedSender && fromAddr !== expectedSender.toLowerCase()) {
+                          skipped.subject++;
+                          continue;
+                      }
 
                     const body = extractBody(msg.source);
                     if (!body) {
-                        console.warn(`[EmailService] ⚠️  Empty body for: "${subjectStr}"`);
+                        console.warn(`[EmailService] ⚠️  Empty body: "${subjectStr}"`);
                         continue;
                     }
 
@@ -160,20 +162,22 @@ async function _doImapFetch({ subjectContains, since, debugAll = false }) {
     return { results, skipped };
 }
 
-// ─── Public: fetchReplies ─────────────────────────────────────────────────────
+// ─── Public: fetchReplies ──────────────────────────────────────────────────────
+// sinceDate is passed directly from Firestore (outreach sentAt / lastCheckedAt).
+// No artificial cap here — deduplication happens via messageId in the cron.
 
-export async function fetchReplies({ sinceDate, subjectContains }) {
-    // Always look back 72h minimum — don't miss replies due to timestamp drift
-    const minLookback = new Date(Date.now() - 72 * 60 * 60 * 1000);
-    const since = (sinceDate && new Date(sinceDate) < minLookback)
-        ? new Date(sinceDate)
-        : minLookback;
-
-    const { results } = await _doImapFetch({ subjectContains, since });
+export async function fetchReplies({ sinceDate, subjectContains, expectedSender }) {
+    // sinceDate = when outreach was sent (or last reply processed)
+    // No artificial minimum — if reply came 2 months later, sinceDate will be from sentAt
+    // which is 2 months ago, so we'll find it. Max cap: 90 days to avoid huge scans.
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    let since = sinceDate ? new Date(sinceDate) : ninetyDaysAgo;
+    if (since < ninetyDaysAgo) since = ninetyDaysAgo;
+    const { results } = await _doImapFetch({ subjectContains, since, expectedSender });
     return results;
 }
 
-// ─── Public: debugFetchAll — for /test-imap endpoint ─────────────────────────
+// ─── Public: debugFetchAll ─────────────────────────────────────────────────────
 
 export async function debugFetchAll() {
     const since = new Date(Date.now() - 72 * 60 * 60 * 1000);
