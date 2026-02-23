@@ -748,10 +748,10 @@ const StepSuggestions: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed bottom-0 left-0 right-0 z-40 bg-[#0A0A0A] border-t border-white/5 shadow-2xl p-4 px-6 md:px-12 flex flex-col sm:flex-row items-center justify-between gap-4"
+            className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#0A0A0A] border-t border-black/5 dark:border-white/5 shadow-2xl p-4 px-6 md:px-12 flex flex-col sm:flex-row items-center justify-between gap-4"
           >
             <div className="flex items-center gap-4">
-              <div className="px-5 py-2 bg-white text-black font-bold text-sm rounded-full shadow-md whitespace-nowrap">
+              <div className="px-5 py-2 bg-black text-white dark:bg-white dark:text-black font-bold text-sm rounded-full shadow-md whitespace-nowrap border border-transparent dark:border-white/10">
                 {shortlist.length} Imported
               </div>
               <span className="text-sm font-medium text-zinc-500 hidden sm:inline-block">
@@ -760,7 +760,7 @@ const StepSuggestions: React.FC = () => {
             </div>
 
             <button
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-black rounded-xl text-sm font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-black text-white dark:bg-white dark:text-black rounded-xl text-sm font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
               disabled={isSkipping}
               onClick={async (e) => {
                 e.preventDefault();
@@ -770,7 +770,7 @@ const StepSuggestions: React.FC = () => {
               }}
             >
               {isSkipping ? (
-                <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white/30 dark:border-black/30 border-t-white dark:border-t-black rounded-full animate-spin" />
               ) : (
                 <>
                   Launch Outreach Campaign
