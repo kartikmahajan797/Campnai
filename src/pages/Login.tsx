@@ -31,10 +31,10 @@ const Login = () => {
         });
         navigate(`/campaign/new?id=${sorted[0].id}`, { replace: true });
       } else {
-        navigate('/dashboard/history', { replace: true });
+        navigate('/campaign/new', { replace: true });
       }
     } catch {
-      navigate('/dashboard/history', { replace: true });
+      navigate('/campaign/new', { replace: true });
     }
   };
 
@@ -122,7 +122,7 @@ const Login = () => {
               {isRestoring ? 'Restoring session…' : 'Checking authentication…'}
             </h2>
             <p className="text-muted-foreground text-sm mt-1">
-              {isRestoring ? 'Opening your latest campaign' : 'Please wait while we secure your session'}
+              {isRestoring ? 'Preparing your workspace...' : 'Please wait while we secure your session'}
             </p>
           </div>
         </div>
