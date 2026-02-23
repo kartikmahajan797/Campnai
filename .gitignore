@@ -34,3 +34,5 @@ backend/__pycache__/
 backend/*.pyc
 .venv/
 __pycache__/
+
+ENTERPRISE_SYSTEM_DOCS.md

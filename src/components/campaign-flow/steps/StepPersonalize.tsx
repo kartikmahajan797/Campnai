@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCampaign } from '../CampaignContext';
 import {
@@ -7,105 +7,89 @@ import {
 } from 'lucide-react';
 
 const GOAL_OPTIONS = [
-  { id: 'Awareness',           label: 'Brand Awareness',    desc: 'Maximize reach & visibility',  icon: Users      },
-  { id: 'Sales / Conversions', label: 'Sales & Conversions', desc: 'Drive purchases & ROI',        icon: DollarSign },
-  { id: 'Product Launch',      label: 'Product Launch',     desc: 'Hype for new products',         icon: Zap        },
-  { id: 'App Installs',        label: 'App Installs',       desc: 'Drive downloads',               icon: Target     },
-  { id: 'Creator Seeding',     label: 'Creator Seeding',    desc: 'Gift products to many',         icon: Sparkles   },
+  { id: 'Awareness', label: 'Brand Awareness', desc: 'Maximize reach & visibility', icon: Users },
+  { id: 'Sales / Conversions', label: 'Sales & Conversions', desc: 'Drive purchases & ROI', icon: DollarSign },
+  { id: 'Product Launch', label: 'Product Launch', desc: 'Hype for new products', icon: Zap },
+  { id: 'App Installs', label: 'App Installs', desc: 'Drive downloads', icon: Target },
 ];
 
 const BUDGET_OPTIONS = [
-  { id: 'Under ₹1 Lakh', label: '< ₹1 Lakh',    desc: 'Micro — testing waters',      min: 10000,   max: 100000  },
-  { id: '₹1-5 Lakh',     label: '₹1 – 5 Lakh',  desc: 'Growth — scaling up',          min: 100000,  max: 500000  },
-  { id: '₹5-10 Lakh',    label: '₹5 – 10 Lakh', desc: 'Scale — dominating niche',     min: 500000,  max: 1000000 },
-  { id: '₹10 Lakh+',     label: '₹10 Lakh+',    desc: 'Enterprise — full force',      min: 1000000, max: 5000000 },
+  { id: 'Under ₹1 Lakh', label: '< ₹1 Lakh', desc: 'Micro — testing waters', min: 10000, max: 100000 },
+  { id: '₹1-5 Lakh', label: '₹1 – 5 Lakh', desc: 'Growth — scaling up', min: 100000, max: 500000 },
+  { id: '₹5-10 Lakh', label: '₹5 – 10 Lakh', desc: 'Scale — dominating niche', min: 500000, max: 1000000 },
+  { id: '₹10 Lakh+', label: '₹10 Lakh+', desc: 'Enterprise — full force', min: 1000000, max: 5000000 },
 ];
 
 const TIMELINE_OPTIONS = [
-  { id: '1 Week',  label: '1 Week',  desc: 'Sprint — quick burst'          },
-  { id: '15 Days', label: '15 Days', desc: 'Campaign — sustained push'     },
+  { id: '1 Week', label: '1 Week', desc: 'Sprint — quick burst' },
+  { id: '15 Days', label: '15 Days', desc: 'Campaign — sustained push' },
   { id: '30 Days', label: '30 Days', desc: 'Marathon — long-term building' },
 ];
 
 const STEPS = [
-  { key: 'primaryGoal', label: 'Primary Goal',      options: GOAL_OPTIONS    },
-  { key: 'budgetRange', label: 'Budget Range',       options: BUDGET_OPTIONS  },
-  { key: 'timeline',    label: 'Campaign Duration',  options: TIMELINE_OPTIONS},
+  { key: 'primaryGoal', label: 'Primary Goal', options: GOAL_OPTIONS },
+  { key: 'budgetRange', label: 'Budget Range', options: BUDGET_OPTIONS },
+  { key: 'timeline', label: 'Campaign Duration', options: TIMELINE_OPTIONS },
 ];
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 40 : -40, opacity: 0 }),
   center: { x: 0, opacity: 1 },
-  exit:  (dir: number) => ({ x: dir > 0 ? -40 : 40, opacity: 0 }),
+  exit: (dir: number) => ({ x: dir > 0 ? -40 : 40, opacity: 0 }),
 };
 
-// Format with Indian commas  e.g. 1000000 → "10,00,000"
 function fmtIN(val: number): string {
   if (!val || isNaN(val)) return '0';
   return val.toLocaleString('en-IN');
 }
 
-// Format as ₹ short form for hints
 function formatRupees(val: number): string {
   if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
-  if (val >= 100000)   return `₹${(val / 100000).toFixed(1)}L`;
-  if (val >= 1000)     return `₹${(val / 1000).toFixed(0)}K`;
+  if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+  if (val >= 1000) return `₹${(val / 1000).toFixed(0)}K`;
   return `₹${val}`;
 }
 
-// Strip commas/₹/spaces → number
 function parseInput(raw: string): number {
   const n = parseFloat(raw.replace(/[₹,\s]/g, ''));
   return isNaN(n) ? 0 : Math.max(0, n);
 }
 
-// Format a raw number string with Indian commas while typing
 function applyIndianCommas(raw: string): string {
   const digits = raw.replace(/[^0-9]/g, '');
   if (!digits) return '';
   return Number(digits).toLocaleString('en-IN');
 }
 
-// ── Budget Step ──────────────────────────────────────────────────────────────
 const BudgetStep: React.FC<{ preferences: any; setPreferences: (p: any) => void }> = ({
   preferences, setPreferences,
 }) => {
-  const [minStr, setMinStr] = useState(
-    preferences.budgetMin ? fmtIN(preferences.budgetMin) : ''
-  );
-  const [maxStr, setMaxStr] = useState(
-    preferences.budgetMax ? fmtIN(preferences.budgetMax) : ''
+  const [exactStr, setExactStr] = useState(
+    preferences.budgetMin && preferences.budgetMin === preferences.budgetMax ? fmtIN(preferences.budgetMin) : ''
   );
 
   const handlePreset = (opt: typeof BUDGET_OPTIONS[0]) => {
     setPreferences({ ...preferences, budgetRange: opt.id, budgetMin: opt.min, budgetMax: opt.max });
-    setMinStr(fmtIN(opt.min));
-    setMaxStr(fmtIN(opt.max));
+    setExactStr('');
   };
 
-  const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = applyIndianCommas(e.target.value);
-    setMinStr(formatted);
-  };
-  const handleMaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = applyIndianCommas(e.target.value);
-    setMaxStr(formatted);
+    setExactStr(formatted);
   };
 
-  const commitMin = () => {
-    const v = parseInput(minStr);
-    setMinStr(v ? fmtIN(v) : '');
-    setPreferences({ ...preferences, budgetMin: v });
-  };
-  const commitMax = () => {
-    const v = parseInput(maxStr);
-    setMaxStr(v ? fmtIN(v) : '');
-    setPreferences({ ...preferences, budgetMax: v });
+  const commitExact = () => {
+    const v = parseInput(exactStr);
+    setExactStr(v ? fmtIN(v) : '');
+    setPreferences({ ...preferences, budgetMin: v, budgetMax: v });
   };
 
   useEffect(() => {
-    if (preferences.budgetMin) setMinStr(fmtIN(preferences.budgetMin));
-    if (preferences.budgetMax) setMaxStr(fmtIN(preferences.budgetMax));
+    if (preferences.budgetMin && preferences.budgetMin === preferences.budgetMax) {
+      setExactStr(fmtIN(preferences.budgetMin));
+    } else {
+      setExactStr('');
+    }
   }, [preferences.budgetMin, preferences.budgetMax]);
 
   return (
@@ -162,47 +146,27 @@ const BudgetStep: React.FC<{ preferences: any; setPreferences: (p: any) => void 
               <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-black/40 dark:text-white/40 mb-3">
                 Fine-tune your budget
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-black/40 dark:text-white/40 mb-1.5 uppercase tracking-wider">
-                    Minimum
+                    Exact Budget
                   </label>
                   <div className="relative flex items-center">
                     <IndianRupee size={13} className="absolute left-3 text-black/40 dark:text-white/40 pointer-events-none" />
                     <input
                       type="text"
                       inputMode="numeric"
-                      value={minStr}
-                      onChange={handleMinChange}
-                      onBlur={commitMin}
+                      value={exactStr}
+                      onChange={handleExactChange}
+                      onBlur={commitExact}
                       className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12 dark:border-white/10
                         bg-black/[0.02] dark:bg-white/[0.02] text-sm font-semibold text-black dark:text-white
                         focus:outline-none focus:border-black/40 dark:focus:border-white/40 focus:bg-white dark:focus:bg-[#1A1A1A] transition-all"
+                      placeholder="e.g. 1,00,000"
                     />
                   </div>
                   <p className="text-[10px] text-black/30 dark:text-white/30 mt-1 font-medium">
-                    {formatRupees(parseInput(minStr) || 0)}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-black/40 dark:text-white/40 mb-1.5 uppercase tracking-wider">
-                    Maximum
-                  </label>
-                  <div className="relative flex items-center">
-                    <IndianRupee size={13} className="absolute left-3 text-black/40 dark:text-white/40 pointer-events-none" />
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={maxStr}
-                      onChange={handleMaxChange}
-                      onBlur={commitMax}
-                      className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-black/12 dark:border-white/10
-                        bg-black/[0.02] dark:bg-white/[0.02] text-sm font-semibold text-black dark:text-white
-                        focus:outline-none focus:border-black/40 dark:focus:border-white/40 focus:bg-white dark:focus:bg-[#1A1A1A] transition-all"
-                    />
-                  </div>
-                  <p className="text-[10px] text-black/30 dark:text-white/30 mt-1 font-medium">
-                    {formatRupees(parseInput(maxStr) || 0)}
+                    {formatRupees(parseInput(exactStr) || 0)}
                   </p>
                 </div>
               </div>
@@ -214,10 +178,9 @@ const BudgetStep: React.FC<{ preferences: any; setPreferences: (p: any) => void 
   );
 };
 
-// ── Main Component ────────────────────────────────────────────────────────────
 const StepPersonalize: React.FC = () => {
   const [wizardStep, setWizardStep] = useState(0);
-  const [direction, setDirection]   = useState(1);
+  const [direction, setDirection] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const {
@@ -228,14 +191,13 @@ const StepPersonalize: React.FC = () => {
 
   const currentStepConfig = STEPS[wizardStep];
 
-  // Multi-select for Goal (step 0), single-select for others
   const isGoalStep = wizardStep === 0;
   const selectedGoals: string[] = isGoalStep
     ? (Array.isArray(preferences.primaryGoal)
-        ? preferences.primaryGoal
-        : preferences.primaryGoal
-          ? [preferences.primaryGoal]
-          : [])
+      ? preferences.primaryGoal
+      : preferences.primaryGoal
+        ? preferences.primaryGoal.split(', ').filter(Boolean)
+        : [])
     : [];
 
   const handleSelect = (value: string) => {
@@ -244,7 +206,7 @@ const StepPersonalize: React.FC = () => {
       const next = already
         ? selectedGoals.filter(g => g !== value)
         : [...selectedGoals, value];
-      setPreferences({ ...preferences, primaryGoal: next.length === 1 ? next[0] : next });
+      setPreferences({ ...preferences, primaryGoal: next.join(', ') || '' });
     } else {
       setPreferences({ ...preferences, [currentStepConfig.key]: value });
     }
@@ -258,7 +220,7 @@ const StepPersonalize: React.FC = () => {
     ? selectedGoals.length > 0
     : !!currentSingleValue;
 
-  const goNext = () => { setDirection(1);  setWizardStep(s => s + 1); };
+  const goNext = () => { setDirection(1); setWizardStep(s => s + 1); };
   const goBack = () => { setDirection(-1); setWizardStep(s => s - 1); };
 
   const handleFindCreators = async () => {
@@ -266,7 +228,7 @@ const StepPersonalize: React.FC = () => {
     setIsGenerating(true);
     try {
       const { API_BASE_URL } = await import('../../../config/api');
-      const { auth }         = await import('../../../firebaseConfig');
+      const { auth } = await import('../../../firebaseConfig');
       let user = auth.currentUser;
       if (!user) {
         user = await new Promise<any>((resolve) => {
