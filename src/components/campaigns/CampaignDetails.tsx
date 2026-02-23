@@ -70,7 +70,7 @@ const CampaignDetails: React.FC = () => {
     }
   };
 
-  const brandName = campaign?.name || campaign?.analysisResult?.brand_name || 'Campaign';
+  const brandName = campaign?.analysisResult?.brand_name || campaign?.name || 'Campaign';
   const industry = campaign?.analysisResult?.industry || '';
   const budget = campaign?.preferences?.budgetRange || campaign?.analysisResult?.budget_range || '—';
   const goal = campaign?.preferences?.primaryGoal || campaign?.analysisResult?.marketing_goal || '—';
@@ -180,11 +180,10 @@ const CampaignDetails: React.FC = () => {
                     {/* Bookmark toggle */}
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleShortlist(inf.id); }}
-                      className={`absolute top-4 right-4 p-1.5 rounded-full transition-all ${
-                        isSelected
+                      className={`absolute top-4 right-4 p-1.5 rounded-full transition-all ${isSelected
                           ? 'text-pink-400 bg-pink-500/20'
                           : 'text-zinc-500 opacity-0 group-hover:opacity-100 hover:text-pink-400 hover:bg-pink-500/10'
-                      }`}
+                        }`}
                     >
                       <Heart size={16} fill={isSelected ? 'currentColor' : 'none'} />
                     </button>

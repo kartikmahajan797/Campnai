@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, ChevronRight, IndianRupee, Wrench } from 'lucide-react';
+import { X, Mail, ChevronRight, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -11,26 +11,10 @@ interface OutreachReviewModalProps {
     onSend: (channels: string[], messages: { whatsapp: string; email: string }, budget: { min: number; max: number }) => void;
 }
 
-function fmtIN(val: number): string {
-    if (!val || isNaN(val)) return '';
-    return val.toLocaleString('en-IN');
-}
-
-function applyIndianCommas(raw: string): string {
-    const digits = raw.replace(/[^0-9]/g, '');
-    if (!digits) return '';
-    return Number(digits).toLocaleString('en-IN');
-}
-
-function parseInput(raw: string): number {
-    const n = parseFloat(raw.replace(/[₹,\s]/g, ''));
-    return isNaN(n) ? 0 : Math.max(0, n);
-}
-
 const OutreachReviewModal = ({ influencer, campaign, userDisplayName, onClose, onSend }: OutreachReviewModalProps) => {
-    const brandName   = campaign?.name || campaign?.analysisResult?.brand_name || 'Our Brand';
+    const brandName = campaign?.analysisResult?.brand_name || campaign?.name || 'Our Brand';
     const managerName = userDisplayName || 'Campaign Manager';
-    const firstName   = influencer.name.split(' ')[0];
+    const firstName = influencer.name.split(' ')[0];
 
     const [emailSubject, setEmailSubject] = useState(
         `Collab: ${influencer.name} x ${brandName}`
@@ -39,16 +23,18 @@ const OutreachReviewModal = ({ influencer, campaign, userDisplayName, onClose, o
         `Hi ${firstName},\n\nThis is ${managerName} from ${brandName}, and we'd love to discuss a potential partnership with you for our upcoming campaign.\n\nPlease let me know a good time to connect or share your commercials.\n\nBest,\n${managerName}\n${brandName}`
     );
 
-    const [minBudget, setMinBudget] = useState<string>(fmtIN(10000));
-    const [maxBudget, setMaxBudget] = useState<string>(fmtIN(50000));
-    const [sending, setSending]     = useState(false);
+    const [sending, setSending] = useState(false);
+
+    // Use campaign's budget range automatically
+    const minBudget = campaign?.preferences?.budgetMin || 10000;
+    const maxBudget = campaign?.preferences?.budgetMax || 100000;
 
     const handleSend = async () => {
         setSending(true);
         await onSend(
             ['email'],
             { whatsapp: '', email: `${emailSubject}\n\n${emailBody}` },
-            { min: parseInput(minBudget), max: parseInput(maxBudget) }
+            { min: minBudget, max: maxBudget }
         );
         setSending(false);
     };
@@ -69,42 +55,6 @@ const OutreachReviewModal = ({ influencer, campaign, userDisplayName, onClose, o
                     <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground">
                         <X size={20} />
                     </button>
-                </div>
-
-                {/* Budget Row */}
-                <div className="px-6 py-3 border-b border-border bg-muted/20 flex items-center gap-6 flex-wrap">
-                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                        <IndianRupee size={14} className="text-muted-foreground" />
-                        <span>Negotiation Budget</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="flex flex-col gap-0.5">
-                            <label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Min (₹)</label>
-                            <input
-                                type="text"
-                                inputMode="numeric"
-                                value={minBudget}
-                                onChange={e => setMinBudget(applyIndianCommas(e.target.value))}
-                                onBlur={() => setMinBudget(fmtIN(parseInput(minBudget)))}
-                                className="w-32 bg-background border border-border rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-foreground/20"
-                                placeholder="10,000"
-                            />
-                        </div>
-                        <span className="text-muted-foreground mt-4">→</span>
-                        <div className="flex flex-col gap-0.5">
-                            <label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Max (₹)</label>
-                            <input
-                                type="text"
-                                inputMode="numeric"
-                                value={maxBudget}
-                                onChange={e => setMaxBudget(applyIndianCommas(e.target.value))}
-                                onBlur={() => setMaxBudget(fmtIN(parseInput(maxBudget)))}
-                                className="w-32 bg-background border border-border rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-foreground/20"
-                                placeholder="50,000"
-                            />
-                        </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground ml-auto">AI will negotiate within this range automatically</p>
                 </div>
 
                 {/* Email Panel — full width, centered */}
