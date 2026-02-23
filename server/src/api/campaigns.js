@@ -158,11 +158,11 @@ router.post("/:id/generate-suggestions", authenticate, async (req, res) => {
         // let's look at `searchAPI.js` to see if we can reuse `searchInfluencers`.
 
         const { searchInfluencers, formatForSearchAPI } = await import("../services/influencerSearch.js");
-        
+
         // Helper: Convert preferences to search query string
         // The searchInfluencers function expects: (query, limit, filterContext)
         // We need to construct these from our preferences object.
-        
+
         const goalMap = {
             'Awareness': 'high reach, brand awareness, visibility',
             'Sales / Conversions': 'high conversion, sales, roi, authentic',
@@ -227,21 +227,33 @@ router.post("/:id/generate-suggestions", authenticate, async (req, res) => {
             budgetRangeText,
         ].filter(Boolean).join(" | ");
 
-        const limit = 10;
+        const limit = parseInt(req.query.count, 10) || 10;
 
         const filterParts = [];
         if (niche) filterParts.push(`niche: ${niche}`);
         if (budgetRangeText) filterParts.push(budgetRangeText);
 
-        const rawSuggestions = await searchInfluencers(searchQuery, limit, filterParts.join(". "), null, brandContext);
-        const suggestions = formatForSearchAPI(rawSuggestions);
+        // Get existing IDs to filter them out client-side (Pinecone doesn't support $nin)
+        const existingIds = new Set((data.suggestions || []).map(s => s.id).filter(Boolean));
+
+        // Fetch more results than needed to account for filtering
+        const fetchLimit = limit + existingIds.size;
+
+        const rawSuggestions = await searchInfluencers(searchQuery, fetchLimit, filterParts.join(". "), null, brandContext);
+
+        // Filter out existing IDs client-side
+        const filteredSuggestions = rawSuggestions.filter(s => !existingIds.has(s.id));
+
+        // Take only the requested number
+        const newSuggestions = formatForSearchAPI(filteredSuggestions.slice(0, limit));
+        const mergedSuggestions = [...(data.suggestions || []), ...newSuggestions];
 
         await docRef.update({
-            suggestions: suggestions,
+            suggestions: mergedSuggestions,
             updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp()
         });
 
-        res.json({ message: "Suggestions generated", suggestions });
+        res.json({ message: "Suggestions generated", suggestions: newSuggestions });
 
     } catch (error) {
         console.error("Error generating suggestions:", error);
