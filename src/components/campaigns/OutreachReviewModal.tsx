@@ -107,7 +107,7 @@ const OutreachReviewModal = ({ influencer, campaign, userDisplayName, onClose, o
                     <Button
                         onClick={handleSend}
                         disabled={sending}
-                        className="bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 min-w-[140px] rounded-lg"
+                        className="h-10 px-6 bg-zinc-900 border border-zinc-900 hover:bg-zinc-800 text-white rounded-[10px] shadow-sm transition-all focus:ring-2 focus:ring-zinc-900/20"
                     >
                         {sending ? (
                             <span className="flex items-center gap-2">
