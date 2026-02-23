@@ -198,9 +198,9 @@ const REJECTION_PHRASES = [
 ];
 
 /**
- * Smart acceptance detection - only true acceptance, not quotes
+ * Smart acceptance detection - only true acceptance, not quotes (Fallback)
  */
-function isAcceptance(text) {
+function isAcceptanceFallback(text) {
     const lower = text.toLowerCase().trim();
 
     // Check for rejection first
@@ -227,7 +227,62 @@ function isAcceptance(text) {
     return false;
 }
 
-// ─── Main Enterprise Processing Function ──────────────────────────────────────
+/**
+ * AI-powered acceptance detection
+ */
+async function detectAcceptanceAI(message, conversationHistory, quotedPrice, maxBudget) {
+    try {
+        const recentHistory = (conversationHistory || []).slice(-5).map(h => 
+            `${h.role === 'inbound' ? 'Influencer' : 'Brand'}: ${h.body}`
+        ).join('\n\n');
+
+        const prompt = `
+Analyze the influencer's latest message to determine if they explicitly agreed to a deal.
+
+Recent Conversation Context:
+${recentHistory || 'No previous context'}
+
+Latest Message from Influencer:
+"${message}"
+
+Brand's Max Budget: ₹${maxBudget}
+Extracted Quoted Price from message: ${quotedPrice > 0 ? '₹' + quotedPrice : 'None'}
+
+Your task:
+Determine if the influencer has formally ACCEPTED a collaboration/deal.
+An acceptance means they explicitly agree to do the work at a mutually understood price.
+- If they are just giving their rates/packages but haven't agreed to proceed yet, it is NOT an acceptance.
+- If we proposed a price (e.g., "we can do 40k") and they replied "sounds good", "let's do it", "agreed", "done", that IS an acceptance.
+- If they just say "my charges are 50k", that's a quote (negotiation), NOT an acceptance.
+- If they say "I can do this for 40k, let me know", that is a quote/offer, NOT an acceptance.
+- If they say "ok done at 40k" or "agreed at 40k", that IS an acceptance.
+- If they simply say "done" or "deal" to our offer, that IS an acceptance.
+
+Return ONLY a valid JSON object with this structure (no markdown, no backticks):
+{
+  "isDealAccepted": boolean,
+  "reason": "short explanation of why"
+}
+`;
+        const result = await geminiModel.generateContent(prompt);
+        let raw = result.response.text().trim();
+        
+        raw = raw.replace(/```json/gi, '').replace(/```/gi, '').trim();
+        
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (match) {
+            const parsed = JSON.parse(match[0]);
+            console.log(`[Acceptance AI] Result: ${parsed.isDealAccepted} - Reason: ${parsed.reason}`);
+            return parsed.isDealAccepted === true;
+        }
+        
+        return isAcceptanceFallback(message);
+    } catch (err) {
+        console.warn('[Acceptance AI] AI detection failed, falling back to manual rule:', err.message);
+        return isAcceptanceFallback(message);
+    }
+}
+
 
 async function processOutreach(outreachDoc) {
     const data = outreachDoc.data();
@@ -547,7 +602,7 @@ async function _processOutreachLocked(outreachDoc, data, {
   - Brand Budget: ₹${minBudget.toLocaleString('en-IN')} - ₹${maxBudget.toLocaleString('en-IN')}`);
 
     // ══╣ DEAL ACCEPTANCE CHECK ╠═══════════════════════════════════════════════
-    const dealAccepted = isAcceptance(reply.body);
+    const dealAccepted = await detectAcceptanceAI(reply.body, conversationHistory, quotedPrice, maxBudget);
 
     let replyText;
     let newStatus = status;
