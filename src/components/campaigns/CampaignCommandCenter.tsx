@@ -39,6 +39,33 @@ const fmtINR = (val: number | string | undefined | null): string => {
     return n.toLocaleString('en-IN');
 };
 
+// Calculate elapsed time from timestamp
+const getElapsedTime = (timestamp: any): string => {
+    if (!timestamp) return '';
+
+    let date: Date;
+    if (timestamp?.toDate) {
+        date = timestamp.toDate();
+    } else if (typeof timestamp === 'string') {
+        date = new Date(timestamp);
+    } else if (timestamp instanceof Date) {
+        date = timestamp;
+    } else {
+        return '';
+    }
+
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ${hours % 24}h`;
+    if (hours > 0) return `${hours}h ${minutes % 60}m`;
+    if (minutes > 0) return `${minutes}m`;
+    return 'Just now';
+};
+
 // Strip quoted reply lines — handles both > lines and Gmail-style "On ... wrote:" headers
 const cleanBody = (body: string) => {
     if (!body) return '';
@@ -97,11 +124,10 @@ const ConversationModal = ({
                         <p className="text-xs text-zinc-400 font-medium break-all px-2">{outreach.influencerEmail}</p>
 
                         {/* Status Badge */}
-                        <div className={`mt-4 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 border ${
-                            isDone
-                                ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900'
-                                : 'bg-white text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
-                        }`}>
+                        <div className={`mt-4 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 border ${isDone
+                            ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900'
+                            : 'bg-white text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
+                            }`}>
                             {isDone ? <CheckCircle2 size={12} /> : isNegotiating ? <Sparkles size={12} /> : <Clock size={12} />}
                             {isDone ? 'Deal Closed' : isNegotiating ? 'Negotiating' : 'Awaiting Reply'}
                         </div>
@@ -109,33 +135,32 @@ const ConversationModal = ({
 
                     {/* Stats */}
                     <div className="px-6 py-6 space-y-6 flex-1 overflow-y-auto">
-                        {/* Budget */}
+                        {/* Quoted Commercials */}
                         <div className="flex items-center justify-between">
-                            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Budget</span>
+                            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Quoted Commercials</span>
                             <div className="text-right">
-                                  <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
-                                      ₹{fmtINR(outreach.minBudget)}
-                                  </p>
-                                  <p className="text-[10px] text-zinc-400">to ₹{fmtINR(outreach.maxBudget)}</p>
+                                <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                                    —
+                                </p>
                             </div>
                         </div>
 
-                        {/* Messages */}
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Messages</span>
+                        {/* Target Commercials */}
+                        <div className="flex flex-col gap-2">
+                            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Target Commercials</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 w-full bg-transparent border-b border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 py-1 transition-colors">
+                                    ₹{fmtINR(outreach.minBudget)}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Message Counter */}
+                        <div className="flex items-center justify-between pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Message Counter</span>
                             <div className="text-right">
                                 <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">{msgCount}</p>
                                 <p className="text-[10px] text-zinc-400">{inboundCount} from influencer</p>
-                            </div>
-                        </div>
-
-                        {/* Campaign */}
-                        <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                            <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold mb-2">Campaign</p>
-                            <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{outreach.campaignName || '—'}</p>
-                            <div className="flex items-center gap-1.5 mt-2 text-[10px] text-zinc-500 bg-white dark:bg-zinc-900 p-2 rounded-lg border border-zinc-100 dark:border-zinc-800">
-                                <Mail size={10} />
-                                <span className="truncate">{outreach.emailSubject}</span>
                             </div>
                         </div>
                     </div>
@@ -201,11 +226,10 @@ const ConversationModal = ({
                                     )}
                                     <div className={`flex gap-3 ${isOut ? 'flex-row-reverse' : 'flex-row'}`}>
                                         {/* Avatar */}
-                                        <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold mt-1 shadow-sm ${
-                                            isOut
-                                                ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
-                                                : 'bg-white text-zinc-700 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
-                                        }`}>
+                                        <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold mt-1 shadow-sm ${isOut
+                                            ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                            : 'bg-white text-zinc-700 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
+                                            }`}>
                                             {isOut ? (msg.isAI ? <Bot size={14} /> : <User size={14} />) : outreach.influencerName?.charAt(0)?.toUpperCase()}
                                         </div>
 
@@ -221,11 +245,10 @@ const ConversationModal = ({
                                                     <><span className="font-semibold text-zinc-600 dark:text-zinc-300">{outreach.influencerName?.split(' ')[0]}</span><span>{fmt(msg.timestamp)}</span></>
                                                 )}
                                             </div>
-                                            <div className={`px-5 py-3.5 rounded-2xl text-[13px] leading-relaxed shadow-sm whitespace-pre-wrap ${
-                                                isOut
-                                                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-tr-sm'
-                                                    : 'bg-white text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 border border-zinc-100 dark:border-zinc-700 rounded-tl-sm'
-                                            }`}>
+                                            <div className={`px-5 py-3.5 rounded-2xl text-[13px] leading-relaxed shadow-sm whitespace-pre-wrap ${isOut
+                                                ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-tr-sm'
+                                                : 'bg-white text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 border border-zinc-100 dark:border-zinc-700 rounded-tl-sm'
+                                                }`}>
                                                 {cleanBody(msg.body)}
                                             </div>
                                         </div>
@@ -305,10 +328,10 @@ const CreatorCard = ({ item, onClick }: { item: any; onClick: () => void }) => {
             className="relative bg-white/70 dark:bg-zinc-900/40 backdrop-blur-sm border border-zinc-200 dark:border-white/10 rounded-xl p-4 hover:border-zinc-400 dark:hover:border-white/30 hover:shadow-md transition-all cursor-pointer group"
         >
             {hovered && <PortalHoverPopup item={item} parentRef={cardRef} />}
-            
+
             {/* Absolute badge top-right */}
             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                 <div className="text-[10px] text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-700 flex items-center gap-1 shadow-sm">
+                <div className="text-[10px] text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-700 flex items-center gap-1 shadow-sm">
                     Outreach <ArrowLeft size={8} className="rotate-180" />
                 </div>
             </div>
@@ -338,11 +361,30 @@ const CreatorCard = ({ item, onClick }: { item: any; onClick: () => void }) => {
 
 const OutreachCard = ({ outreach, onClick }: { outreach: any; onClick: () => void }) => {
     const [hovered, setHovered] = React.useState(false);
+    const [elapsed, setElapsed] = React.useState('');
     const cardRef = React.useRef<HTMLDivElement>(null);
     const isDone = outreach.status === 'deal_closed';
     const isNeg = outreach.status === 'negotiating';
     const msgCount = outreach.conversationHistory?.length || 0;
     const lastMsg = outreach.conversationHistory?.slice(-1)[0];
+
+    // Update elapsed time every minute
+    React.useEffect(() => {
+        const updateElapsed = () => {
+            setElapsed(getElapsedTime(outreach.sentAt || outreach.createdAt));
+        };
+        updateElapsed(); // Initial
+        const interval = setInterval(updateElapsed, 60000); // Every minute
+        return () => clearInterval(interval);
+    }, [outreach.sentAt, outreach.createdAt]);
+
+    // Format sent date
+    const sentDate = outreach.sentAt?.toDate?.() ||
+        (typeof outreach.sentAt === 'string' ? new Date(outreach.sentAt) : null) ||
+        outreach.createdAt?.toDate?.() ||
+        (typeof outreach.createdAt === 'string' ? new Date(outreach.createdAt) : new Date());
+
+    const sentDateFormatted = sentDate ? `${fmtDate(sentDate.toISOString())}, ${fmt(sentDate.toISOString())}` : 'Recently';
 
     const popupItem = {
         name: outreach.influencerName,
@@ -379,18 +421,17 @@ const OutreachCard = ({ outreach, onClick }: { outreach: any; onClick: () => voi
 
 
             {/* Status row */}
-            <div className="flex items-center gap-2 mt-3 justify-between">
-                <div className={`flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
-                    isDone
-                        ? 'text-zinc-700 bg-zinc-100 border-zinc-300 dark:text-zinc-300 dark:bg-zinc-800 dark:border-zinc-600'
-                        : isNeg
+            <div className="flex flex-col gap-1.5 mt-3">
+                <span className="text-[10px] text-zinc-400 font-medium">📅 Sent: {sentDateFormatted}</span>
+                <div className={`w-fit flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1 rounded-full border ${isDone
+                    ? 'text-zinc-700 bg-zinc-100 border-zinc-300 dark:text-zinc-300 dark:bg-zinc-800 dark:border-zinc-600'
+                    : isNeg
                         ? 'text-zinc-700 bg-zinc-100 border-zinc-300 dark:text-zinc-200 dark:bg-zinc-800 dark:border-zinc-700'
                         : 'text-zinc-500 bg-zinc-50 border-zinc-200 dark:text-zinc-500 dark:bg-zinc-900 dark:border-zinc-700'
-                }`}>
+                    }`}>
                     {isDone ? <CheckCircle2 size={10} /> : isNeg ? <><Sparkles size={10} /></> : <Clock size={10} />}
-                    {isDone ? 'Deal Closed' : isNeg ? 'Negotiating' : 'Awaiting Reply'}
+                    {isDone ? 'Deal Closed' : isNeg ? 'Negotiating' : `Awaiting Reply (${elapsed})`}
                 </div>
-                <span className="text-[10px] text-zinc-400 font-medium">₹{fmtINR(outreach.minBudget)}–₹{fmtINR(outreach.maxBudget)}</span>
             </div>
         </div>
     );
@@ -494,7 +535,7 @@ const CampaignCommandCenter = () => {
                     emailBody: bodyLines.join('\n\n').trim(),
                     minBudget: budget.min,
                     maxBudget: budget.max,
-                    brandName: campaign?.name || campaign?.analysisResult?.brand_name || 'Our Brand',
+                    brandName: campaign?.analysisResult?.brand_name || campaign?.name || 'Our Brand',
                     campaignName: campaign?.name || decodedId,
                 }),
             });
@@ -535,24 +576,24 @@ const CampaignCommandCenter = () => {
 
     const cols = [
         {
-            id: 'shortlisted', title: 'Shortlisted', icon: <Users size={14} className="text-zinc-500" />,
+            id: 'shortlisted', title: 'Scout', icon: <Users size={14} className="text-zinc-500" />,
             items: shortlistedInfluencers.filter(inf => !outreachByInfluencer[inf.id]),
             render: (inf: any) => <CreatorCard key={inf.id} item={{ ...inf, location: inf.location }} onClick={() => setSelectedInfluencer(inf)} />,
         },
         {
-            id: 'sent', title: 'Outreach Sent', icon: <Send size={14} className="text-zinc-500" />,
-            items: outreaches.filter(o => o.status === 'sent'),
+            id: 'outreach_closer', title: 'Closer', icon: <Send size={14} className="text-zinc-500" />,
+            items: outreaches.filter(o => o.status === 'sent' || o.status === 'negotiating'),
             render: (o: any) => <OutreachCard key={o.id} outreach={o} onClick={() => setActiveConversation(o)} />,
         },
         {
-            id: 'negotiating', title: 'Negotiating', icon: <Sparkles size={14} className="text-zinc-500" />,
-            items: outreaches.filter(o => o.status === 'negotiating'),
-            render: (o: any) => <OutreachCard key={o.id} outreach={o} onClick={() => setActiveConversation(o)} />,
-        },
-        {
-            id: 'live', title: 'Content Live', icon: <CheckCircle2 size={14} className="text-zinc-500" />,
+            id: 'live', title: 'Producer', icon: <CheckCircle2 size={14} className="text-zinc-500" />,
             items: outreaches.filter(o => o.status === 'deal_closed'),
             render: (o: any) => <OutreachCard key={o.id} outreach={o} onClick={() => setActiveConversation(o)} />,
+        },
+        {
+            id: 'accountant', title: 'Accountant', icon: <CheckCircle2 size={14} className="text-zinc-500" />,
+            items: [],
+            render: (o: any) => <div />,
         },
     ];
 
@@ -584,7 +625,7 @@ const CampaignCommandCenter = () => {
                         <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800 mx-2" />
 
                         <div className="flex items-center gap-2">
-                            <button 
+                            <button
                                 onClick={handleOptimize}
                                 disabled={isOptimizing}
                                 className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-black dark:bg-white dark:text-black rounded-lg shadow-md hover:opacity-90 transition-all disabled:opacity-50"

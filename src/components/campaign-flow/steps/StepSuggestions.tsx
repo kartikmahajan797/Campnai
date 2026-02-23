@@ -242,7 +242,7 @@ const InfoModal: React.FC<{
             )}
             {influencer.pricePerPost && influencer.pricePerPost !== '—' && (
               <div className="flex items-center gap-3 text-black/60 dark:text-white/60 text-sm p-3 rounded-xl bg-white dark:bg-white/5 shadow-sm dark:shadow-none border border-black/5 dark:border-none transition-colors">
-                <span className="font-semibold text-black dark:text-white">Est. {influencer.pricePerPost}</span>
+                <span className="font-semibold text-black dark:text-white">Recommended  {influencer.pricePerPost.split(/[-–—]/)[0].trim()}</span>
               </div>
             )}
             {influencer.phone && (
@@ -322,8 +322,8 @@ const InfoModal: React.FC<{
                   )}
                   {influencer.indiaSplit && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-black/50 dark:text-white/50">India / Global Split</span>
-                      <span className="text-black dark:text-white font-medium">{influencer.indiaSplit}</span>
+                      <span className="text-black/50 dark:text-white/50">Top 3 Cities</span>
+                      <span className="text-black dark:text-white font-medium">Delhi, Mumbai, Pune</span>
                     </div>
                   )}
                   {influencer.ageGroup && (
@@ -377,8 +377,9 @@ const StepSuggestions: React.FC = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [searchMoreCount, setSearchMoreCount] = useState<number>(10);
+  const [isSearchingMore, setIsSearchingMore] = useState(false);
 
-  // Hydrate suggestions for display - mirrors CampaignDetails logic to fix missing data
   const displaySuggestions = React.useMemo(() => {
     const hydrated = suggestions.map(s => {
       let norm = normalizeInfluencerData(s) as InfluencerSuggestion;
@@ -388,11 +389,9 @@ const StepSuggestions: React.FC = () => {
       }
       return norm;
     });
-    // Always show dummy influencer first (for demo/testing)
     return [DUMMY_INFLUENCER, ...hydrated.filter(s => s.id !== DUMMY_INFLUENCER.id)];
   }, [suggestions]);
 
-  // Reset Handler
   const handleReset = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -433,6 +432,41 @@ const StepSuggestions: React.FC = () => {
     }
 
       navigate(`/campaigns/${campaignId}/track`);
+  };
+
+  const handleSearchMore = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!campaignId) return;
+
+    setIsSearchingMore(true);
+    try {
+      const user = auth.currentUser || await new Promise<any>((resolve) => {
+        const unsub = auth.onAuthStateChanged(u => { unsub(); resolve(u); });
+      });
+      if (!user) throw new Error('Please log in to continue.');
+      const token = await user.getIdToken();
+      
+      const response = await fetch(
+        `${API_BASE_URL}/campaigns/${campaignId}/generate-suggestions?count=${searchMoreCount}`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        }
+      );
+      if (!response.ok) throw new Error('Failed to generate more suggestions');
+      
+      const data = await response.json();
+      
+      const existingIds = new Set(suggestions.map(s => s.id));
+      const newSuggestions = data.suggestions.filter((s: any) => !existingIds.has(s.id));
+      setSuggestions([...suggestions, ...newSuggestions]);
+      
+    } catch (err) {
+      console.error('Error fetching more profiles:', err);
+    } finally {
+      setIsSearchingMore(false);
+    }
   };
 
   const topScore = displaySuggestions.length > 0 ? Math.max(...displaySuggestions.map(s => s.matchScore)) : 0;
@@ -481,23 +515,28 @@ const StepSuggestions: React.FC = () => {
           <div className="pt-4 w-full space-y-3">
 
 
-            <button
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-muted-foreground bg-transparent hover:bg-secondary/20 hover:text-foreground rounded-2xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-border/80 dark:border-border/50 hover:border-border transition-colors shadow-sm"
-              disabled={isGeneratingReport || isSkipping}
-              onClick={async (e) => {
-                 e.preventDefault();
-                 e.stopPropagation();
-                 setIsSkipping(true);
-                 await handleApprove(e);
-                 // State stays true until navigation
-              }}
-            >
-              {isSkipping ? (
-                 <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-              ) : (
-                <span>{shortlist.length > 0 ? `Save & View ${shortlist.length} Shortlisted` : 'Skip to Details'}</span>
-              )}
-            </button>
+            <div className="flex gap-2 w-full">
+              <input
+                type="number"
+                placeholder="No. of profiles"
+                className="w-1/2 flex items-center justify-center px-4 py-3 text-sm font-semibold text-foreground bg-transparent rounded-2xl border border-border/80 dark:border-border/50 focus:border-border transition-colors shadow-sm outline-none text-center"
+                value={searchMoreCount}
+                onChange={(e) => setSearchMoreCount(parseInt(e.target.value) || 1)}
+                min={1}
+                max={50}
+              />
+              <button
+                className="w-1/2 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-black dark:text-black dark:bg-white rounded-2xl transition-all cursor-pointer hover:opacity-90 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-center"
+                disabled={isGeneratingReport || isSkipping || isSearchingMore}
+                onClick={handleSearchMore}
+              >
+                {isSearchingMore ? (
+                  <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                ) : (
+                  <>🚀 Search more</>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </aside>

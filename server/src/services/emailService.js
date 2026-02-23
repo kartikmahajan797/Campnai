@@ -41,10 +41,16 @@ function extractBody(rawSource) {
     const headers = raw.substring(0, headerBodySplit).toLowerCase();
     let body = raw.substring(headerBodySplit + 4);
 
-    // Decode quoted-printable
-    body = body.replace(/=\r\n/g, '').replace(/=([0-9A-Fa-f]{2})/g, (_, h) =>
-        String.fromCharCode(parseInt(h, 16))
-    );
+    // Decode quoted-printable — MUST handle multi-byte UTF-8 correctly
+    // e.g. ₹ (U+20B9) = =E2=82=B9 in QP → must decode all 3 bytes together
+    body = body.replace(/=\r\n/g, ''); // Remove soft line breaks first
+    body = body.replace(/(?:=[0-9A-Fa-f]{2})+/g, (match) => {
+        const bytes = [];
+        for (let i = 0; i < match.length; i += 3) {
+            bytes.push(parseInt(match.substring(i + 1, i + 3), 16));
+        }
+        return Buffer.from(bytes).toString('utf8');
+    });
 
     // If multipart — extract first text/plain part
     const boundaryMatch = headers.match(/boundary="?([^";\r\n]+)"?/);
@@ -85,9 +91,9 @@ async function _doImapFetch({ subjectContains, since, expectedSender = null, deb
     });
 
     const results = [];
-    const skipped = { own: 0, subject: 0 };
+    const skipped = { own: 0, subject: 0, autoReply: 0, invalidSender: 0 };
 
-    console.log(`[EmailService] 🔍 IMAP search since: ${since.toISOString()}, subject: "${subjectContains}"`);
+    console.log(`[EmailService] 🔍 IMAP search since: ${since.toISOString()}, subject: "${subjectContains}", expectedSender: "${expectedSender}"`);
 
     try {
         await client.connect();
@@ -123,19 +129,46 @@ async function _doImapFetch({ subjectContains, since, expectedSender = null, deb
                         continue;
                     }
 
-                      // Subject filter — EXACT match after stripping Re:/Fwd:
-                      // Must also match sender email to avoid cross-campaign mixing
-                      const strip = (s) => (s || '').replace(/^(Re:|Fwd:)\s*/gi, '').trim().toLowerCase();
-                      if (subjectContains && strip(subjectStr) !== strip(subjectContains)) {
-                          skipped.subject++;
-                          continue;
-                      }
+                    // CRITICAL: Sender validation - MUST match expected influencer email
+                    // This prevents picking up wrong emails as replies
+                    if (expectedSender && fromAddr !== expectedSender.toLowerCase()) {
+                        skipped.invalidSender++;
+                        if (debugAll) {
+                            console.log(`[EmailService] ⏭️  Rejected sender: got "${fromAddr}", expected "${expectedSender.toLowerCase()}", subject: "${subjectStr}"`);
+                        }
+                        continue;
+                    }
 
-                      // Sender filter — only accept from expected influencer
-                      if (expectedSender && fromAddr !== expectedSender.toLowerCase()) {
-                          skipped.subject++;
-                          continue;
-                      }
+                    // CRITICAL: If we're filtering by sender, it MUST be provided
+                    if (!debugAll && !expectedSender) {
+                        console.warn(`[EmailService] ⚠️  No expectedSender provided - skipping for safety`);
+                        continue;
+                    }
+
+                    // Filter out auto-replies and system messages
+                    const subjectLower = subjectStr.toLowerCase();
+                    const isAutoReply = (
+                        subjectLower.includes('automatic reply') ||
+                        subjectLower.includes('auto-reply') ||
+                        subjectLower.includes('out of office') ||
+                        subjectLower.includes('delivery failure') ||
+                        subjectLower.includes('mailer-daemon') ||
+                        subjectLower.includes('undeliverable') ||
+                        subjectLower.includes('returned mail')
+                    );
+                    if (isAutoReply) {
+                        skipped.autoReply++;
+                        console.log(`[EmailService] ⏭️  Auto-reply detected: "${subjectStr}"`);
+                        continue;
+                    }
+
+                    // Subject filter — EXACT match after stripping Re:/Fwd:
+                    // Must also match sender email to avoid cross-campaign mixing
+                    const strip = (s) => (s || '').replace(/^(Re:|Fwd:)\s*/gi, '').trim().toLowerCase();
+                    if (subjectContains && strip(subjectStr) !== strip(subjectContains)) {
+                        skipped.subject++;
+                        continue;
+                    }
 
                     const body = extractBody(msg.source);
                     if (!body) {
@@ -155,10 +188,10 @@ async function _doImapFetch({ subjectContains, since, expectedSender = null, deb
     } catch (err) {
         console.error('[EmailService] ❌ IMAP error:', err.message);
     } finally {
-        try { await client.logout(); } catch (_) {}
+        try { await client.logout(); } catch (_) { }
     }
 
-    console.log(`[EmailService] Result: ${results.length} matched, ${skipped.own} skipped(own), ${skipped.subject} skipped(subject)`);
+    console.log(`[EmailService] Result: ${results.length} matched, ${skipped.own} skipped(own), ${skipped.subject} skipped(subject), ${skipped.autoReply} skipped(auto-reply), ${skipped.invalidSender} skipped(wrong sender)`);
     return { results, skipped };
 }
 
