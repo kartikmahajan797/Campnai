@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 import OutreachReviewModal from './OutreachReviewModal';
+import WhatsAppMockup from './WhatsAppMockup';
 import { CampaignService } from '@/services/CampaignService';
 import { normalizeInfluencerData } from '@/utils/influencerUtils';
 
@@ -90,6 +91,7 @@ const ConversationModal = ({
 }: {
     outreach: any; onClose: () => void; onSimulate: () => void; simulating: boolean;
 }) => {
+    const [activeTab, setActiveTab] = React.useState<'email' | 'whatsapp'>('whatsapp');
     const messages: any[] = outreach.conversationHistory || [];
     const endRef = React.useRef<HTMLDivElement>(null);
     const isDone = outreach.status === 'deal_closed';
@@ -108,7 +110,7 @@ const ConversationModal = ({
                 {/* X button — absolute top-right outside header to save space */}
                 <button
                     onClick={onClose}
-                    className="absolute top-3 right-3 z-20 p-2 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition backdrop-blur-sm"
+                    className="absolute top-4 right-4 z-20 p-2 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition backdrop-blur-sm"
                 >
                     <X size={18} />
                 </button>
@@ -178,85 +180,112 @@ const ConversationModal = ({
                                     : <><Zap size={12} /> Check for replies</>
                                 }
                             </button>
-                            <p className="text-center text-[10px] text-zinc-300 dark:text-zinc-600 mt-2">Auto-syncs every 2 min</p>
+                            <p className="text-center text-[10px] text-zinc-500 dark:text-zinc-600 mt-2">Auto-syncs every 2 min</p>
                         </div>
                     )}
                 </div>
 
                 {/* ─── RIGHT PANEL: Chat ─── */}
                 <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-zinc-950">
-                    {/* Chat header */}
-                    <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Email Thread</span>
-                        </div>
-                        <span className="flex items-center gap-1.5 text-[10px] text-zinc-400 bg-zinc-50 dark:bg-zinc-900 px-2.5 py-1 rounded-full border border-zinc-200 dark:border-zinc-800">
-                            <Mail size={10} /> Email only · WhatsApp coming soon
-                        </span>
+                    
+                    {/* Tabs Header */}
+                    <div className="flex items-center gap-6 px-6 pt-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 pr-16">
+                        <button 
+                            onClick={() => setActiveTab('whatsapp')}
+                            className={`flex items-center gap-2 pb-3 border-b-2 text-sm font-semibold transition-colors ${
+                                activeTab === 'whatsapp' 
+                                ? 'border-[#075e54] text-[#075e54] dark:border-[#25D366] dark:text-[#25D366]' 
+                                : 'border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
+                            }`}
+                        >
+                            <MessageCircle size={16} /> WhatsApp Demo
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('email')}
+                            className={`flex items-center gap-2 pb-3 border-b-2 text-sm font-semibold transition-colors ${
+                                activeTab === 'email' 
+                                ? 'border-zinc-900 text-zinc-900 dark:border-white dark:text-white' 
+                                : 'border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
+                            }`}
+                        >
+                            <Mail size={16} /> Email Thread
+                        </button>
                     </div>
-
-                    {/* Messages */}
-                    <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-zinc-50/50 dark:bg-zinc-900/30">
-                        {messages.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-full text-center gap-3 text-zinc-400 py-16">
-                                <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                                    <MessageCircle size={20} className="opacity-40" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">No messages yet</p>
-                                    <p className="text-xs mt-1">Waiting for the influencer to reply...</p>
-                                </div>
-                            </div>
-                        )}
-
-                        {messages.map((msg: any, i: number) => {
-                            const isOut = msg.role === 'outbound';
-                            const prevMsg = messages[i - 1];
-                            const showDate = !prevMsg || fmtDate(msg.timestamp) !== fmtDate(prevMsg.timestamp);
-
-                            return (
-                                <React.Fragment key={i}>
-                                    {showDate && (
-                                        <div className="flex items-center gap-4 my-4">
-                                            <div className="flex-1 h-px bg-zinc-100 dark:bg-zinc-800" />
-                                            <span className="text-[10px] uppercase tracking-widest text-zinc-300 dark:text-zinc-600 font-semibold">{fmtDate(msg.timestamp)}</span>
-                                            <div className="flex-1 h-px bg-zinc-100 dark:bg-zinc-800" />
+                    
+                    {/* Tab Content */}
+                    <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
+                        {activeTab === 'whatsapp' ? (
+                            <WhatsAppMockup 
+                                messages={messages} 
+                                influencerName={outreach.influencerName} 
+                            />
+                        ) : (
+                            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-zinc-50/50 dark:bg-zinc-900/30">
+                                {messages.length === 0 && (
+                                    <div className="flex flex-col items-center justify-center h-full text-center gap-3 text-zinc-400 py-16">
+                                        <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                                            <Mail size={20} className="opacity-40" />
                                         </div>
-                                    )}
-                                    <div className={`flex gap-3 ${isOut ? 'flex-row-reverse' : 'flex-row'}`}>
-                                        {/* Avatar */}
-                                        <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold mt-1 shadow-sm ${isOut
-                                            ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
-                                            : 'bg-white text-zinc-700 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
-                                            }`}>
-                                            {isOut ? (msg.isAI ? <Bot size={14} /> : <User size={14} />) : outreach.influencerName?.charAt(0)?.toUpperCase()}
-                                        </div>
-
-                                        {/* Bubble */}
-                                        <div className={`max-w-[80%] flex flex-col gap-1 ${isOut ? 'items-end' : 'items-start'}`}>
-                                            <div className="flex items-center gap-2 text-[10px] text-zinc-400 px-1">
-                                                {isOut ? (
-                                                    <>
-                                                        <span>{fmt(msg.timestamp)}</span>
-                                                        {msg.isAI && <span className="font-semibold text-zinc-500 flex items-center gap-0.5 border border-zinc-100 dark:border-zinc-800 rounded px-1.5 py-0.5 bg-zinc-50 dark:bg-zinc-900">AI</span>}
-                                                    </>
-                                                ) : (
-                                                    <><span className="font-semibold text-zinc-600 dark:text-zinc-300">{outreach.influencerName?.split(' ')[0]}</span><span>{fmt(msg.timestamp)}</span></>
-                                                )}
-                                            </div>
-                                            <div className={`px-5 py-3.5 rounded-2xl text-[13px] leading-relaxed shadow-sm whitespace-pre-wrap ${isOut
-                                                ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-tr-sm'
-                                                : 'bg-white text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 border border-zinc-100 dark:border-zinc-700 rounded-tl-sm'
-                                                }`}>
-                                                {cleanBody(msg.body)}
-                                            </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">No emails yet</p>
+                                            <p className="text-xs mt-1">Waiting for the influencer to reply...</p>
                                         </div>
                                     </div>
-                                </React.Fragment>
-                            );
-                        })}
-                        <div ref={endRef} />
+                                )}
+
+                                {messages.map((msg: any, i: number) => {
+                                    const isOut = msg.role === 'outbound';
+                                    const prevMsg = messages[i - 1];
+                                    const showDate = !prevMsg || fmtDate(msg.timestamp) !== fmtDate(prevMsg.timestamp);
+
+                                    return (
+                                        <React.Fragment key={i}>
+                                            {showDate && (
+                                                <div className="flex items-center gap-4 my-4">
+                                                    <div className="flex-1 h-px bg-zinc-100 dark:bg-zinc-800" />
+                                                    <span className="text-[10px] uppercase tracking-widest text-zinc-300 dark:text-zinc-600 font-semibold">{fmtDate(msg.timestamp)}</span>
+                                                    <div className="flex-1 h-px bg-zinc-100 dark:bg-zinc-800" />
+                                                </div>
+                                            )}
+                                            <div className={`flex gap-3 ${isOut ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                {/* Avatar */}
+                                                <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold mt-1 shadow-sm ${isOut
+                                                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                                    : 'bg-white text-zinc-700 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
+                                                    }`}>
+                                                    {isOut ? (msg.isAI ? <Bot size={14} /> : <User size={14} />) : outreach.influencerName?.charAt(0)?.toUpperCase()}
+                                                </div>
+
+                                                {/* Bubble */}
+                                                <div className={`max-w-[80%] flex flex-col gap-1 ${isOut ? 'items-end' : 'items-start'}`}>
+                                                    <div className="flex items-center gap-2 text-[10px] text-zinc-400 px-1">
+                                                        {isOut ? (
+                                                            <>
+                                                                <span>{fmt(msg.timestamp)}</span>
+                                                                {msg.isAI && <span className="font-semibold text-zinc-500 flex items-center gap-0.5 border border-zinc-100 dark:border-zinc-800 rounded px-1.5 py-0.5 bg-zinc-50 dark:bg-zinc-900">AI</span>}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span className="font-semibold text-zinc-600 dark:text-zinc-300">{outreach.influencerName?.split(' ')[0]}</span>
+                                                                <span>{fmt(msg.timestamp)}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    <div className={`px-5 py-3.5 rounded-2xl text-[13px] leading-relaxed shadow-sm whitespace-pre-wrap ${isOut
+                                                        ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-tr-sm'
+                                                        : 'bg-white text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 border border-zinc-100 dark:border-zinc-700 rounded-tl-sm'
+                                                        }`}>
+                                                        {cleanBody(msg.body)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </React.Fragment>
+                                    );
+                                })}
+                                {/* Add a spacer at the bottom to ensure last message can be scrolled into clear view above the modal edge */}
+                                <div ref={endRef} className="h-8 w-full" />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
