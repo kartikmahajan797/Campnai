@@ -33,7 +33,7 @@ router.post("/refresh", refreshTokenHandler);
 // ─── Protected Routes (Auth Required) ──────────────────────────────
 router.get("/me", authenticate, myProfile);
 router.post("/refresh-csrf", authenticate, refreshCSRF);
-router.post("/logout", authenticate, verifyCSRFToken, logout);
+router.post("/logout", authenticate, logout);
 
 // ─── Auth Health Check ─────────────────────────────────────────────
 router.get("/health", (_req, res) => {
