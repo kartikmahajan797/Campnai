@@ -5,6 +5,7 @@ import DashboardLayout from '../DashboardLayout';
 import { useAuth } from '@/lib/useAuth';
 import { auth } from '@/firebaseConfig';
 import { API_BASE_URL } from '@/config/api';
+import { secureFetch } from '@/lib/secureFetch';
 import { DUMMY_INFLUENCER } from '@/utils/dummyData';
 
 import {
@@ -500,14 +501,10 @@ const CampaignCommandCenter = () => {
     const fetchOutreaches = React.useCallback(async () => {
         if (!id || !auth.currentUser) return;
         try {
-            const token = await auth.currentUser.getIdToken();
-            const res = await fetch(`${API_BASE_URL}/campaigns/${id}/outreaches`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await secureFetch(`${API_BASE_URL}/campaigns/${id}/outreaches`);
             if (res.ok) {
                 const data = await res.json();
                 setOutreaches(data);
-                // Only update modal if it's already open (use ref to avoid stale closure)
                 const openId = activeConvIdRef.current;
                 if (openId) {
                     const updated = data.find((o: any) => o.id === openId);
@@ -527,10 +524,9 @@ const CampaignCommandCenter = () => {
         if (!activeConversation || !auth.currentUser) return;
         setSimulating(true);
         try {
-            const token = await auth.currentUser.getIdToken();
-            await fetch(
+            await secureFetch(
                 `${API_BASE_URL}/campaigns/${id}/outreaches/${activeConversation.id}/simulate-reply`,
-                { method: 'POST', headers: { Authorization: `Bearer ${token}` } },
+                { method: 'POST' },
             );
             await fetchOutreaches();
         } catch (e) { console.error(e); }
@@ -552,10 +548,8 @@ const CampaignCommandCenter = () => {
 
         setSendingOutreach(true);
         try {
-            const token = await auth.currentUser!.getIdToken();
-            const res = await fetch(`${API_BASE_URL}/campaigns/${id}/send-outreach`, {
+            const res = await secureFetch(`${API_BASE_URL}/campaigns/${id}/send-outreach`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
                     influencerEmail,
                     influencerName: selectedInfluencer.name,

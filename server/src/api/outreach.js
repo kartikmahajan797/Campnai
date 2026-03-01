@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db, firebaseAdmin } from '../core/config.js';
-import { authenticate } from '../core/auth.js';
+import { authenticate } from '../middleware/auth.middleware.js';
+import { verifyCSRFToken } from '../config/csrfService.js';
 import { sendEmail } from '../services/emailService.js';
 import { generateInitialOutreach } from '../services/negotiationEngine.js';
 
@@ -9,7 +10,7 @@ const OUTREACH_COLLECTION = 'campaign_outreaches';
 const CAMPAIGN_COLLECTION = 'user_campaigns';
 
 // ─── POST /:id/send-outreach ──────────────────────────────────────────────
-router.post('/:id/send-outreach', authenticate, async (req, res) => {
+router.post('/:id/send-outreach', authenticate, verifyCSRFToken, async (req, res) => {
     try {
         const { id: campaignId } = req.params;
         const user = req.user;

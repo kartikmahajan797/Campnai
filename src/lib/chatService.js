@@ -1,44 +1,20 @@
-// Chat API service
+// Chat API service — secured with credentials + CSRF
 import { auth } from '../firebaseConfig';
-
 import { API_BASE_URL } from '../config/api';
-
-/**
- * Get Firebase ID token for current user
- */
-async function getAuthToken() {
-  const user = auth.currentUser;
-  if (!user) {
-    throw new Error('User not authenticated. Please sign in.');
-  }
-  return user.getIdToken();
-}
+import { secureFetch } from './secureFetch';
 
 export const chatService = {
   /**
-   * Send a message to Neo AI
-   * @param {string} message - User message
-   * @param {string} sessionId - Chat session ID
-   * @param {function} onChunk - Callback for streaming chunks
-   * @returns {Promise<{response: string, session_id: string}>}
+   * Send a message to Neo AI (streaming)
    */
   async sendMessage(message, sessionId = null, onChunk) {
     try {
-      const token = await getAuthToken();
       const controller = new AbortController();
-      // Increase timeout for streaming (sometimes connection stays open long)
-      const timeoutId = setTimeout(() => controller.abort(), 120000); 
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-      const response = await fetch(`${API_BASE_URL}/chat`, {
+      const response = await secureFetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          message,
-          session_id: sessionId,
-        }),
+        body: JSON.stringify({ message, session_id: sessionId }),
         signal: controller.signal,
       });
 
@@ -49,12 +25,9 @@ export const chatService = {
         throw new Error(error.detail || 'Failed to send message');
       }
 
-      // Handle streaming
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullText = "";
-      
-      // Get session ID from header
       const newSessionId = response.headers.get("X-Session-Id");
 
       while (true) {
@@ -76,21 +49,13 @@ export const chatService = {
 
   /**
    * Get chat history for a session
-   * @param {string} sessionId - Chat session ID
-   * @returns {Promise<{session_id: string, messages: Array, total: number}>}
    */
   async getChatHistory(sessionId) {
     try {
-      const token = await getAuthToken();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+      const response = await secureFetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
         signal: controller.signal,
       });
 
@@ -112,21 +77,14 @@ export const chatService = {
 
   /**
    * Clear chat history for a session
-   * @param {string} sessionId - Chat session ID
-   * @returns {Promise<{status: string, deleted_messages: number, session_id: string}>}
    */
   async clearChatHistory(sessionId) {
     try {
-      const token = await getAuthToken();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
+      const response = await secureFetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         signal: controller.signal,
       });
 
@@ -137,8 +95,7 @@ export const chatService = {
         throw new Error(error.detail || 'Failed to clear chat history');
       }
 
-      const data = await response.json();
-      return data;
+      return response.json();
     } catch (error) {
       if (error.name === 'AbortError') {
         throw new Error('Request timed out. Please try again.');
@@ -147,16 +104,15 @@ export const chatService = {
     }
   },
 
+  /**
+   * Get all chat sessions
+   */
   async getSessions() {
     try {
-      const token = await getAuthToken();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(`${API_BASE_URL}/chat/sessions`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      const response = await secureFetch(`${API_BASE_URL}/chat/sessions`, {
         signal: controller.signal,
       });
 

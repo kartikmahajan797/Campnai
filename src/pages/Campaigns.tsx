@@ -12,6 +12,7 @@ import {
 
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '@/config/api';
+import { secureFetch } from '@/lib/secureFetch';
 import { useChatSessions } from '../lib/useChatSessions';
 import { CampaignService } from '@/services/CampaignService';
 
@@ -40,7 +41,7 @@ const Campaigns = () => {
                 url.searchParams.append('search', search);
             }
 
-            const response = await fetch(url.toString());
+            const response = await secureFetch(url.toString());
             if (response.ok) {
                 const data = await response.json();
                 setInfluencers(data.influencers);
@@ -123,7 +124,7 @@ const Campaigns = () => {
         formData.append('file', file);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/upload-csv`, {
+            const response = await secureFetch(`${API_BASE_URL}/upload-csv`, {
                 method: 'POST',
                 body: formData,
             });

@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, br
 import { auth } from '../firebaseConfig';
 import { useNavigate } from 'react-router-dom';
 import { CampaignService } from '../services/CampaignService';
+import { AuthService } from '../services/authService';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -66,6 +67,10 @@ const Login = () => {
       await setPersistence(auth, formData.remember ? browserLocalPersistence : browserSessionPersistence);
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       console.log('Login successful:', userCredential.user);
+
+      // Establish backend JWT session (Redis + cookies)
+      await AuthService.establishSession();
+
       await redirectAfterLogin();
     } catch (error: any) {
       console.error('Login error:', error);
@@ -87,6 +92,10 @@ const Login = () => {
 
       const result = await signInWithPopup(auth, provider);
       console.log('Google login valid:', result.user.uid);
+
+      // Establish backend JWT session (Redis + cookies)
+      await AuthService.establishSession();
+
       await redirectAfterLogin();
 
     } catch (error: any) {
