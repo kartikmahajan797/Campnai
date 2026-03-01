@@ -79,11 +79,19 @@ router.post("/upload-csv", authenticate, verifyCSRFToken, upload.single("file"),
             });
         }
 
-        const createdAt = new Date();
-        const campaignId = "test_campaign_001";
-        const collectionRef = db.collection("campaigns").document
-            ? db.collection("campaigns").doc(campaignId).collection("influencers")
-            : db.collection("campaigns").doc(campaignId).collection("influencers");
+        const uid = req.user?.uid || req.user?._id;
+        const campaignId = req.body.campaign_id;
+        if (!campaignId) {
+            return res.status(400).json({ detail: "Missing campaign_id." });
+        }
+
+        // Verify campaign ownership
+        const campaignDoc = await db.collection("user_campaigns").doc(campaignId).get();
+        if (!campaignDoc.exists || campaignDoc.data().userId !== uid) {
+            return res.status(403).json({ detail: "Not authorized to upload to this campaign." });
+        }
+
+        const collectionRef = db.collection("campaigns").doc(campaignId).collection("influencers");
 
         let batch = db.batch();
         let count = 0;
@@ -150,19 +158,25 @@ router.post("/upload-csv", authenticate, verifyCSRFToken, upload.single("file"),
         });
     } catch (err) {
         console.error("CSV upload error:", err);
-        if (err.message?.includes("firestore.googleapis.com")) {
-            return res.status(500).json({
-                detail: "Firestore API is disabled. Please enable it in Google Cloud Console.",
-            });
-        }
-        return res.status(500).json({ detail: `Database error: ${err.message}` });
+        return res.status(500).json({ detail: "Failed to process CSV upload." });
     }
 });
 
 // ─── GET /influencers ───────────────────────────────────────────────
 router.get("/influencers", authenticate, async (req, res) => {
     try {
-        let { page = 1, page_size = 10, search, campaign_id = "test_campaign_001" } = req.query;
+        let { page = 1, page_size = 10, search, campaign_id } = req.query;
+        if (!campaign_id) {
+            return res.status(400).json({ detail: "Missing campaign_id query parameter." });
+        }
+
+        const uid = req.user?.uid || req.user?._id;
+        // Verify campaign ownership
+        const campaignDoc = await db.collection("user_campaigns").doc(campaign_id).get();
+        if (!campaignDoc.exists || campaignDoc.data().userId !== uid) {
+            return res.status(403).json({ detail: "Not authorized to view this campaign's influencers." });
+        }
+
         page = Math.max(1, parseInt(page, 10) || 1);
         page_size = Math.min(100, Math.max(1, parseInt(page_size, 10) || 10));
 
@@ -241,7 +255,7 @@ router.get("/influencers", authenticate, async (req, res) => {
         });
     } catch (err) {
         console.error("Error fetching influencers:", err);
-        return res.status(500).json({ detail: `Database error: ${err.message}` });
+        return res.status(500).json({ detail: "Failed to fetch influencers." });
     }
 });
 

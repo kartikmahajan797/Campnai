@@ -30,9 +30,11 @@ validateEnv();
 const app = express();
 const PORT = process.env.PORT || 8000;
 
+app.set("trust proxy", 1);
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
-  contentSecurityPolicy: false, // Disable CSP for API server
+  contentSecurityPolicy: false,
 }));
 
 app.use(hpp());
@@ -41,10 +43,7 @@ app.use(
   cors({
     origin: (origin, cb) => {
       if (!origin || CORS_ORIGINS.includes(origin)) return cb(null, true);
-      if (process.env.NODE_ENV === "production") {
-        return cb(new Error("Not allowed by CORS"));
-      }
-      return cb(null, true);
+      return cb(new Error("Not allowed by CORS"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -83,24 +82,6 @@ app.use("/api/v1", brandRouter);
 app.use("/api/v1/campaigns", campaignRouter);
 app.use("/api/v1/campaigns", reportRouter);
 app.use("/api/v1/campaigns", outreachRouter);
-
-app.get('/test-imap', async (_req, res) => {
-    try {
-        const { results, skipped } = await debugFetchAll();
-        res.json({
-            count: results.length,
-            skipped,
-            messages: results.map(r => ({
-                from: r.from,
-                subject: r.subject,
-                bodyPreview: r.body?.substring(0, 200),
-                date: r.date,
-            })),
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
 
 app.use(notFoundHandler);
 app.use(errorHandler);
