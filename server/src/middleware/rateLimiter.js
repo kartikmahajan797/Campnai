@@ -11,9 +11,7 @@ export const globalLimiter = rateLimit({
     message: "Too many requests, please try again later.",
     code: "RATE_LIMIT_EXCEEDED",
   },
-  keyGenerator: (req) => {
-    return req.ip || req.headers["x-forwarded-for"] || "unknown";
-  },
+  keyGenerator: (req) => req.ip,
 });
 
 // ─── Auth Route Rate Limiter ─────────────────────────────────────────
@@ -26,9 +24,7 @@ export const authLimiter = rateLimit({
     message: "Too many authentication attempts, please try again later.",
     code: "AUTH_RATE_LIMIT_EXCEEDED",
   },
-  keyGenerator: (req) => {
-    return req.ip || req.headers["x-forwarded-for"] || "unknown";
-  },
+  keyGenerator: (req) => req.ip,
 });
 
 // ─── Strict Rate Limiter (Password Reset, etc.) ─────────────────────
@@ -41,7 +37,5 @@ export const strictLimiter = rateLimit({
     message: "Too many attempts, please try again later.",
     code: "STRICT_RATE_LIMIT_EXCEEDED",
   },
-  keyGenerator: (req) => {
-    return req.ip || req.headers["x-forwarded-for"] || "unknown";
-  },
+  keyGenerator: (req) => req.ip,
 });

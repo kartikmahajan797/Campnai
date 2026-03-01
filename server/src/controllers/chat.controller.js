@@ -7,6 +7,7 @@ import {
     formatSearchResults,
     getDynamicTopK,
 } from "../services/influencerSearch.js";
+import { validateUrl } from "../config/urlValidator.js";
 
 const FieldValue = firebaseAdmin.firestore.FieldValue;
 
@@ -16,7 +17,6 @@ const FieldValue = firebaseAdmin.firestore.FieldValue;
 function extractUrl(text) {
     const match = text.match(/https?:\/\/[^\s]+/i);
     if (match) return match[0];
-    // Also catch "www.brand.com" style without protocol
     const wwwMatch = text.match(/\bwww\.[a-z0-9-]+\.[a-z]{2,}[^\s]*/i);
     if (wwwMatch) return `https://${wwwMatch[0]}`;
     return null;
@@ -39,8 +39,9 @@ function cleanHtml(html) {
  */
 async function analyzeBrandUrl(url) {
     try {
-        console.log(`🌐 Scraping brand URL: ${url}`);
-        const response = await fetch(url, {
+        const safeUrl = await validateUrl(url);
+        console.log(`🌐 Scraping brand URL: ${safeUrl}`);
+        const response = await fetch(safeUrl, {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
@@ -323,10 +324,10 @@ ${influencerContext}`;
             ],
             generationConfig: { temperature: 0.7, maxOutputTokens: 16384 },
             safetySettings: [
-                { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_HATE_SPEECH",       threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH",       threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
             ],
         });
 
@@ -355,7 +356,7 @@ ${influencerContext}`;
     } catch (err) {
         console.error("Chat error:", err);
         if (!res.headersSent) {
-            return res.status(500).json({ detail: err.message });
+            return res.status(500).json({ detail: "Chat service error. Please try again." });
         }
         res.end();
     }

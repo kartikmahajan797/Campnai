@@ -84,12 +84,14 @@ export const register = TryCatch(async (req, res) => {
   const hashPassword = await bcrypt.hash(password, 10);
 
   // Store pending verification in Redis
+  // NOTE: We store the raw password (not hash) because Firebase Admin SDK
+  // expects a plaintext password in createUser() and handles hashing internally.
   const verifyToken = crypto.randomBytes(32).toString("hex");
   const verifyKey = REDIS_KEYS.verify(verifyToken);
 
   await redisClient.set(
     verifyKey,
-    JSON.stringify({ name, email, password: hashPassword }),
+    JSON.stringify({ name, email, password, hashPassword }),
     { EX: 300 }
   );
 
@@ -173,8 +175,10 @@ export const login = TryCatch(async (req, res) => {
   await redisClient.set(otpKey, JSON.stringify(otp), { EX: 300 });
   await redisClient.set(rateLimitKey, "true", { EX: 60 });
 
-  // In production, send OTP via email
-  console.log(`📧 OTP for ${email}: ${otp}`);
+  // In production, send OTP via email — never log it
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`📧 OTP for ${email}: ${otp}`);
+  }
 
   res.json({
     message: "If your email is valid, an OTP has been sent. It will be valid for 5 minutes.",
