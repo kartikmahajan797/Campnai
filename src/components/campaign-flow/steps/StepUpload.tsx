@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useCampaign } from '../CampaignContext';
 import { Upload, FileText, X, Loader2, ArrowRight, Shield, Globe, FileUp, Sparkles } from 'lucide-react';
 import { API_BASE_URL } from '../../../config/api';
+import { secureFetch } from '../../../lib/secureFetch';
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -82,7 +83,7 @@ const StepUpload: React.FC = () => {
       if (uploadedFile) formData.append('file', uploadedFile);
       if (urlInput) formData.append('link', urlInput);
 
-      const res = await fetch(`${API_BASE_URL}/analyze-brand`, {
+      const res = await secureFetch(`${API_BASE_URL}/analyze-brand`, {
         method: 'POST',
         body: formData,
       });

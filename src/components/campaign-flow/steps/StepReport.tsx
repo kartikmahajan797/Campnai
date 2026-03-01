@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCampaign } from '../CampaignContext';
 import { auth } from '../../../firebaseConfig';
 import { API_BASE_URL } from '../../../config/api';
+import { secureFetch } from '../../../lib/secureFetch';
 import {
   FileText, TrendingUp, Users, Shield, DollarSign, Target,
   BarChart3, AlertTriangle, CheckCircle2, Download,
@@ -196,9 +197,8 @@ const StepReport: React.FC = () => {
         if (!user) { setError('Please log in to generate a report.'); setLoading(false); return; }
 
         const token = await user.getIdToken();
-        const res = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/report`, {
+        const res = await secureFetch(`${API_BASE_URL}/campaigns/${campaignId}/report`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
 
         if (!res.ok) {

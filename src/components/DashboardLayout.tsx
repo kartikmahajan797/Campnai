@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
-import { useAuth } from '../lib/useAuth';
+import { useAuth, setLoggingOut } from '../lib/useAuth';
 import { Plus, Search, User, Briefcase, MessageSquare, Menu, X, LogOut, Sparkles, Trash2, Rocket, Calendar } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import campnaiLogo from '../assets/campnailogo.png';
+import { AuthService } from '../services/authService';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -91,9 +92,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
     const handleLogout = async () => {
         try {
+            // Prevent useAuth from re-establishing session during logout
+            setLoggingOut(true);
+            // Clear backend JWT session + Redis
+            await AuthService.logout();
+            // Clear Firebase auth
             await signOut(auth);
             navigate('/login');
         } catch (error) {
+            setLoggingOut(false);
             console.error('Logout error:', error);
             alert('Failed to log out');
         }
