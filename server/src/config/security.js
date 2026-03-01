@@ -7,8 +7,8 @@ export const TOKEN_EXPIRY = {
   REFRESH_TOKEN: "7d",               // 7 days
   REFRESH_TOKEN_S: 7 * 24 * 60 * 60, // 7 days in seconds
   REFRESH_TOKEN_MS: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
-  CSRF_TOKEN_S: 3600,                // 1 hour in seconds
-  CSRF_TOKEN_MS: 60 * 60 * 1000,     // 1 hour in ms
+  CSRF_TOKEN_S: 7 * 24 * 60 * 60,     // 7 days in seconds (match session TTL)
+  CSRF_TOKEN_MS: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
   SESSION_S: 7 * 24 * 60 * 60,       // 7 days in seconds
   USER_CACHE_S: 3600,                // 1 hour in seconds
 };
