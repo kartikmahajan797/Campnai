@@ -3,6 +3,7 @@ import { Eye, EyeOff, Check } from 'lucide-react';
 import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { useNavigate } from 'react-router-dom';
+import { AuthService } from '../services/authService';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -51,6 +52,9 @@ const Signup = () => {
         await updateProfile(userCredential.user, { displayName: formData.name });
       }
 
+      // Establish backend JWT session (Redis + cookies)
+      await AuthService.establishSession();
+
       console.log('User created:', userCredential.user);
       alert('Account created successfully!');
       // navigation handled by onAuthStateChanged listener
@@ -76,6 +80,9 @@ const Signup = () => {
       const result = await signInWithPopup(auth, provider);
 
       console.log('[Signup] ✅ Google Sign-In via Popup successful', result.user.uid);
+
+      // Establish backend JWT session (Redis + cookies)
+      await AuthService.establishSession();
 
       // Navigate immediately
       navigate('/dashboard', { replace: true });

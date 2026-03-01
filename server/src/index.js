@@ -5,8 +5,16 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import hpp from "hpp";
+import cookieParser from "cookie-parser";
+
+import { validateEnv } from "./config/env.js";
+import { connectRedis } from "./config/redis.js";
+import { CORS_ORIGINS } from "./config/security.js";
+import { globalLimiter } from "./middleware/rateLimiter.js";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
 import healthRouter from "./api/routes.js";
+import authRouter from "./api/authRoutes.js";
 import chatRouter from "./api/chat.js";
 import influencersRouter from "./api/influencers.js";
 import searchRouter from "./api/searchAPI.js";
@@ -17,44 +25,57 @@ import outreachRouter from "./api/outreach.js";
 import { startNegotiationCron } from "./services/negotiationCron.js";
 import { debugFetchAll } from "./services/emailService.js";
 
+validateEnv();
+
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false, // Disable CSP for API server
+}));
 
 app.use(hpp());
 
-const allowedOrigins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8081",
-    process.env.FRONTEND_URL,
-].filter(Boolean);
-
 app.use(
-    cors({
-        origin: (origin, cb) => {
-            if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-            if (process.env.NODE_ENV === "production") {
-                return cb(new Error("Not allowed by CORS"));
-            }
-            return cb(null, true);
-        },
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-        exposedHeaders: ["X-Session-Id"],
-        maxAge: 86400,
-    })
+  cors({
+    origin: (origin, cb) => {
+      if (!origin || CORS_ORIGINS.includes(origin)) return cb(null, true);
+      if (process.env.NODE_ENV === "production") {
+        return cb(new Error("Not allowed by CORS"));
+      }
+      return cb(null, true);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "x-csrf-token",
+      "x-xsrf-token",
+      "csrf-token",
+    ],
+    exposedHeaders: ["X-Session-Id", "set-cookie"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    maxAge: 86400,
+  })
 );
+
+app.use(cookieParser());
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 app.disable("x-powered-by");
 
+app.use(globalLimiter);
+
+
 app.use("/", healthRouter);
+
+app.use("/api/v1/auth", authRouter);
+
 app.use("/api/v1", chatRouter);
 app.use("/api/v1", influencersRouter);
 app.use("/api/v1", searchRouter);
@@ -63,31 +84,41 @@ app.use("/api/v1/campaigns", campaignRouter);
 app.use("/api/v1/campaigns", reportRouter);
 app.use("/api/v1/campaigns", outreachRouter);
 
-// ── Debug IMAP (dev only) ──────────────────────────────────────────────────────
 app.get('/test-imap', async (_req, res) => {
     try {
         const { results, skipped } = await debugFetchAll();
-        res.json({ count: results.length, skipped, messages: results.map(r => ({ from: r.from, subject: r.subject, bodyPreview: r.body?.substring(0, 200), date: r.date })) });
+        res.json({
+            count: results.length,
+            skipped,
+            messages: results.map(r => ({
+                from: r.from,
+                subject: r.subject,
+                bodyPreview: r.body?.substring(0, 200),
+                date: r.date,
+            })),
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-app.use((err, _req, res, _next) => {
-    if (err.code === "LIMIT_FILE_SIZE") {
-        return res.status(413).json({ detail: "File too large. Max 10 MB." });
-    }
-    console.error("Unhandled error:", err);
-    res.status(500).json({ detail: "Internal server error" });
-});
+app.use(notFoundHandler);
+app.use(errorHandler);
 
-app.use((_req, res) => {
-    res.status(404).json({ detail: "Not found" });
-});
+async function startServer() {
+  await connectRedis();
 
-app.listen(PORT, () => {
+  app.listen(PORT, () => {
     console.log(`🚀 Campnai server running on http://localhost:${PORT}`);
+    console.log(`🔒 Security: Helmet, HPP, CORS, Rate Limiting, CSRF enabled`);
+    console.log(`🔑 Auth: Dual-mode (JWT cookies + Firebase Bearer)`);
     startNegotiationCron();
+  });
+}
+
+startServer().catch((err) => {
+  console.error("❌ Failed to start server:", err.message);
+  process.exit(1);
 });
 
 export default app;

@@ -2,6 +2,8 @@ import { Router } from "express";
 import multer from "multer";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { searchInfluencers, formatForSearchAPI } from "../services/influencerSearch.js";
+import { authenticate } from "../middleware/auth.middleware.js";
+import { verifyCSRFToken } from "../config/csrfService.js";
 
 const router = Router();
 const upload = multer({
@@ -293,7 +295,7 @@ function validateAndEnrich(analysis) {
 }
 
 // ─── POST /analyze-brand ─────────────────────────────────────────────────────
-router.post("/analyze-brand", upload.single("file"), async (req, res) => {
+router.post("/analyze-brand", authenticate, verifyCSRFToken, upload.single("file"), async (req, res) => {
     const startTime = Date.now();
 
     try {

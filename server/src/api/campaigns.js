@@ -1,13 +1,14 @@
 
 import { Router } from "express";
 import { db, firebaseAdmin } from "../core/config.js";
-import { authenticate } from "../core/auth.js";
+import { authenticate } from "../middleware/auth.middleware.js";
+import { verifyCSRFToken } from "../config/csrfService.js";
 
 const router = Router();
 const COLLECTION_NAME = "user_campaigns";
 
 // POST /api/v1/campaigns
-router.post("/", authenticate, async (req, res) => {
+router.post("/", authenticate, verifyCSRFToken, async (req, res) => {
     try {
         const { analysisResult, suggestions } = req.body;
         const user = req.user;
@@ -95,7 +96,7 @@ router.get("/:id", authenticate, async (req, res) => {
 });
 
 // PATCH /api/v1/campaigns/:id
-router.patch("/:id", authenticate, async (req, res) => {
+router.patch("/:id", authenticate, verifyCSRFToken, async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body; // { preferences: {...}, shortlist: [...] }
@@ -133,7 +134,7 @@ router.patch("/:id", authenticate, async (req, res) => {
 });
 
 // POST /api/v1/campaigns/:id/generate-suggestions
-router.post("/:id/generate-suggestions", authenticate, async (req, res) => {
+router.post("/:id/generate-suggestions", authenticate, verifyCSRFToken, async (req, res) => {
     try {
         const { id } = req.params;
         const user = req.user;
@@ -262,7 +263,7 @@ router.post("/:id/generate-suggestions", authenticate, async (req, res) => {
 });
 
 // DELETE /api/v1/campaigns/:id
-router.delete("/:id", authenticate, async (req, res) => {
+router.delete("/:id", authenticate, verifyCSRFToken, async (req, res) => {
     try {
         const { id } = req.params;
         const user = req.user;
