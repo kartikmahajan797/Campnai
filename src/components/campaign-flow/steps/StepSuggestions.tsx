@@ -441,17 +441,12 @@ const StepSuggestions: React.FC = () => {
 
     setIsSearchingMore(true);
     try {
-      const user = auth.currentUser || await new Promise<any>((resolve) => {
-        const unsub = auth.onAuthStateChanged(u => { unsub(); resolve(u); });
-      });
-      if (!user) throw new Error('Please log in to continue.');
-      const token = await user.getIdToken();
-      
-      const response = await fetch(
+      const { secureFetch } = await import('../../../lib/secureFetch');
+      const response = await secureFetch(
         `${API_BASE_URL}/campaigns/${campaignId}/generate-suggestions?count=${searchMoreCount}`,
         {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
         }
       );
       if (!response.ok) throw new Error('Failed to generate more suggestions');
