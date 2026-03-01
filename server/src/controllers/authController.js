@@ -332,8 +332,11 @@ export const refreshTokenHandler = TryCatch(async (req, res) => {
 // ─── Logout ─────────────────────────────────────────────────────────
 export const logout = TryCatch(async (req, res) => {
   const userId = req.user._id || req.user.uid;
+  const currentSessionId = req.sessionId || null;
 
-  await revokeRefreshToken(userId);
+  console.log(`[Logout] User ${userId} logging out (sessionId: ${currentSessionId})`);
+
+  await revokeRefreshToken(userId, currentSessionId);
 
   // Clear all cookies
   res.clearCookie("refreshToken", COOKIE_OPTIONS.clear);
@@ -343,6 +346,7 @@ export const logout = TryCatch(async (req, res) => {
   // Clear user cache
   await redisClient.del(REDIS_KEYS.userCache(userId));
 
+  console.log(`[Logout] ✅ Logout complete for user ${userId}`);
   res.json({ message: "Logged out successfully" });
 });
 
