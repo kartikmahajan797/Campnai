@@ -163,11 +163,7 @@ router.post("/:id/report", authenticate, verifyCSRFToken, async (req, res) => {
 
     } catch (err) {
         console.error("❌ Report generation error:", err);
-        console.error("Stack:", err.stack);
-        if (err.response) {
-            console.error("API Response Error:", await err.response.text().catch(() => "No body"));
-        }
-        return res.status(500).json({ detail: `Failed to generate report: ${err.message}` });
+        return res.status(500).json({ detail: "Failed to generate report. Please try again." });
     }
 });
 

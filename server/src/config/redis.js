@@ -23,8 +23,9 @@ export const connectRedis = async () => {
     await redisClient.connect();
     console.log("✅ Connected to Redis");
   } catch (error) {
-    console.error("❌ Redis connection error:", error.message);
-    console.error("   Server will continue without Redis. Auth features will be limited.");
+    console.error("❌ Redis connection FAILED:", error.message);
+    console.error("   Server cannot run without Redis (auth, sessions, rate limiting).");
+    process.exit(1);
   }
 };
 

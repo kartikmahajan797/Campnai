@@ -4,11 +4,20 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { searchInfluencers, formatForSearchAPI } from "../services/influencerSearch.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { verifyCSRFToken } from "../config/csrfService.js";
+import { validateUrl } from "../config/urlValidator.js";
 
 const router = Router();
+const ALLOWED_UPLOAD_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        if (ALLOWED_UPLOAD_TYPES.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error(`Invalid file type: ${file.mimetype}. Allowed: ${ALLOWED_UPLOAD_TYPES.join(", ")}`));
+        }
+    },
 });
 
 // Initialize Gemini (singleton)
@@ -321,8 +330,9 @@ router.post("/analyze-brand", authenticate, verifyCSRFToken, upload.single("file
         // ── 1. Process URL ───────────────────────────────────────────────────
         if (link) {
             try {
-                console.log(`🌐 Fetching URL: ${link}`);
-                const response = await fetch(link, {
+                const safeUrl = await validateUrl(link);
+                console.log(`🌐 Fetching URL: ${safeUrl}`);
+                const response = await fetch(safeUrl, {
                     headers: {
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -430,8 +440,11 @@ router.post("/analyze-brand", authenticate, verifyCSRFToken, upload.single("file
         });
 
     } catch (err) {
-        console.error("❌ Brand Analysis Error:", err);
-        return res.status(500).json({ detail: "Analysis failed. Please try again." });
+        console.error("❌ Brand Analysis Error:", err.message);
+        const detail = err.message?.includes("blocked") || err.message?.includes("Invalid")
+            ? err.message
+            : "Analysis failed. Please try again.";
+        return res.status(400).json({ detail });
     }
 });
 
