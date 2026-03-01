@@ -112,7 +112,7 @@ router.post('/:id/send-outreach', authenticate, verifyCSRFToken, async (req, res
 
     } catch (error) {
         console.error('[Outreach] Send error:', error);
-        res.status(500).json({ detail: `Failed to send outreach: ${error.message}` });
+        res.status(500).json({ detail: 'Failed to send outreach.' });
     }
 });
 
@@ -154,7 +154,7 @@ router.get('/:id/outreaches/:outreachId', authenticate, async (req, res) => {
 
 // ─── POST /:id/outreaches/:outreachId/simulate-reply ─────────────────────
 // Manually trigger one IMAP check (for testing / debug)
-router.post('/:id/outreaches/:outreachId/simulate-reply', authenticate, async (req, res) => {
+router.post('/:id/outreaches/:outreachId/simulate-reply', authenticate, verifyCSRFToken, async (req, res) => {
     try {
         const { outreachId } = req.params;
         const user = req.user;
@@ -170,13 +170,13 @@ router.post('/:id/outreaches/:outreachId/simulate-reply', authenticate, async (r
         res.json({ message: 'IMAP check triggered.', data: { id: updated.id, ...updated.data() } });
     } catch (error) {
         console.error('[Outreach] Simulate error:', error);
-        res.status(500).json({ detail: `Failed: ${error.message}` });
+        res.status(500).json({ detail: 'Simulation failed.' });
     }
 });
 
 // ─── POST /generate-outreach-email ───────────────────────────────────────────
 // Generate unique, professional outreach email using AI
-router.post('/generate-outreach-email', authenticate, async (req, res) => {
+router.post('/generate-outreach-email', authenticate, verifyCSRFToken, async (req, res) => {
     try {
         const {
             influencerName,
@@ -216,7 +216,7 @@ router.post('/generate-outreach-email', authenticate, async (req, res) => {
 
     } catch (error) {
         console.error('[Outreach] Email generation error:', error);
-        res.status(500).json({ detail: `Failed to generate email: ${error.message}` });
+        res.status(500).json({ detail: 'Failed to generate email.' });
     }
 });
 

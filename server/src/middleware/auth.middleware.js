@@ -53,13 +53,15 @@ export async function authenticate(req, res, next) {
 
       if (cacheUser) {
         req.user = JSON.parse(cacheUser);
+        // Ensure uid is always set for downstream routes
+        if (!req.user.uid) req.user.uid = req.user._id || decodedData.id;
         req.sessionId = decodedData.sessionId;
         return next();
       }
 
       // If no cache, set minimal user info from token
       // The auth controller will cache full user data on login
-      req.user = { _id: decodedData.id };
+      req.user = { _id: decodedData.id, uid: decodedData.id };
       req.sessionId = decodedData.sessionId;
       return next();
     } catch (err) {

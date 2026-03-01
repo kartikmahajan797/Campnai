@@ -60,7 +60,7 @@ router.get("/search-influencers", authenticate, async (req, res) => {
 
     } catch (err) {
         console.error("Search API error:", err);
-        return res.status(500).json({ detail: `Search failed: ${err.message}` });
+        return res.status(500).json({ detail: "Search failed. Please try again." });
     }
 });
 
@@ -176,7 +176,7 @@ router.get("/browse-influencers", authenticate, async (req, res) => {
 
     } catch (err) {
         console.error("Browse API error:", err);
-        return res.status(500).json({ detail: `Browse failed: ${err.message}` });
+        return res.status(500).json({ detail: "Browse failed. Please try again." });
     }
 });
 
