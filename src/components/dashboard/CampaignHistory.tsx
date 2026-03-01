@@ -103,7 +103,7 @@ const CampaignHistory = () => {
     };
 
     const handleResume = (id: string) => {
-        navigate(`/campaign/dashboard/${id}`);
+        navigate(`/campaign/new?id=${id}`);
     };
 
     const handleDeleteConfirm = async () => {

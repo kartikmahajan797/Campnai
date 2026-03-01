@@ -596,7 +596,7 @@ const StepSuggestions: React.FC = () => {
             </h3>
             
             {shortlist.length === 0 ? (
-              <div className="w-full bg-[#0F0A19]/50 dark:bg-[#0F0A19]/50 border border-black/10 dark:border-white/[0.03] rounded-2xl p-16 flex flex-col items-center justify-center gap-4 text-center">
+              <div className="w-full bg-white dark:bg-[#0F0A19]/50 border border-black/10 dark:border-white/[0.03] rounded-2xl p-16 flex flex-col items-center justify-center gap-4 text-center shadow-sm transition-colors">
                 <Users className="w-8 h-8 text-black/20 dark:text-white/20" />
                 <p className="text-sm font-medium text-black/40 dark:text-white/40">No influencers shortlisted yet.</p>
               </div>

@@ -4,6 +4,8 @@ import { parse } from "csv-parse/sync";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../core/config.js";
 import { firebaseAdmin } from "../core/config.js";
+import { authenticate } from "../middleware/auth.middleware.js";
+import { verifyCSRFToken } from "../config/csrfService.js";
 
 const router = Router();
 const FieldValue = firebaseAdmin.firestore.FieldValue;
@@ -41,7 +43,7 @@ function cleanStr(value) {
 }
 
 // ─── POST /upload-csv ───────────────────────────────────────────────
-router.post("/upload-csv", upload.single("file"), async (req, res) => {
+router.post("/upload-csv", authenticate, verifyCSRFToken, upload.single("file"), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ detail: "No file uploaded." });
@@ -158,7 +160,7 @@ router.post("/upload-csv", upload.single("file"), async (req, res) => {
 });
 
 // ─── GET /influencers ───────────────────────────────────────────────
-router.get("/influencers", async (req, res) => {
+router.get("/influencers", authenticate, async (req, res) => {
     try {
         let { page = 1, page_size = 10, search, campaign_id = "test_campaign_001" } = req.query;
         page = Math.max(1, parseInt(page, 10) || 1);
