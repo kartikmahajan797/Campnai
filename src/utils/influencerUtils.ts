@@ -94,6 +94,7 @@ export function normalizeInfluencerData(inf: any): Partial<InfluencerSuggestion>
     instagramUrl,
     handle: handle || inf.handle,
     scoreBreakdown: inf.scoreBreakdown || inf.score_breakdown || null,
+    estimatedCommercial: inf.estimatedCommercial || inf.estimated_commercial || null,
   };
 }
 

@@ -8,6 +8,7 @@ import {
     getDynamicTopK,
 } from "../services/influencerSearch.js";
 import { validateUrl } from "../config/urlValidator.js";
+import { env } from "../config/env.js";
 
 const FieldValue = firebaseAdmin.firestore.FieldValue;
 
@@ -55,7 +56,7 @@ async function analyzeBrandUrl(url) {
         const pageText  = cleanHtml(html);
         console.log(`   ✅ Scraped ${pageText.length} chars`);
 
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const prompt = `Analyze this brand website content and extract key information for influencer marketing matching.
@@ -285,7 +286,7 @@ ${influencerContext}`;
         }
 
         // Build Gemini model with enhanced system instruction
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
         const neoModel = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
             systemInstruction: enhancedPrompt,
@@ -374,7 +375,7 @@ export const getHistory = async (req, res) => {
             .doc(sessionId)
             .collection("messages");
 
-        const snap = await chatRef.orderBy("timestamp", "asc").get();
+        const snap = await chatRef.orderBy("timestamp", "asc").limit(50).get();
 
         const messages = [];
         snap.forEach((doc) => {

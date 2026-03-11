@@ -17,17 +17,25 @@ const AUTH_BASE_URL = API_BASE_URL.replace('/api/v1', '/api/v1/auth');
  * 4. Backend verifies token, creates Redis session, sets HTTP-only JWT cookies
  * 5. Returns CSRF token + session info
  */
+let sessionPromise: Promise<{ csrfToken: string; sessionId: string; user: any; } | null> | null = null;
+
 export const AuthService = {
 
   /**
    * Establish backend session after Firebase auth.
    * Call this AFTER successful Firebase login/signup.
+   * Prevent concurrent calls to avoid CSRF token race conditions.
    */
   async establishSession(): Promise<{
     csrfToken: string;
     sessionId: string;
     user: any;
   } | null> {
+    if (sessionPromise) {
+      return sessionPromise;
+    }
+
+    sessionPromise = (async () => {
     try {
       const user = auth.currentUser;
       if (!user) {
@@ -68,6 +76,13 @@ export const AuthService = {
     } catch (error) {
       console.error('[AuthService] Error establishing session:', error);
       return null;
+    }
+    })();
+
+    try {
+      return await sessionPromise;
+    } finally {
+      sessionPromise = null;
     }
   },
 

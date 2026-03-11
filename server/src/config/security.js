@@ -19,7 +19,7 @@ export const COOKIE_OPTIONS = {
   base: {
     httpOnly: true,
     secure: true,
-    sameSite: "none",
+    sameSite: env.COOKIE_SAME_SITE,
     path: "/",
   },
 
@@ -27,7 +27,7 @@ export const COOKIE_OPTIONS = {
   accessToken: {
     httpOnly: true,
     secure: true,
-    sameSite: "none",
+    sameSite: env.COOKIE_SAME_SITE,
     path: "/",
     maxAge: TOKEN_EXPIRY.ACCESS_TOKEN_MS,
   },
@@ -36,7 +36,7 @@ export const COOKIE_OPTIONS = {
   refreshToken: {
     httpOnly: true,
     secure: true,
-    sameSite: "none",
+    sameSite: env.COOKIE_SAME_SITE,
     path: "/",
     maxAge: TOKEN_EXPIRY.REFRESH_TOKEN_MS,
   },
@@ -45,7 +45,7 @@ export const COOKIE_OPTIONS = {
   csrfToken: {
     httpOnly: false, 
     secure: true,
-    sameSite: "none",
+    sameSite: env.COOKIE_SAME_SITE,
     path: "/",
     maxAge: TOKEN_EXPIRY.CSRF_TOKEN_MS,
   },
@@ -54,7 +54,7 @@ export const COOKIE_OPTIONS = {
   clear: {
     path: "/",
     secure: true,
-    sameSite: "none",
+    sameSite: env.COOKIE_SAME_SITE,
   },
 };
 
@@ -77,12 +77,14 @@ export const RATE_LIMIT = {
 };
 
 // ─── CORS Config ─────────────────────────────────────────────────────
-export const CORS_ORIGINS = [
-  "http://localhost:3000",
-  "http://localhost:5173",
-  "http://localhost:8081",
-  env.FRONTEND_URL,
-].filter(Boolean);
+export const CORS_ORIGINS = env.isProduction
+  ? [env.FRONTEND_URL].filter(Boolean)
+  : [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://localhost:8081",
+      env.FRONTEND_URL,
+    ].filter(Boolean);
 
 // ─── Redis Key Prefixes ──────────────────────────────────────────────
 export const REDIS_KEYS = {

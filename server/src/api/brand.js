@@ -5,6 +5,7 @@ import { searchInfluencers, formatForSearchAPI } from "../services/influencerSea
 import { authenticate } from "../middleware/auth.middleware.js";
 import { verifyCSRFToken } from "../config/csrfService.js";
 import { validateUrl } from "../config/urlValidator.js";
+import { env } from "../config/env.js";
 
 const router = Router();
 const ALLOWED_UPLOAD_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
@@ -21,7 +22,7 @@ const upload = multer({
 });
 
 // Initialize Gemini (singleton)
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
 
 // ─── Strip HTML tags from scraped web content ────────────────────────────────
 const cleanHtml = (html) =>
@@ -32,275 +33,164 @@ const cleanHtml = (html) =>
         .trim()
         .slice(0, 20000);
 
-// ─── Enterprise Brand Analysis Prompt ────────────────────────────────────────
-const BRAND_ANALYSIS_PROMPT = `You are an Enterprise-Grade AI Brand Intelligence & Influencer Marketing System.
+// ─── Category keyword buckets (auto-detect) ──────────────────────────────────
+const CATEGORY_KEYWORDS = {
+    fashion: ["kurti", "saree", "outfits", "collection", "fashion", "clothing", "apparel", "dress", "ethnic", "wardrobe", "wear", "streetwear", "footwear", "eyewear", "accessories", "designer", "boutique"],
+    beauty: ["skincare", "facewash", "serum", "beauty", "makeup", "cosmetics", "lipstick", "foundation", "blush", "kajal", "glam", "moisturizer", "sunscreen", "cleanser"],
+    fitness: ["protein", "gym", "whey", "fitness", "workout", "wellness", "yoga", "exercise", "supplements", "bodybuilding", "health"],
+    "f&b": ["cafe", "dine", "restaurant", "food", "recipe", "kitchen", "menu", "order", "delivery", "cuisine", "bistro", "bakery", "beverage", "drink", "bar"],
+    finance: ["fintech", "payments", "loan", "finance", "banking", "insurance", "credit", "invest", "mutual fund", "trading", "wallet", "upi"],
+    tech: ["tech", "software", "app", "saas", "cloud", "ai", "coding", "laptop", "gadget", "phone", "startup", "platform"],
+    education: ["education", "course", "learning", "coaching", "tutorial", "exam", "study", "skill", "upsc", "iit"],
+    travel: ["travel", "hotel", "tourism", "destination", "resort", "trip", "booking", "flight", "stay"],
+    luxury: ["luxury", "premium", "high-end", "exclusive", "designer", "jewellery", "watches", "diamond"],
+    lifestyle: ["lifestyle", "home", "decor", "living", "interior", "furniture"],
+    gaming: ["gaming", "game", "esports", "stream", "playstation", "xbox"],
+};
 
-Your task is to perform a DEEP, multi-dimensional analysis of ALL provided inputs 
-(website content, uploaded documents, images) and produce a structured, investor-ready 
-brand intelligence report.
+// ─── Indian city names for extraction ─────────────────────────────────────────
+const INDIAN_CITIES = [
+    "mumbai", "delhi", "delhi ncr", "bangalore", "bengaluru", "hyderabad",
+    "chennai", "kolkata", "pune", "jaipur", "ahmedabad", "surat",
+    "lucknow", "chandigarh", "kochi", "gurgaon", "noida", "indore",
+    "bhopal", "nagpur", "visakhapatnam", "patna", "goa", "coimbatore",
+    "thiruvananthapuram", "mysore", "vadodara", "rajkot", "ludhiana",
+    "amritsar", "agra", "varanasi", "dehradun", "shimla", "udaipur",
+    "jodhpur", "ranchi", "bhubaneswar", "guwahati",
+];
 
-═══════════════════════════════════════════════════════════════
-ANALYSIS FRAMEWORK:
-═══════════════════════════════════════════════════════════════
+// ─── City name normalization ──────────────────────────────────────────────────
+function normalizeCity(city) {
+    const c = city.toLowerCase().trim();
+    if (c === "bengaluru") return "bangalore";
+    if (c === "delhi ncr" || c === "new delhi" || c === "ncr") return "delhi";
+    if (c === "gurgaon" || c === "gurugram") return "gurgaon";
+    return c;
+}
 
-1. BRAND POSITIONING ANALYSIS
-   - Market position (leader / challenger / niche / emerging)
-   - Unique Selling Proposition (USP)
-   - Competitive advantage
-   - Brand maturity stage (startup / growth / established / legacy)
+// ─── Simple Brand Analysis Prompt (3 fields only) ─────────────────────────────
+const BRAND_ANALYSIS_PROMPT = `You are a Brand Analyzer for an Indian influencer marketing platform.
 
-2. PRODUCT & SERVICE PORTFOLIO
-   - List each product/service with name, category, and price range
-   - Identify hero products vs. supporting products
-   - Revenue model (DTC, B2B, subscription, marketplace, freemium)
+Analyze the provided website content and extract ONLY these 3 things:
 
-3. TARGET AUDIENCE SEGMENTATION
-   - Define 2-3 distinct audience segments
-   - Each segment: label, age range, gender split, interests, income level, psychographics
-   - Primary vs. secondary audience
+1. BRAND CATEGORY — Pick exactly ONE from this list:
+   fashion, beauty, fitness, f&b, finance, tech, education, travel, luxury, lifestyle, gaming
+   If the brand doesn't fit any category exactly, pick the closest one.
 
-4. GEOGRAPHIC INTELLIGENCE
-   - Primary markets with maturity level (established / emerging / untapped)
-   - Regional preferences and cultural considerations
+2. TARGET GENDER — Who is this brand mainly for?
+   Options: "Male", "Female", or "Unisex"
+   Look for keywords like "for women", "men's collection", "girls", "boys", etc.
+   Default to "Unisex" if unclear.
 
-5. COMPETITOR LANDSCAPE
-   - Identify 3-5 key competitors
-   - For each: name, relative market position, key differentiator
-   - Brand's competitive moat
+3. TARGET CITIES — Which Indian cities is this brand targeting?
+   Extract from:
+   - Shipping mentions ("Delivering in Mumbai, Delhi NCR")
+   - Store locations ("Our stores in Bangalore, Hyderabad")
+   - Contact address
+   - "Now live in" mentions
+   - Any city names on the website
+   Return max 5 cities. If no cities found, return empty array.
+   Use standard city names: Mumbai, Delhi, Bangalore, Hyderabad, Chennai, Kolkata, Pune, Jaipur, etc.
 
-6. PRICING & MONETIZATION
-   - Price segment (budget / mid-range / premium / luxury)
-   - Pricing strategy (penetration / skimming / value-based / competitive)
-   - Average order value estimation
+4. BRAND NAME — The name of the brand.
 
-7. COMMUNICATION & MARKETING TONE
-   - Tone profile (formal/casual, aspirational/practical, bold/subtle)
-   - Content pillars (education, entertainment, inspiration, community)
-   - Preferred communication channels
-
-8. INFLUENCER MARKETING READINESS
-   - Best platforms for the brand
-   - Recommended influencer types and tiers
-   - Content formats that align
-   - Suggested campaign hooks and hashtags
-
-═══════════════════════════════════════════════════════════════
-CONFIDENCE SCORING RULES:
-═══════════════════════════════════════════════════════════════
-- Assign confidence_scores (0-100) for each major section
-- 90-100: Directly stated in source material
-- 70-89: Strongly inferred from multiple signals
-- 50-69: Reasonably inferred from limited signals
-- 30-49: Weakly inferred, mark as [INFERRED]
-- 0-29: No data available, mark as [ESTIMATED]
-
-═══════════════════════════════════════════════════════════════
 OUTPUT FORMAT — STRICT JSON ONLY:
-═══════════════════════════════════════════════════════════════
-
 {
   "brand_name": "",
-  "industry": "",
-  "brand_positioning": {
-    "market_position": "leader|challenger|niche|emerging",
-    "usp": "",
-    "competitive_advantage": "",
-    "maturity_stage": "startup|growth|established|legacy"
-  },
-  "products": [
-    { "name": "", "category": "", "price_range": "", "is_hero": false }
-  ],
-  "target_audience": {
-    "primary_segment": {
-      "label": "", "age_range": "", "gender": "", "interests": [],
-      "income_level": "", "psychographics": ""
-    },
-    "secondary_segments": [
-      { "label": "", "age_range": "", "gender": "", "interests": [] }
-    ]
-  },
-  "primary_regions": [
-    { "region": "", "market_maturity": "established|emerging|untapped" }
-  ],
-  "competitor_landscape": [
-    { "name": "", "market_position": "", "key_differentiator": "" }
-  ],
-  "pricing": {
-    "segment": "budget|mid-range|premium|luxury",
-    "strategy": "",
-    "avg_order_value": ""
-  },
-  "brand_tone": "",
-  "communication": {
-    "tone_profile": "",
-    "content_pillars": [],
-    "preferred_channels": []
-  },
-  "marketing_goal": "",
-  "niche": "food|fashion|beauty|skincare|fitness|lifestyle|tech|travel|gaming|finance|education|luxury|events|restaurants|parenting|comedy",
-  "brand_fit": "comma-separated list of influencer niche categories that fit this brand e.g. food,restaurants,beverages,lifestyle OR fashion,skincare,haircare,ethnic clothing",
-  "best_platforms": [],
-  "recommended_influencer_type": "",
-  "influencer_tiers": ["nano","micro","macro","celebrity"],
-  "content_formats": [],
-  "hashtags": [],
-  "campaign_hooks": [],
-  "confidence_scores": {
-    "brand_identity": 0,
-    "product_data": 0,
-    "audience_data": 0,
-    "competitor_data": 0,
-    "pricing_data": 0,
-    "geographic_data": 0,
-    "overall": 0
-  },
-  "data_quality": {
-    "sources_analyzed": 0,
-    "inferred_fields": [],
-    "estimated_fields": []
-  },
-  "ready_for_next_pipeline": true
+  "brand_category": "fashion|beauty|fitness|f&b|finance|tech|education|travel|luxury|lifestyle|gaming",
+  "target_gender": "Male|Female|Unisex",
+  "target_cities": ["Mumbai", "Delhi"]
 }
 
 RULES:
 - Output ONLY valid JSON. No explanations. No markdown. No extra text.
-- Combine information from website, images, and documents holistically.
-- If information is missing, infer intelligently and flag it in data_quality.
-- Focus on influencer marketing utility — every field should help find the right creators.
-- Be precise with confidence scores — do not inflate them.`;
+- Pick ONE category only.
+- Max 5 cities only.
+- If no cities detected, return target_cities as empty array [].
+- Only include Indian cities.`;
 
-// ─── Validation & Confidence Engine ──────────────────────────────────────────
-const REQUIRED_FIELDS = [
-    "brand_name", "industry", "brand_positioning", "products",
-    "target_audience", "primary_regions", "brand_tone", "marketing_goal",
-    "best_platforms", "content_formats"
-];
+// ─── Local keyword-based extraction (fallback / augmentation) ──────────────
+function extractFromKeywords(text) {
+    const lower = text.toLowerCase();
 
-function validateAndEnrich(analysis) {
-    const validation = {
-        is_valid: true,
-        missing_fields: [],
-        inferred_fields: analysis.data_quality?.inferred_fields || [],
-        estimated_fields: analysis.data_quality?.estimated_fields || [],
-        field_completeness: 0,
-        warnings: [],
-    };
+    // Category detection
+    let detectedCategory = null;
+    let maxMatches = 0;
+    for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+        const matches = keywords.filter(kw => lower.includes(kw)).length;
+        if (matches > maxMatches) {
+            maxMatches = matches;
+            detectedCategory = category;
+        }
+    }
 
-    // Check required fields
-    let filled = 0;
-    for (const field of REQUIRED_FIELDS) {
-        const val = analysis[field];
-        if (!val || (Array.isArray(val) && val.length === 0) || val === "") {
-            validation.missing_fields.push(field);
+    // Gender detection
+    let detectedGender = "Unisex";
+    const femaleSignals = /\b(for women|women's|ladies|girls|her|she|feminine|brides|bridal|saree|kurti|lehenga)\b/i;
+    const maleSignals = /\b(for men|men's|guys|boys|his|he|masculine|groom)\b/i;
+    const hasFemale = femaleSignals.test(lower);
+    const hasMale = maleSignals.test(lower);
+    if (hasFemale && !hasMale) detectedGender = "Female";
+    else if (hasMale && !hasFemale) detectedGender = "Male";
+
+    // City detection
+    const detectedCities = [];
+    for (const city of INDIAN_CITIES) {
+        if (lower.includes(city) && detectedCities.length < 5) {
+            const normalized = normalizeCity(city);
+            if (!detectedCities.includes(normalized)) {
+                // Capitalize first letter
+                detectedCities.push(normalized.charAt(0).toUpperCase() + normalized.slice(1));
+            }
+        }
+    }
+
+    return { category: detectedCategory, gender: detectedGender, cities: detectedCities };
+}
+
+// ─── Validate the simplified analysis ──────────────────────────────────────
+function validateSimpleAnalysis(analysis, keywordResult) {
+    const VALID_CATEGORIES = ["fashion", "beauty", "fitness", "f&b", "finance", "tech", "education", "travel", "luxury", "lifestyle", "gaming"];
+
+    // Validate / fix category
+    if (!analysis.brand_category || !VALID_CATEGORIES.includes(analysis.brand_category.toLowerCase())) {
+        if (keywordResult.category) {
+            analysis.brand_category = keywordResult.category;
         } else {
-            filled++;
+            analysis.brand_category = "lifestyle"; // safe default
         }
     }
-    validation.field_completeness = Math.round((filled / REQUIRED_FIELDS.length) * 100);
+    analysis.brand_category = analysis.brand_category.toLowerCase();
 
-    // Validate confidence scores exist and are sensible
-    if (!analysis.confidence_scores) {
-        analysis.confidence_scores = {
-            brand_identity: 50,
-            product_data: 50,
-            audience_data: 50,
-            competitor_data: 30,
-            pricing_data: 30,
-            geographic_data: 40,
-            overall: 40,
-        };
-        validation.warnings.push("Confidence scores were missing — defaults applied.");
+    // Validate gender
+    const validGenders = ["male", "female", "unisex"];
+    if (!analysis.target_gender || !validGenders.includes(analysis.target_gender.toLowerCase())) {
+        analysis.target_gender = keywordResult.gender || "Unisex";
+    }
+    // Capitalize
+    analysis.target_gender = analysis.target_gender.charAt(0).toUpperCase() + analysis.target_gender.slice(1).toLowerCase();
+
+    // Validate cities
+    if (!Array.isArray(analysis.target_cities)) {
+        analysis.target_cities = keywordResult.cities || [];
+    }
+    // Normalize and limit to 5
+    analysis.target_cities = analysis.target_cities
+        .map(c => {
+            const n = normalizeCity(c);
+            return n.charAt(0).toUpperCase() + n.slice(1);
+        })
+        .slice(0, 5);
+
+    // Merge keyword-detected cities if Gemini found none
+    if (analysis.target_cities.length === 0 && keywordResult.cities.length > 0) {
+        analysis.target_cities = keywordResult.cities;
     }
 
-    // Calculate overall confidence if not set properly
-    const cs = analysis.confidence_scores;
-    const weights = { brand_identity: 0.25, product_data: 0.20, audience_data: 0.25, competitor_data: 0.10, pricing_data: 0.10, geographic_data: 0.10 };
-    let weightedSum = 0;
-    for (const [key, weight] of Object.entries(weights)) {
-        weightedSum += (cs[key] || 0) * weight;
-    }
-    cs.overall = Math.round(weightedSum);
+    // Ensure brand_name
+    if (!analysis.brand_name) analysis.brand_name = "Unknown Brand";
 
-    // Ensure data_quality exists
-    if (!analysis.data_quality) {
-        analysis.data_quality = { sources_analyzed: 1, inferred_fields: [], estimated_fields: [] };
-    }
-
-    // Validate products array
-    if (analysis.products && Array.isArray(analysis.products)) {
-        analysis.products = analysis.products.filter(p => p && p.name);
-    }
-
-    // Validate competitor landscape
-    if (analysis.competitor_landscape && Array.isArray(analysis.competitor_landscape)) {
-        analysis.competitor_landscape = analysis.competitor_landscape.filter(c => c && c.name);
-    }
-
-    // Detect potential duplicates in products
-    if (analysis.products) {
-        const names = analysis.products.map(p => p.name?.toLowerCase());
-        const dupes = names.filter((n, i) => names.indexOf(n) !== i);
-        if (dupes.length > 0) {
-            validation.warnings.push(`Duplicate products detected: ${dupes.join(", ")}`);
-        }
-    }
-
-    // Validate regions
-    if (analysis.primary_regions && Array.isArray(analysis.primary_regions)) {
-        // Normalize — accept both string and object formats
-        analysis.primary_regions = analysis.primary_regions.map(r => {
-            if (typeof r === "string") return { region: r, market_maturity: "established" };
-            return r;
-        });
-    }
-
-    // Ensure target_audience structure
-    if (analysis.target_audience && !analysis.target_audience.primary_segment) {
-        // Migrate from old format
-        const ta = analysis.target_audience;
-        analysis.target_audience = {
-            primary_segment: {
-                label: "Core Audience",
-                age_range: ta.age_range || "",
-                gender: ta.gender || "",
-                interests: ta.interests || [],
-                income_level: ta.income_level || "",
-                psychographics: ta.lifestyle || "",
-            },
-            secondary_segments: [],
-        };
-    }
-
-    // Ensure brand_positioning structure
-    if (!analysis.brand_positioning || typeof analysis.brand_positioning === "string") {
-        analysis.brand_positioning = {
-            market_position: "emerging",
-            usp: analysis.brand_positioning || "",
-            competitive_advantage: "",
-            maturity_stage: "growth",
-        };
-    }
-
-    // Ensure pricing structure
-    if (!analysis.pricing) {
-        analysis.pricing = {
-            segment: analysis.price_segment || "mid-range",
-            strategy: "",
-            avg_order_value: "",
-        };
-    }
-
-    // Ensure communication structure
-    if (!analysis.communication) {
-        analysis.communication = {
-            tone_profile: analysis.brand_tone || "",
-            content_pillars: [],
-            preferred_channels: analysis.best_platforms || [],
-        };
-    }
-
-    validation.is_valid = validation.missing_fields.length <= 3;
-    return { analysis, validation };
+    return analysis;
 }
 
 // ─── POST /analyze-brand ─────────────────────────────────────────────────────
@@ -310,10 +200,9 @@ router.post("/analyze-brand", authenticate, verifyCSRFToken, upload.single("file
     try {
         const { link } = req.body;
         const file = req.file;
-        let sourcesAnalyzed = 0;
 
         console.log("═══════════════════════════════════════════════");
-        console.log("📋 Brand Intelligence Analysis Request");
+        console.log("📋 Brand Analysis (India-City Model)");
         console.log(`   Link: ${link || "none"}`);
         console.log(`   File: ${file ? file.originalname : "none"}`);
         console.log("═══════════════════════════════════════════════");
@@ -326,6 +215,7 @@ router.post("/analyze-brand", authenticate, verifyCSRFToken, upload.single("file
 
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const parts = [{ text: BRAND_ANALYSIS_PROMPT }];
+        let scrapedText = "";
 
         // ── 1. Process URL ───────────────────────────────────────────────────
         if (link) {
@@ -342,14 +232,13 @@ router.post("/analyze-brand", authenticate, verifyCSRFToken, upload.single("file
                 });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const html = await response.text();
-                const cleanText = cleanHtml(html);
-                parts.push({ text: `\n\nWEBSITE CONTENT (${link}):\n${cleanText}` });
-                sourcesAnalyzed++;
-                console.log(`   ✅ URL fetched (${cleanText.length} chars)`);
+                scrapedText = cleanHtml(html);
+                parts.push({ text: `\n\nWEBSITE CONTENT (${link}):\n${scrapedText}` });
+                console.log(`   ✅ URL fetched (${scrapedText.length} chars)`);
             } catch (err) {
                 console.warn("   ⚠️  Failed to fetch URL:", err.message);
                 parts.push({
-                    text: `\n\n(Note: Failed to scrape website ${link} — ${err.message}. Infer from other inputs.)`,
+                    text: `\n\n(Note: Failed to scrape website ${link} — ${err.message}. Infer from URL name.)`,
                 });
             }
         }
@@ -363,14 +252,18 @@ router.post("/analyze-brand", authenticate, verifyCSRFToken, upload.single("file
                 parts.push({ inlineData: { data: base64Data, mimeType } });
             } else {
                 const textContent = file.buffer.toString("utf-8");
+                scrapedText += " " + textContent;
                 parts.push({ text: `\n\nUPLOADED DOCUMENT (${file.originalname}):\n${textContent}` });
             }
-            sourcesAnalyzed++;
             console.log(`   ✅ File processed: ${file.originalname} (${file.mimetype})`);
         }
 
-        // ── 3. Gemini Deep Brand Analysis ────────────────────────────────────
-        console.log("🤖 Running Gemini deep brand intelligence analysis...");
+        // ── 3. Keyword extraction (parallel, no API cost) ────────────────────
+        const keywordResult = extractFromKeywords(scrapedText);
+        console.log(`   📝 Keyword detection: category=${keywordResult.category}, gender=${keywordResult.gender}, cities=[${keywordResult.cities.join(",")}]`);
+
+        // ── 4. Gemini Analysis ───────────────────────────────────────────────
+        console.log("🤖 Running Gemini brand extraction...");
         const result = await model.generateContent(parts);
         const responseText = result.response.text();
 
@@ -380,62 +273,49 @@ router.post("/analyze-brand", authenticate, verifyCSRFToken, upload.single("file
             rawAnalysis = JSON.parse(cleanJson);
         } catch (e) {
             console.error("❌ Failed to parse Gemini JSON:", responseText.slice(0, 300));
-            return res.status(500).json({ detail: "AI analysis failed to produce valid JSON. Please try again." });
+            // Fall back to keyword-based analysis
+            rawAnalysis = {
+                brand_name: link ? new URL(link).hostname.replace("www.", "").split(".")[0] : "Unknown Brand",
+                brand_category: keywordResult.category || "lifestyle",
+                target_gender: keywordResult.gender || "Unisex",
+                target_cities: keywordResult.cities || [],
+            };
+            console.log("   ⚠️  Using keyword-based fallback");
         }
 
-        // ── 4. Validate & Enrich ─────────────────────────────────────────────
-        rawAnalysis.data_quality = rawAnalysis.data_quality || {};
-        rawAnalysis.data_quality.sources_analyzed = sourcesAnalyzed;
-        const { analysis, validation } = validateAndEnrich(rawAnalysis);
+        // ── 5. Validate & merge ──────────────────────────────────────────────
+        const analysis = validateSimpleAnalysis(rawAnalysis, keywordResult);
 
-        console.log(`✅ Brand: ${analysis.brand_name} | Industry: ${analysis.industry}`);
-        console.log(`   Confidence: ${analysis.confidence_scores.overall}% | Completeness: ${validation.field_completeness}%`);
-        if (validation.warnings.length) console.log(`   ⚠️  Warnings: ${validation.warnings.join("; ")}`);
+        console.log(`✅ Brand: ${analysis.brand_name}`);
+        console.log(`   Category: ${analysis.brand_category}`);
+        console.log(`   Gender: ${analysis.target_gender}`);
+        console.log(`   Cities: [${analysis.target_cities.join(", ")}]`);
 
-        // ── 5. Build influencer search from enriched analysis ─────────────────
-        const searchQuery = [
-            `Find influencers for ${analysis.brand_name}`,
-            analysis.industry ? `Industry: ${analysis.industry}` : null,
-            analysis.marketing_goal ? `Goal: ${analysis.marketing_goal}` : null,
-            analysis.brand_tone ? `Tone: ${analysis.brand_tone}` : null,
-            analysis.target_audience?.primary_segment?.interests?.length
-                ? `Audience interests: ${analysis.target_audience.primary_segment.interests.join(", ")}`
-                : null,
-            analysis.products?.length ? `Products: ${analysis.products.map(p => p.name).join(", ")}` : null,
-            analysis.brand_positioning?.usp ? `USP: ${analysis.brand_positioning.usp}` : null,
-        ].filter(Boolean).join(". ");
+        // ── 6. Search influencers with new scoring model ─────────────────────
+        const searchQuery = `Find ${analysis.brand_category} influencers in India`;
 
-        // REMOVED STRICT FILTERING: Strict metadata filters (niche/location) cause 0 results 
-        // if AI analysis doesn't exactly match Pinecone data. 
-        // We now rely on vector search + soft scoring in influencerSearch.js.
-        const explicitFilter = {};
+        // Build brand context string for scoring engine
+        const brandContext = [
+            `category: ${analysis.brand_category}`,
+            `gender: ${analysis.target_gender}`,
+            analysis.target_cities.length > 0 ? `cities: ${analysis.target_cities.join(",")}` : null,
+        ].filter(Boolean).join(" | ");
 
-        console.log("🔍 Searching influencers with enriched context...");
+        console.log("🔍 Searching influencers with India-City model...");
 
-        const searchContext = [
-            `Niche: ${analysis.industry}`,
-            `Goal: ${analysis.marketing_goal}`,
-            `Tone: ${analysis.brand_tone}`,
-            `Audience: ${analysis.target_audience?.primary_segment?.interests?.join(", ")}`,
-            `Positioning: ${analysis.brand_positioning?.market_position}`,
-        ].filter(Boolean).join(". ");
-
-        const rawSuggestions = await searchInfluencers(searchQuery, 15, searchContext, explicitFilter, searchContext);
+        const rawSuggestions = await searchInfluencers(searchQuery, 15, "", {}, brandContext);
         const suggestions = formatForSearchAPI(rawSuggestions);
 
         const processingTime = Date.now() - startTime;
 
         return res.json({
             analysis,
-            validation,
             suggestions,
             meta: {
                 total_suggestions: suggestions.length,
                 top_match_score: suggestions[0]?.match?.score || 0,
-                niche_used: explicitFilter.niche || null,
                 processing_time_ms: processingTime,
-                sources_analyzed: sourcesAnalyzed,
-                confidence_overall: analysis.confidence_scores.overall,
+                model: "india-city-v5",
             },
         });
 

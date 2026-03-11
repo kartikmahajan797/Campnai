@@ -7,11 +7,12 @@ import helmet from "helmet";
 import hpp from "hpp";
 import cookieParser from "cookie-parser";
 
-import { validateEnv } from "./config/env.js";
+import { validateEnv, env } from "./config/env.js";
 import { connectRedis } from "./config/redis.js";
 import { CORS_ORIGINS } from "./config/security.js";
 import { globalLimiter } from "./middleware/rateLimiter.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
+import { auditAuthFailureMiddleware } from "./services/auditLogger.js";
 
 import healthRouter from "./api/routes.js";
 import authRouter from "./api/authRoutes.js";
@@ -30,7 +31,7 @@ validateEnv();
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-app.set("trust proxy", 1);
+app.set("trust proxy", env.TRUST_PROXY === "true" || env.TRUST_PROXY === "1" ? 1 : false);
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -69,6 +70,9 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.disable("x-powered-by");
 
 app.use(globalLimiter);
+
+// Add audit logging for auth failures
+app.use(auditAuthFailureMiddleware);
 
 
 app.use("/", healthRouter);

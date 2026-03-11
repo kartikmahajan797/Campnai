@@ -143,6 +143,7 @@ async function fetchInfluencers(preferences: {
         email,
         instagramUrl: igUrl || null,
         scoreBreakdown: inf.score_breakdown || null,
+        estimatedCommercial: inf.estimated_commercial || null,
         executionSteps: [
           'Initial outreach via DM or email',
           'Share campaign brief & mood board',
@@ -347,12 +348,18 @@ const InfoModal: React.FC<{
                           <div className="flex-1 h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-black dark:bg-white rounded-full transition-all"
-                              style={{ width: `${val?.score ?? 0}%` }}
+                              style={{ width: `${((val?.score ?? 0) / (val?.max ?? 100)) * 100}%` }}
                             />
                           </div>
-                          <span className="text-xs text-black dark:text-white font-bold w-8 text-right">{val?.score ?? 0}</span>
+                          <span className="text-xs text-black dark:text-white font-bold w-12 text-right">{val?.score ?? 0}/{val?.max ?? 100}</span>
                         </div>
                       ))}
+                    </div>
+                  )}
+                  {influencer.estimatedCommercial && influencer.estimatedCommercial.display !== 'N/A' && (
+                    <div className="mt-4 pt-4 border-t border-black/10 dark:border-white/10 flex justify-between items-center text-sm">
+                      <span className="text-black/50 dark:text-white/50 font-bold uppercase tracking-wider text-xs">Estimated Commercial</span>
+                      <span className="text-black dark:text-white font-bold bg-green-500/10 text-green-700 dark:text-green-400 px-3 py-1 rounded-full">{influencer.estimatedCommercial.display}</span>
                     </div>
                   )}
                 </div>

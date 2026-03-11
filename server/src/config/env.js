@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config({ override: true });
 
 // ─── Required Environment Variables ──────────────────────────────────
 const REQUIRED_VARS = [
@@ -12,10 +12,22 @@ const OPTIONAL_VARS = [
   "GEMINI_API_KEY",
   "PORT",
   "NODE_ENV",
-  "FRONTEND_URL",
-  "PINECONE_API_KEY",
   "PINECONE_INDEX",
+  "TRUST_PROXY",
+  "COOKIE_SAME_SITE",
 ];
+
+// ─── Weak Secret Detection ─────────────────────────────────────────
+const WEAK_PATTERNS = [/test/i, /secret/i, /default/i, /campnai/i, /change-in-production/i, /123/];
+
+function isWeakSecret(secret) {
+  if (!secret) return true;
+  if (secret.length < 32) return true;
+  for (const pattern of WEAK_PATTERNS) {
+    if (pattern.test(secret)) return true;
+  }
+  return false;
+}
 
 // ─── Validate Required Vars ─────────────────────────────────────────
 export function validateEnv() {
@@ -34,6 +46,26 @@ export function validateEnv() {
     optionalMissing.forEach((key) => console.warn(`   - ${key}`));
   }
 
+  // Check for weak secrets
+  const secretsToCheck = ["JWT_SECRET", "REFRESH_SECRET"];
+  let hasWeakSecrets = false;
+  
+  secretsToCheck.forEach((key) => {
+    if (isWeakSecret(process.env[key])) {
+      hasWeakSecrets = true;
+      console.error(`❌ Security Risk: ${key} is weak or uses a default value.`);
+    }
+  });
+
+  if (hasWeakSecrets) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("FATAL: Cannot start in production with weak secrets. Please generate strong random 64-byte hex keys.");
+      process.exit(1);
+    } else {
+      console.warn("⚠️  WARNING: You are using weak authentication secrets. Change these before deploying to production.");
+    }
+  }
+
   console.log("✅ Environment variables validated");
 }
 
@@ -45,6 +77,9 @@ export const env = {
   REFRESH_SECRET: process.env.REFRESH_SECRET,
   REDIS_URL: process.env.REDIS_URL,
   FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5173",
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  TRUST_PROXY: process.env.TRUST_PROXY || "1",
+  COOKIE_SAME_SITE: process.env.COOKIE_SAME_SITE || "none",
   
   get isProduction() {
     return this.NODE_ENV === "production";

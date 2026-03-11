@@ -188,12 +188,13 @@ router.post("/:id/generate-suggestions", authenticate, verifyCSRFToken, async (r
         const p = data.preferences || {};
         const analysis = data.analysisResult || {};
 
-        // Construct a rich natural language query incorporating all preferences
-        const niche = analysis.niche || analysis.industry || "general";
-        const goalText = goalMap[p.primaryGoal] || "";
+        // ── Extract Simplified Brand Data (v5 India-City Model) ─────────────────
+        const brandCategory = analysis.brand_category || analysis.niche || analysis.industry || "general";
+        const targetGender = analysis.target_gender || "Unisex";
+        const targetCities = analysis.target_cities || [];
+        
+        // ── Parse Budget Logic ─────────────────
         const budgetText = budgetMap[p.budgetRange] || "";
-
-        // Include custom budget range if user manually adjusted min/max
         let budgetRangeText = "";
         if (p.budgetMin != null && p.budgetMax != null) {
             const minL = (p.budgetMin / 100000).toFixed(1);
@@ -202,45 +203,39 @@ router.post("/:id/generate-suggestions", authenticate, verifyCSRFToken, async (r
         }
 
         const searchQuery = [
-            niche,
+            brandCategory,
             "influencer for",
-            goalText,
+            goalMap[p.primaryGoal] || "",
             budgetText,
             budgetRangeText,
             analysis.brand_tone || ''
         ].filter(Boolean).join(" ");
 
-        // ── Build brand context for direct brand_fit matching ──────────────────
-        // analysis.brand_fit is the new Gemini field: simple comma-separated niche keywords
-        // matching exactly the influencer brand_fit tags (e.g. "food,restaurants,beverages")
-        // This is the PRIMARY signal — prevents Swiggy (food) from returning tech influencers.
-        const brandFitRaw = analysis.brand_fit  // e.g. "food,restaurants,beverages,lifestyle"
-            || [
-                analysis.niche || analysis.industry || "",
-                analysis.recommended_influencer_type || "",
-                ...(analysis.products || []).slice(0, 3).map(p => p?.name || p),
-            ].filter(Boolean).join(",");
-
-        const brandContext = [
-            brandFitRaw ? `brand_fit: ${brandFitRaw}` : "",
-            analysis.brand_tone ? `vibe: ${analysis.brand_tone}` : "",
-            analysis.marketing_goal ? analysis.marketing_goal : "",
-            budgetRangeText,
-        ].filter(Boolean).join(" | ");
+        // Build the new brand context object for computeMatchScore
+        const brandContextForScore = {
+            category: brandCategory,
+            gender: targetGender,
+            cities: targetCities
+        };
 
         const limit = parseInt(req.query.count, 10) || 10;
 
-        const filterParts = [];
-        if (niche) filterParts.push(`niche: ${niche}`);
-        if (budgetRangeText) filterParts.push(budgetRangeText);
+        // Ensure we fetch enough candidates since our local scoring engine 
+        // will aggressively filter out category mismatches
+        const fetchLimit = limit * 5; 
 
-        // Get existing IDs to filter them out client-side (Pinecone doesn't support $nin)
+        // Get existing IDs to filter them out client-side
         const existingIds = new Set((data.suggestions || []).map(s => s.id).filter(Boolean));
 
-        // Fetch more results than needed to account for filtering
-        const fetchLimit = limit + existingIds.size;
-
-        const rawSuggestions = await searchInfluencers(searchQuery, fetchLimit, filterParts.join(". "), null, brandContext);
+        // We DO NOT pass a strict category filter string to Pinecone anymore.
+        // Our new matchesCategory() handles it locally across both `niche` and `brand_fit`.
+        const rawSuggestions = await searchInfluencers(
+            searchQuery, 
+            fetchLimit + existingIds.size, 
+            "", // no strict context
+            null, // no explicit filter
+            brandContextForScore // Pass the new object for local scoring
+        );
 
         // Filter out existing IDs client-side
         const filteredSuggestions = rawSuggestions.filter(s => !existingIds.has(s.id));

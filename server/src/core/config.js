@@ -6,6 +6,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { env } from "../config/env.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -47,7 +48,7 @@ function initializeFirebase() {
 
 // ─── Gemini AI ───────────────────────────────────────────────────────
 function initializeGemini() {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = env.GEMINI_API_KEY;
     if (!apiKey) {
         console.warn("⚠️  GEMINI_API_KEY not set");
         return null;
