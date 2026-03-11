@@ -28,12 +28,12 @@ router.post("/forgot-password", strictLimiter, forgotPassword);
 router.post("/reset-password", strictLimiter, resetPassword);
 
 // ─── Token Management (Partial Auth) ───────────────────────────────
-router.post("/refresh", refreshTokenHandler);
+router.post("/refresh", verifyCSRFToken, refreshTokenHandler);
 
 // ─── Protected Routes (Auth Required) ──────────────────────────────
 router.get("/me", authenticate, myProfile);
-router.post("/refresh-csrf", authenticate, refreshCSRF);
-router.post("/logout", authenticate, logout);
+router.post("/refresh-csrf", authenticate, verifyCSRFToken, refreshCSRF);
+router.post("/logout", authenticate, verifyCSRFToken, logout);
 
 // ─── Auth Health Check ─────────────────────────────────────────────
 router.get("/health", (_req, res) => {

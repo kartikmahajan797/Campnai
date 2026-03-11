@@ -1,19 +1,19 @@
 /**
- * Influencer Search Service — v4 (Production)
+ * Influencer Search Service — v5 (India-City Model)
  *
- * Scoring Model (5 factors, all 0–100):
- *   FinalScore = 0.35 × Relevance
- *              + 0.25 × Engagement
- *              + 0.20 × AudienceMatch
- *              + 0.10 × PricingFit
- *              + 0.10 × Consistency
+ * Scoring Model (4 factors, total 100):
+ *   Category Match  = 40 pts  (exact niche OR brand_fit match)
+ *   City Match      = 40 pts  (audience % in brand's target cities)
+ *   Gender Match    = 10 pts  (audience gender alignment)
+ *   Engagement      = 10 pts  (ER-based bucket)
  *
- * Key fixes vs v3:
- *  - commercials field = ₹ price (not campaign count) → PricingFit score uses it correctly
- *  - india_split (60/40) = India% / ROW% → now used in AudienceMatch
- *  - brand_fit comma-separated brands → exploded into keyword set for richer matching
- *  - fetchK = ALL records from Pinecone (auto via describeIndexStats)
- *  - Brand URL context injected when present
+ * Commercial Estimation:
+ *   EstimatedCommercial = PS × MBR × EQB × NDM × RA
+ *   PS  = (AvgViews × 0.75) + (Followers × ER × 0.25)
+ *   MBR = ₹2.0 per effective view (configurable)
+ *   EQB = Engagement Quality Boost (tiered)
+ *   NDM = Niche Demand Multiplier
+ *   RA  = Reliability Adjustment (ViewRatio-based)
  */
 
 import { getIndex, getTotalRecordCount } from "../core/pinecone.js";
@@ -27,64 +27,31 @@ async function getQueryEmbedding(query) {
     return result.embedding.values;
 }
 
-// ─── Niche → keyword map ──────────────────────────────────────────────────────
-const NICHE_KEYWORDS = {
+// ─── Category keyword map (for brand_fit matching) ────────────────────────────
+const CATEGORY_KEYWORDS = {
     fashion: ["fashion", "style", "outfit", "clothing", "apparel", "ootd", "wear", "wardrobe", "streetwear", "kurta", "ethnic", "clothes", "dress", "footwear", "eyewear"],
-    beauty: ["beauty", "makeup", "cosmetics", "lipstick", "foundation", "blush", "contour", "eyeshadow", "kajal", "kohl", "glam"],
-    skincare: ["skincare", "skin care", "serum", "moisturizer", "sunscreen", "acne", "glow", "derma", "spf", "retinol", "face wash", "cleanser", "skin"],
+    beauty: ["beauty", "makeup", "cosmetics", "lipstick", "foundation", "blush", "contour", "eyeshadow", "kajal", "glam"],
+    skincare: ["skincare", "skin care", "serum", "moisturizer", "sunscreen", "acne", "glow", "derma", "spf", "retinol", "face wash", "cleanser"],
     haircare: ["haircare", "hair care", "shampoo", "conditioner", "hair oil", "hair mask", "hair growth", "hairstyle"],
-    fitness: ["fitness", "gym", "workout", "health", "wellness", "yoga", "exercise", "bodybuilding", "protein", "run", "weight loss", "nutrition", "diet"],
-    lifestyle: ["lifestyle", "daily", "vlog", "routine", "living", "home", "decor", "motivation", "mindset", "productivity", "travel"],
-    food: ["food", "recipe", "cooking", "chef", "baking", "restaurant", "cuisine", "eat", "kitchen", "foodie", "snack", "beverage", "drink", "delivery", "healthy food", "fmcg", "packaged food", "order food", "meal", "nutrition", "homemade", "street food", "dessert", "sweet"],
-    tech: ["tech", "technology", "gadget", "phone", "laptop", "review", "unboxing", "coding", "software", "ai", "app", "computer", "gaming"],
+    fitness: ["fitness", "gym", "workout", "health", "wellness", "yoga", "exercise", "bodybuilding", "protein", "weight loss", "nutrition", "diet"],
+    lifestyle: ["lifestyle", "daily", "vlog", "routine", "living", "home", "decor", "motivation", "mindset", "productivity"],
+    food: ["food", "recipe", "cooking", "chef", "baking", "restaurant", "cuisine", "eat", "kitchen", "foodie", "snack", "beverage", "drink", "delivery", "fmcg", "packaged food", "meal", "dessert"],
+    "f&b": ["restaurant", "cafe", "dining", "eatery", "bistro", "bar", "lounge", "café", "diner", "food", "beverage"],
+    tech: ["tech", "technology", "gadget", "phone", "laptop", "review", "unboxing", "coding", "software", "ai", "app", "computer"],
     travel: ["travel", "wanderlust", "explore", "destination", "trip", "adventure", "tourism", "hotel", "backpack", "trek"],
-    gaming: ["gaming", "game", "esports", "twitch", "stream", "playstation", "xbox", "pc", "fps", "pubg", "bgmi", "mobile game"],
+    gaming: ["gaming", "game", "esports", "twitch", "stream", "playstation", "xbox", "pc", "fps", "pubg", "bgmi"],
     education: ["education", "learning", "study", "course", "tutorial", "knowledge", "skill", "upsc", "iit", "exam", "coaching"],
     finance: ["finance", "money", "investing", "stocks", "crypto", "budget", "savings", "wealth", "trading", "tax", "fintech"],
-    automotive: ["car", "auto", "vehicle", "drive", "motorcycle", "bike", "automobile", "ev", "suv", "engine", "road"],
-    luxury: ["luxury", "premium", "high-end", "elite", "exclusive", "designer", "jewellery", "watches", "gold", "silver"],
+    luxury: ["luxury", "premium", "high-end", "elite", "exclusive", "designer", "jewellery", "watches"],
     parenting: ["parenting", "mom", "dad", "baby", "kids", "family", "motherhood", "pregnancy", "toddler", "child"],
     comedy: ["comedy", "funny", "humor", "meme", "entertainment", "sketch", "roast", "standup", "satire"],
-    dance: ["dance", "choreography", "moves", "dancing", "performance", "classical", "reels dance", "bhangra"],
-    music: ["music", "singer", "artist", "song", "musician", "band", "rap", "bollywood", "indie", "playlist"],
-    science: ["science", "space", "rocket", "isro", "nasa", "astronomy", "physics", "chemistry", "biology", "research"],
-    art: ["art", "illustration", "painting", "design", "creative", "digital art", "photography", "portrait"],
-    sports: ["sports", "cricket", "football", "ipl", "athlete", "player", "match", "tournament", "champion", "fitness"],
+    sports: ["sports", "cricket", "football", "ipl", "athlete", "player", "match", "tournament", "champion"],
     pets: ["pets", "dog", "cat", "animals", "pet care", "vet", "puppy", "kitten"],
-    sustainability: ["sustainability", "eco", "green", "organic", "environment", "natural", "vegan", "zero waste"],
     events: ["events", "wedding", "party", "celebration", "festival", "concerts", "nightlife"],
-    restaurants: ["restaurant", "cafe", "dining", "food", "eatery", "bistro", "bar", "lounge", "fmcg", "packaged", "beverage", "café", "diner"],
-
 };
 
-function extractNiches(text) {
-    const lower = text.toLowerCase();
-    const found = new Set();
-    for (const [niche, keywords] of Object.entries(NICHE_KEYWORDS)) {
-        if (keywords.some(kw => lower.includes(kw))) found.add(niche);
-    }
-    return [...found];
-}
+// ─── Parse helpers ────────────────────────────────────────────────────────────
 
-// ─── Parse ₹ price string → number ───────────────────────────────────────────
-// commercials field = "₹43,000.00" → 43000
-function parsePrice(str) {
-    if (!str || str === "-" || str === "NA" || str === "") return null;
-    const num = parseFloat(str.replace(/[₹,\s]/g, ""));
-    return isNaN(num) ? null : num;
-}
-
-// ─── Parse india_split "60/40" → India% ──────────────────────────────────────
-// india_split means India% / Rest-of-World%
-function parseIndiaSplit(str) {
-    if (!str) return null;
-    const parts = str.split("/").map(s => parseInt(s.trim()));
-    if (parts.length >= 1 && !isNaN(parts[0])) return parts[0]; // India %
-    return null;
-}
-
-// ─── Parse mf_split "60/40" → female% ────────────────────────────────────────
-// Assumption: mf_split = Male% / Female% based on field name "mf_split"
 function parseMfSplit(str) {
     if (!str) return { male: null, female: null };
     const parts = str.split("/").map(s => parseInt(s.trim()));
@@ -94,372 +61,217 @@ function parseMfSplit(str) {
     return { male: null, female: null };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SCORING ENGINE
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const WEIGHTS = {
-    relevance: 0.35,
-    engagement: 0.25,
-    audience: 0.20,
-    pricingFit: 0.10,
-    consistency: 0.10,
-};
-
-// ─── Direct brand_fit tag matching ───────────────────────────────────────────
-// Extracts brand's required niche categories from brandContext, normalizes them.
-// Two-pass approach:
-//   Pass 1 — raw comma-separated tags from "brand_fit: ..." (e.g. ["food","restaurants"])
-//   Pass 2 — extractNiches() expansion of each tag to handle verbose phrases
-//             e.g. "online food delivery" → ['food', 'restaurants']
-// Returns a deduped array of known niche keyword strings.
-function extractBrandCategories(brandContext) {
-    if (!brandContext) return [];
-
-    let rawTags = [];
-
-    // Parse "brand_fit: food,restaurants,lifestyle" from brandContext
-    const m = brandContext.match(/brand_fit:\s*([^|\n]+)/i);
-    if (m) {
-        rawTags = m[1].split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-    } else {
-        // No brand_fit prefix — treat whole context as free text
-        rawTags = [brandContext.toLowerCase()];
-    }
-
-    // For each raw tag, also run extractNiches() to normalize verbose phrases
-    // e.g. "online food delivery" → ['food', 'restaurants']
-    const expanded = new Set(rawTags);
-    for (const tag of rawTags) {
-        const niches = extractNiches(tag);
-        niches.forEach(n => expanded.add(n));
-    }
-
-    return [...expanded].filter(Boolean);
+function parseIndiaSplit(str) {
+    if (!str) return null;
+    const parts = str.split("/").map(s => parseInt(s.trim()));
+    if (parts.length >= 1 && !isNaN(parts[0])) return parts[0];
+    return null;
 }
 
-// ─── Factor 1: Relevance (0–100) ─────────────────────────────────────────────
-// Combines:
-//   A. Direct brand_fit tag overlap (brand category ∩ influencer brand_fit)  — 50%
-//   B. Niche keyword match (query niches ∩ influencer niches)                — 20%
-//   C. Vector similarity from Pinecone                                        — 30%
-//
-// Key fix: brand_fit direct match is now the PRIMARY signal.
-// If an influencer's brand_fit has ZERO direct tags matching the brand's categories,
-// they receive a heavy penalty even if Pinecone vector score is high.
-function scoreRelevance(queryNiches, influencer, pineconeScore, brandContext) {
-    // ── A. Direct brand_fit tag overlap ──────────────────────────────────────
-    const brandCategories = extractBrandCategories(brandContext || "");
-    const infBrandFitTags = (influencer.brand_fit || "")
+function parsePrice(str) {
+    if (!str || str === "-" || str === "NA" || str === "") return null;
+    const num = parseFloat(str.replace(/[₹,\s]/g, ""));
+    return isNaN(num) ? null : num;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CATEGORY MATCHING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Score how well an influencer matches the brand category.
+ * Returns 40 for a direct niche match.
+ * Returns 20 for a brand_fit tag or keyword match.
+ * Returns 0 for no match.
+ */
+function scoreCategoryMatch(brandCategory, influencer) {
+    if (!brandCategory || brandCategory.trim().toLowerCase() === "general") return 40; // No brand category = max category score
+    const bc = brandCategory.toLowerCase().trim();
+
+    const infNiche = (influencer.niche || "").toLowerCase().trim();
+    const nicheList = infNiche.split(",").map(s => s.trim()).filter(Boolean);
+
+    // 1. Direct Primary Niche match (Full 40 points)
+    if (nicheList.includes(bc)) return 40;
+    
+    // Check if brand category itself exists as an isolated word/phrase in Niche
+    const fullNicheText = " " + nicheList.join(" ") + " ";
+    if (fullNicheText.includes(" " + bc + " ")) return 40;
+
+    // 2. Secondary Brand Fit Match (20 points -> means they do this on the side, e.g. Business creator talking about Tech)
+    const brandFitTags = (influencer.brand_fit || "")
         .split(",")
         .map(s => s.trim().toLowerCase())
         .filter(Boolean);
-    // Also check influencer.niche directly
-    const infNicheTag = (influencer.niche || "").toLowerCase().trim();
 
-    let directOverlapScore;
-    if (brandCategories.length === 0) {
-        directOverlapScore = 50; // No brand context = neutral
-    } else {
-        // Count how many brand categories appear in influencer's brand_fit or niche
-        const matches = brandCategories.filter(cat => {
-            // Check exact or partial match in brand_fit tags
-            if (infBrandFitTags.some(tag => tag.includes(cat) || cat.includes(tag))) return true;
-            // Check against influencer niche
-            if (infNicheTag.includes(cat) || cat.includes(infNicheTag)) return true;
-            // Check using NICHE_KEYWORDS expansion (e.g. "food" → ["foodie","recipe","restaurant"])
-            const kwSet = NICHE_KEYWORDS[cat] || [];
-            const fullText = [...infBrandFitTags, infNicheTag, (influencer.vibe || "").toLowerCase()].join(" ");
-            if (kwSet.some(kw => fullText.includes(kw))) return true;
-            return false;
-        });
+    if (brandFitTags.includes(bc)) return 20;
 
-        if (matches.length === 0) {
-            // Zero overlap: hard penalty — wrong category influencer
-            directOverlapScore = 5;
-        } else {
-            directOverlapScore = Math.round((matches.length / brandCategories.length) * 100);
-            directOverlapScore = Math.max(directOverlapScore, 40); // At least 1 match = acceptable
+    const fullBrandFitText = " " + brandFitTags.join(" ") + " ";
+    if (fullBrandFitText.includes(" " + bc + " ")) return 20;
+
+    // 3. Keyword expansion check across both
+    const categoryKws = CATEGORY_KEYWORDS[bc] || [];
+    const combinedText = fullNicheText + fullBrandFitText;
+    if (categoryKws.some(kw => combinedText.includes(" " + kw + " "))) return 20;
+
+    return 0; // No match
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CITY MATCHING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Calculate city match score.
+ * Uses top_cities (with %) if available, falls back to single location field.
+ */
+function scoreCityMatch(brandCities, influencer) {
+    if (!brandCities || brandCities.length === 0) return 40; // No target cities = full score
+
+    const topCities = influencer.top_cities || {};
+    const hasTopCities = Object.keys(topCities).length > 0;
+
+    if (hasTopCities) {
+        // Use actual city % data
+        let totalPct = 0;
+        for (const city of brandCities) {
+            totalPct += (topCities[city.toLowerCase()] || 0);
+        }
+        return Math.min(40, Math.round(totalPct * 0.4));
+    }
+
+    // Fallback: use single location field as proxy (100% in that city)
+    const infLocation = (influencer.location || "").toLowerCase().trim();
+    if (!infLocation) return 0;
+
+    for (const city of brandCities) {
+        if (infLocation.includes(city.toLowerCase()) || city.toLowerCase().includes(infLocation)) {
+            return 40; // Location matches one of the target cities
         }
     }
-
-    // ── B. Niche keyword match ────────────────────────────────────────────────
-    let keywordScore;
-    if (queryNiches.length === 0) {
-        keywordScore = 50;
-    } else {
-        const brandFitExpanded = infBrandFitTags.join(" ");
-        const infText = [
-            infNicheTag,
-            brandFitExpanded,
-            (influencer.vibe || "").toLowerCase(),
-            (influencer.text || "").toLowerCase(),
-        ].join(" ");
-        const infNiches = extractNiches(infText);
-        const overlap = queryNiches.filter(n => infNiches.includes(n));
-        keywordScore = overlap.length === 0
-            ? 15
-            : Math.round((overlap.length / queryNiches.length) * 100);
-    }
-
-    // ── C. Combined: 50% direct brand_fit + 20% keyword + 30% vector ─────────
-    return Math.round(
-        directOverlapScore * 0.50 +
-        keywordScore * 0.20 +
-        (pineconeScore * 100) * 0.30
-    );
+    return 0;
 }
 
-// ─── Factor 2: Engagement (0–100) ────────────────────────────────────────────
-// ER-based tiered scoring + views/follower ratio signal
-function scoreEngagement(inf) {
-    const er = parseFloat(inf.engagement_rate) || 0;
-    const flw = parseInt(inf.followers) || 0;
-    const avgViews = parseInt(inf.avg_views) || 0;
+// removed hasCityOverlap function since we are removing the city hard filter
 
-    let score;
-    if (er >= 10) score = 100;
-    else if (er >= 8) score = 95;
-    else if (er >= 6) score = 88;
-    else if (er >= 4) score = 75;
-    else if (er >= 3) score = 65;
-    else if (er >= 2) score = 52;
-    else if (er >= 1) score = 38;
-    else if (er > 0) score = 22;
-    else score = 20; // No ER data = low but not zero
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCORING ENGINE — India-City Model
+// ═══════════════════════════════════════════════════════════════════════════════
 
-    // Penalty: mega accounts with no ER are likely fake/inactive
-    if (flw > 1_000_000 && er === 0) score = Math.max(0, score - 35);
+/**
+ * New match score: 4 factors, total 100.
+ *   Category (40) + City (40) + Gender (10) + Engagement (10)
+ */
+export function computeMatchScore(brandCategory, brandCities, brandGender, influencer) {
+    // 1. Category (40 pts max) — Niche match -> 40, Brand Fit match -> 20, else -> 0
+    const categoryScore = scoreCategoryMatch(brandCategory, influencer);
 
-    // Bonus: micro/nano with strong ER = highly authentic
-    if (flw < 100_000 && er >= 5) score = Math.min(100, score + 10);
+    // 2. City (40 pts)
+    const cityScore = scoreCityMatch(brandCities, influencer);
 
-    // Views-to-followers ratio: healthy = 10–50%
-    if (flw > 0 && avgViews > 0) {
-        const vr = avgViews / flw;
-        if (vr >= 0.5) score = Math.min(100, score + 12);
-        else if (vr >= 0.3) score = Math.min(100, score + 8);
-        else if (vr >= 0.1) score = Math.min(100, score + 4);
-        else if (vr < 0.02) score = Math.max(0, score - 10); // Very low views ratio
+    // 3. Gender (10 pts)
+    let genderScore = 10; // default = unisex
+    const bg = (brandGender || "unisex").toLowerCase();
+    if (bg === "female") {
+        const { female: fPct } = parseMfSplit(influencer.mf_split);
+        genderScore = fPct !== null ? Math.round((fPct / 100) * 10) : 5;
+    } else if (bg === "male") {
+        const { male: mPct } = parseMfSplit(influencer.mf_split);
+        genderScore = mPct !== null ? Math.round((mPct / 100) * 10) : 5;
     }
 
-    return Math.min(Math.max(score, 0), 100);
-}
+    // 4. Engagement (10 pts) — simple ER buckets
+    const er = parseFloat(influencer.engagement_rate) || 0;
+    let engagementScore;
+    if (er > 3) engagementScore = 10;
+    else if (er >= 2) engagementScore = 7;
+    else engagementScore = 4;
 
-// ─── Factor 3: Audience Match (0–100) ────────────────────────────────────────
-// Gender from mf_split + age + location + india_split
-function scoreAudience(queryText, inf, brandContext = "") {
-    let score = 50; // Base = neutral
-    const q = `${queryText} ${brandContext}`.toLowerCase();
-
-    // --- Gender alignment using mf_split "M%/F%" ---
-    const { male: malePct, female: femalePct } = parseMfSplit(inf.mf_split);
-    const wantsFemale = /\b(women|female|girl|ladies)\b/.test(q);
-    const wantsMale = /\b(men|male|boy|guys)\b/.test(q);
-
-    if (malePct !== null && femalePct !== null) {
-        if (wantsFemale) {
-            // Want female audience: reward if female% > 50
-            if (femalePct >= 70) score += 25;
-            else if (femalePct >= 50) score += 15;
-            else if (femalePct < 30) score -= 20;
-        } else if (wantsMale) {
-            // Want male audience: reward if male% > 50
-            if (malePct >= 70) score += 25;
-            else if (malePct >= 50) score += 15;
-            else if (malePct < 30) score -= 20;
-        }
-    } else {
-        // Fallback: text-based gender signals
-        const genderText = (inf.mf_split || "").toLowerCase();
-        if (wantsFemale && /\bf\b|female|woman/.test(genderText)) score += 20;
-        else if (wantsMale && /\bm\b|male|man/.test(genderText)) score += 20;
-    }
-
-    // --- Age alignment ---
-    const age = (inf.age_concentration || "").toLowerCase();
-    const ageReq = q.match(/(\d{2})\s*[-–to]\s*(\d{2})/);
-    if (ageReq && age) {
-        const lo = parseInt(ageReq[1]);
-        const hi = parseInt(ageReq[2]);
-        const nums = [...age.matchAll(/\d+/g)].map(m => parseInt(m[0]));
-        const inRange = nums.some(a => a >= lo - 5 && a <= hi + 5);
-        if (inRange) score += 15;
-        else score -= 8;
-    }
-
-    // --- Location alignment ---
-    const loc = (inf.location || "").toLowerCase();
-    const cityMatch = q.match(/\b(delhi|mumbai|bangalore|bengaluru|hyderabad|chennai|kolkata|pune|jaipur|surat|ahmedabad|gurgaon|noida)\b/gi);
-    const wantsPanIndia = /\b(pan[- ]?india|india|nationwide|all india|national)\b/i.test(q);
-
-    if (cityMatch && loc) {
-        const matched = cityMatch.some(c => loc.includes(c.toLowerCase()));
-        if (matched) score += 12;
-    } else if (wantsPanIndia) {
-        // india_split: India% — higher India% = better for India campaigns
-        const indiaPct = parseIndiaSplit(inf.india_split);
-        if (indiaPct !== null) {
-            if (indiaPct >= 80) score += 15;
-            else if (indiaPct >= 60) score += 10;
-            else if (indiaPct >= 40) score += 3;
-            else score -= 8; // Mostly non-India audience
-        } else {
-            score += 5; // Unknown but no penalty for pan-India requests
-        }
-    }
-
-    // --- India split bonus regardless of pan-India mention ---
-    // For Indian brands, prefer influencers with majority India audience
-    const indiaPct = parseIndiaSplit(inf.india_split);
-    if (indiaPct !== null && !wantsPanIndia && !cityMatch) {
-        // No explicit geo filter but india_split available — mild bonus for India-heavy
-        if (indiaPct >= 70) score += 5;
-    }
-
-    return Math.min(Math.max(score, 0), 100);
-}
-
-// ─── Factor 4: Pricing Fit (0–100) ────────────────────────────────────────────
-// commercials = quoted price in ₹ (e.g. "₹43,000.00")
-// If brand budget is in context → compare. Otherwise score on price reasonableness.
-function scorePricingFit(inf, brandContext = "") {
-    const price = parsePrice(inf.commercials);
-    let score = 50; // Base = unknown price = neutral
-
-    if (price === null) {
-        // No price data — infer from tier
-        const tier = (inf.follower_tier || "").toLowerCase();
-        if (tier === "mega") score = 30; // Likely expensive
-        else if (tier === "macro") score = 45;
-        else if (tier === "mid") score = 60;
-        else if (tier === "micro") score = 70;
-        else if (tier === "nano") score = 75;
-        return score;
-    }
-
-    // Parse budget from brand context if available
-    const budgetMatch = brandContext.match(/budget[:\s]*(?:inr|₹|rs\.?)?\s*([\d,]+(?:\s*(?:k|l|lac|lakh|cr|crore))?)/i);
-    let budgetINR = null;
-    if (budgetMatch) {
-        let raw = budgetMatch[1].replace(/,/g, "").trim();
-        if (/k$/i.test(raw)) budgetINR = parseFloat(raw) * 1_000;
-        else if (/l|lac|lakh/i.test(raw)) budgetINR = parseFloat(raw) * 100_000;
-        else if (/cr|crore/i.test(raw)) budgetINR = parseFloat(raw) * 10_000_000;
-        else budgetINR = parseFloat(raw);
-    }
-
-    if (budgetINR && budgetINR > 0) {
-        // Compare per-influencer price against per-influencer budget
-        const ratio = price / budgetINR;
-        if (ratio <= 0.5) score = 100; // Well within budget
-        else if (ratio <= 0.8) score = 85;
-        else if (ratio <= 1.0) score = 70;  // Right at budget
-        else if (ratio <= 1.3) score = 45;  // Slightly over
-        else if (ratio <= 2.0) score = 25;  // Over budget
-        else score = 10;  // Way over budget
-    } else {
-        // No budget context — score based on price tier reasonableness
-        if (price <= 5_000) score = 80; // Nano pricing
-        else if (price <= 20_000) score = 75; // Micro pricing
-        else if (price <= 80_000) score = 68; // Mid pricing
-        else if (price <= 300_000) score = 55; // Macro pricing
-        else if (price <= 1_000_000) score = 40; // Mega pricing
-        else score = 25; // Celebrity pricing
-    }
-
-    // Bonus: has contact info → easier to negotiate
-    if (inf.email || inf.contact_no) score = Math.min(100, score + 5);
-
-    return Math.min(Math.max(score, 0), 100);
-}
-
-// ─── Factor 5: Consistency Index (0–100) ─────────────────────────────────────
-// Profile completeness + healthy ER range + views consistency
-function scoreConsistency(inf) {
-    let score = 40; // Base
-
-    const er = parseFloat(inf.engagement_rate) || 0;
-    const flw = parseInt(inf.followers) || 0;
-    const views = parseInt(inf.avg_views) || 0;
-
-    // Healthy ER range = 1–15% = consistent creator
-    if (er >= 1 && er <= 15) score += 25;
-    else if (er > 15) score += 10; // Viral but may be spike-driven
-    else if (er > 0) score += 5;
-
-    // Profile completeness: each field filled = active/professional creator
-    const completeness = [
-        inf.niche, inf.brand_fit, inf.vibe,
-        inf.location, inf.mf_split, inf.age_concentration,
-        inf.india_split, inf.email || inf.contact_no,
-    ].filter(Boolean).length;
-    score += Math.min(completeness * 3, 24); // max +24
-
-    // Views/followers ratio in healthy range (5%–60%)
-    if (flw > 0 && views > 0) {
-        const vr = views / flw;
-        if (vr >= 0.05 && vr <= 0.6) score += 11;
-        else if (vr > 0) score += 3;
-    }
-
-    return Math.min(Math.max(score, 0), 100);
-}
-
-// ─── Main Scoring Function ────────────────────────────────────────────────────
-export function computeMatchScore(queryText, influencer, pineconeScore, brandContext = "") {
-    const qNiches = extractNiches(`${queryText} ${brandContext}`);
-
-    const relevance = scoreRelevance(qNiches, influencer, pineconeScore, brandContext);
-    const engagement = scoreEngagement(influencer);
-    const audience = scoreAudience(queryText, influencer, brandContext);
-    const pricing = scorePricingFit(influencer, brandContext);
-    const consistency = scoreConsistency(influencer);
-
-    const total = Math.round(
-        WEIGHTS.relevance * relevance +
-        WEIGHTS.engagement * engagement +
-        WEIGHTS.audience * audience +
-        WEIGHTS.pricingFit * pricing +
-        WEIGHTS.consistency * consistency
-    );
-
-    const finalScore = Math.min(total, 100);
+    const total = Math.min(categoryScore + cityScore + genderScore + engagementScore, 100);
 
     return {
-        total: finalScore,
+        total,
         breakdown: {
-            relevance: { score: relevance, weight: "35%", max: 100 },
-            engagement: { score: engagement, weight: "25%", max: 100 },
-            audience: { score: audience, weight: "20%", max: 100 },
-            pricingFit: { score: pricing, weight: "10%", max: 100 },
-            consistency: { score: consistency, weight: "10%", max: 100 },
+            category: { score: categoryScore, max: 40 },
+            city: { score: cityScore, max: 40 },
+            gender: { score: genderScore, max: 10 },
+            engagement: { score: engagementScore, max: 10 },
         },
-        tier: finalScore >= 80 ? "A" : finalScore >= 60 ? "B" : "C",
-        confidence: relevance >= 50 ? "high" : relevance >= 30 ? "medium" : "low",
+        tier: total >= 75 ? "A" : total >= 55 ? "B" : "C",
     };
 }
 
-// ─── Query Builder ────────────────────────────────────────────────────────────
-export function buildSearchQuery(message, context = "") {
-    const c = `${message} ${context}`.toLowerCase();
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMMERCIAL ESTIMATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const COMMERCIAL_CONFIG = {
+    MBR: 2.0, // ₹ per effective view — adjustable
+    EQB: [[2, 0.85], [4, 1.0], [6, 1.15], [8, 1.3], [Infinity, 1.4]],
+    NDM: {
+        finance: 1.6, luxury: 1.7, tech: 1.3, fashion: 1.2, beauty: 1.15,
+        skincare: 1.15, haircare: 1.1, fitness: 1.1, lifestyle: 1.05,
+        "f&b": 1.0, food: 1.0, restaurants: 1.0, travel: 1.1,
+        education: 1.1, parenting: 1.0, comedy: 0.9, meme: 0.9,
+        events: 1.0, gaming: 1.0, sports: 1.0, pets: 0.95,
+    },
+    RA: [[0.12, 0.8], [0.25, 1.0], [0.40, 1.1], [Infinity, 1.2]],
+    rangePercent: 0.10,
+};
+
+/**
+ * Estimate commercial value for an influencer.
+ * Formula: PS × MBR × EQB × NDM × RA
+ */
+export function estimateCommercial({ followers = 0, avgViews = 0, engagementRate = 0, niche = "" }) {
+    const { MBR, EQB, NDM, RA, rangePercent } = COMMERCIAL_CONFIG;
+
+    // Performance Score
+    const ps = (avgViews * 0.75) + (followers * (engagementRate / 100) * 0.25);
+    if (ps <= 0) return { min: 0, max: 0, raw: 0, display: "N/A" };
+
+    // Engagement Quality Boost
+    let eqb = 0.85;
+    for (const [threshold, value] of EQB) {
+        if (engagementRate < threshold) { eqb = value; break; }
+    }
+
+    // Niche Demand Multiplier
+    const nicheLower = niche.toLowerCase();
+    let ndm = 1.0;
+    for (const [key, mult] of Object.entries(NDM)) {
+        if (nicheLower.includes(key)) { ndm = mult; break; }
+    }
+
+    // Reliability Adjustment
+    let ra = 1.0;
+    if (followers > 0) {
+        const viewRatio = avgViews / followers;
+        for (const [threshold, value] of RA) {
+            if (viewRatio < threshold) { ra = value; break; }
+        }
+    }
+
+    const rawCommercial = ps * MBR * eqb * ndm * ra;
+    const roundTo500 = (n) => Math.round(n / 500) * 500;
+    const min = Math.max(1000, roundTo500(rawCommercial * (1 - rangePercent)));
+    const max = Math.max(1500, roundTo500(rawCommercial * (1 + rangePercent)));
+
+    return {
+        min, max,
+        raw: Math.round(rawCommercial),
+        display: `₹${min.toLocaleString("en-IN")} – ₹${max.toLocaleString("en-IN")}`,
+    };
+}
+
+// ─── Query Builder (simplified) ───────────────────────────────────────────────
+export function buildSearchQuery(brandCategory, context = "") {
     const parts = [];
-
-    const niches = c.match(/\b(fashion|beauty|skincare|haircare|fitness|lifestyle|food|tech|travel|gaming|education|finance|health|automotive|luxury|parenting|comedy|dance|music|art|photography|vlog|review|sports|pets|sustainability|events|restaurant)\b/gi);
-    if (niches) parts.push(`niche: ${[...new Set(niches)].join(", ")}`);
-
-    const locs = c.match(/\b(delhi|mumbai|bangalore|bengaluru|hyderabad|chennai|kolkata|pune|jaipur|surat|ahmedabad|pan[- ]?india|india|gurgaon|noida)\b/gi);
-    if (locs) parts.push(`location: ${[...new Set(locs)].join(", ")}`);
-
-    const genders = c.match(/\b(male|female|women|men|girls|boys|ladies)\b/gi);
-    if (genders) parts.push(`audience: ${[...new Set(genders)].join(", ")}`);
-
-    const tiers = c.match(/\b(nano|micro|mid[- ]?tier|mid|macro|mega)\b/gi);
-    if (tiers) parts.push(`tier: ${[...new Set(tiers)].join(", ")}`);
-
+    if (brandCategory) parts.push(`niche: ${brandCategory}`);
+    if (context) parts.push(context);
     return parts.length > 0
-        ? `Find influencers: ${parts.join(". ")}. Context: ${message}`
-        : message;
+        ? `Find influencers: ${parts.join(". ")}`
+        : "Find Indian influencers";
 }
 
 export function getDynamicTopK(msg, ctx = "") {
@@ -475,11 +287,10 @@ export function buildMetadataFilter(msg, ctx = "") {
     const t = `${msg} ${ctx}`.toLowerCase();
     const tierMap = {
         nano: "nano", micro: "micro", mid: "mid",
-        macro: "macro", mega: "mega",
-        small: "nano", big: "macro", large: "mega",
+        macro: "macro", mega: "mega"
     };
     for (const [k, v] of Object.entries(tierMap)) {
-        if (new RegExp(`\\b${k}\\b`).test(t)) return { follower_tier: { $eq: v } };
+        if (new RegExp(`\\b${k}\\s+(tier|influencer|creator|level)\\b`).test(t)) return { follower_tier: { $eq: v } };
     }
     return undefined;
 }
@@ -489,16 +300,41 @@ export async function searchInfluencers(query, topK = 10, context = "", explicit
     const index = getIndex();
     if (!index) { console.warn("⚠️  Pinecone not configured"); return []; }
 
+    // Parse brand context for new scoring model
+    let brandCategory = null;
+    let brandCities = [];
+    let brandGender = "unisex";
+
+    if (brandContext) {
+        if (typeof brandContext === 'object') {
+            // New format: Object directly passed from API
+            brandCategory = brandContext.category || null;
+            brandGender = brandContext.gender || "unisex";
+            brandCities = brandContext.cities || [];
+        } else if (typeof brandContext === 'string') {
+            // Old format: Extract from string "category:Fashion|gender:Female|cities:Mumbai,Delhi"
+            const catMatch = brandContext.match(/category:\s*([^|]+)/i);
+            if (catMatch) brandCategory = catMatch[1].trim();
+
+            const genderMatch = brandContext.match(/gender:\s*([^|]+)/i);
+            if (genderMatch) brandGender = genderMatch[1].trim();
+
+            const citiesMatch = brandContext.match(/cities:\s*([^|]+)/i);
+            if (citiesMatch) brandCities = citiesMatch[1].split(",").map(s => s.trim()).filter(Boolean);
+        }
+    }
+
     try {
-        const sq = buildSearchQuery(query, context);
+        const sq = buildSearchQuery(brandCategory, context);
         const builtFilter = buildMetadataFilter(query, context);
         const filter = { ...builtFilter, ...explicitFilter };
 
-        // Fetch ALL records — auto-detected from Pinecone stats (cached 5 min)
+        // Fetch ALL records from Pinecone
         const totalRecords = await getTotalRecordCount();
         const fetchK = Math.min(totalRecords, 10000);
 
         console.log(`🔍 Query: "${sq.slice(0, 120)}"`);
+        console.log(`🔍 Brand: category=${brandCategory}, gender=${brandGender}, cities=[${brandCities.join(",")}]`);
         console.log(`🔍 Fetching ${fetchK}/${totalRecords} candidates | filters: ${JSON.stringify(filter)}`);
 
         const embedding = await getQueryEmbedding(sq);
@@ -514,41 +350,58 @@ export async function searchInfluencers(query, topK = 10, context = "", explicit
             console.log("⚠️  Pinecone returned 0 matches");
         }
 
-        // Score every candidate
-        const fullQ = `${query} ${context}`;
+        // Score every candidate with new India-City model
         const scored = [];
-        let rejected = 0;
+        let hardFiltered = 0;
 
         for (const m of all) {
             const inf = m.metadata || {};
-            const result = computeMatchScore(fullQ, inf, m.score, brandContext);
 
-            // Soft reject: very low relevance only
-            if (result.breakdown.relevance.score < 10) {
-                rejected++;
+            // ── Hard Filter 1: Category mismatch ──
+            const catScore = scoreCategoryMatch(brandCategory, inf);
+            if (brandCategory && catScore === 0) {
+                hardFiltered++;
                 continue;
             }
-            // Minimum overall quality bar
+
+            // We PREVIOUSLY had a Hard Filter 2 for zero city overlap here.
+            // We removed it because treating 'location' as 100% proxy means 
+            // 90% of perfectly good matching creators were hidden just because they 
+            // lived in Bangalore instead of Mumbai. 
+            // Now, they just get 0 City points and rank lower!
+
+            // ── Score ──
+            const result = computeMatchScore(brandCategory, brandCities, brandGender, inf);
+
+            // Skip very low scores
             if (result.total < 10) {
-                rejected++;
+                hardFiltered++;
                 continue;
             }
+
+            // ── Commercial estimate ──
+            const commercial = estimateCommercial({
+                followers: parseInt(inf.followers) || 0,
+                avgViews: parseInt(inf.avg_views) || 0,
+                engagementRate: parseFloat(inf.engagement_rate) || 0,
+                niche: inf.niche || brandCategory || "",
+            });
 
             scored.push({
-                id: m.id,  // Include Pinecone document ID
+                id: m.id,
                 ...inf,
                 pinecone_score: m.score,
                 match_score: result.total,
                 score_breakdown: result.breakdown,
                 tier_rank: result.tier,
-                match_confidence: result.confidence,
+                estimated_commercial: commercial,
             });
         }
 
         scored.sort((a, b) => b.match_score - a.match_score);
         const final = scored.slice(0, topK);
 
-        console.log(`✅ Passed: ${scored.length} | Rejected: ${rejected} | Returning top ${final.length}`);
+        console.log(`✅ Passed: ${scored.length} | Hard-filtered: ${hardFiltered} | Returning top ${final.length}`);
         return final;
 
     } catch (err) {
@@ -568,44 +421,39 @@ export function formatSearchResults(results) {
         const price = parsePrice(inf.commercials);
         const indiaPct = parseIndiaSplit(inf.india_split);
         const { male: mPct, female: fPct } = parseMfSplit(inf.mf_split);
+        const comm = inf.estimated_commercial || {};
 
         ctx += `\n═══ INFLUENCER ${i + 1} ═══`;
         ctx += `\n  Name:          ${inf.name || "Unknown"}`;
-        ctx += `\n  Match Score:   ${inf.match_score}%  (Tier: ${inf.tier_rank || "C"}, Confidence: ${inf.match_confidence || "low"})`;
-        ctx += `\n  Score Detail:  Relevance ${bd.relevance?.score ?? 0}/100 | Engagement ${bd.engagement?.score ?? 0}/100 | Audience ${bd.audience?.score ?? 0}/100 | Pricing ${bd.pricingFit?.score ?? 0}/100 | Consistency ${bd.consistency?.score ?? 0}/100`;
+        ctx += `\n  Match Score:   ${inf.match_score}/100  (Tier: ${inf.tier_rank || "C"})`;
+        ctx += `\n  Score Detail:  Category ${bd.category?.score ?? 0}/40 | City ${bd.city?.score ?? 0}/40 | Gender ${bd.gender?.score ?? 0}/10 | ER ${bd.engagement?.score ?? 0}/10`;
 
         if (inf.instagram) ctx += `\n  Instagram:     ${inf.instagram}`;
         if (inf.location) ctx += `\n  Location:      ${inf.location}`;
         if (inf.gender) ctx += `\n  Gender:        ${inf.gender}`;
-        if (inf.type) ctx += `\n  Creator Type:  ${inf.type}`;
         if (inf.niche) ctx += `\n  Niche:         ${inf.niche}`;
         if (inf.brand_fit) ctx += `\n  Brand Fit:     ${inf.brand_fit}`;
-        if (inf.vibe) ctx += `\n  Content Vibe:  ${inf.vibe}`;
 
         if (inf.followers) ctx += `\n  Followers:     ${Number(inf.followers).toLocaleString("en-IN")}`;
         if (inf.follower_tier) ctx += `\n  Tier:          ${inf.follower_tier}`;
         if (inf.avg_views) ctx += `\n  Avg Views:     ${Number(inf.avg_views).toLocaleString("en-IN")}`;
         if (inf.engagement_rate) ctx += `\n  ER:            ${inf.engagement_rate}%`;
 
-        // Audience demographics — parsed for clarity
         if (mPct !== null && fPct !== null) {
             ctx += `\n  Audience M/F:  ${mPct}% Male / ${fPct}% Female`;
-        } else if (inf.mf_split) {
-            ctx += `\n  M/F Split:     ${inf.mf_split}`;
         }
         if (indiaPct !== null) {
             ctx += `\n  India Audience:${indiaPct}% India / ${100 - indiaPct}% Global`;
         }
         if (inf.age_concentration) ctx += `\n  Age Group:     ${inf.age_concentration}`;
 
-        // Pricing
         if (price !== null) {
             ctx += `\n  Quoted Price:  ₹${price.toLocaleString("en-IN")} per post`;
-        } else if (inf.commercials && inf.commercials !== "-") {
-            ctx += `\n  Commercials:   ${inf.commercials}`;
+        }
+        if (comm.display && comm.display !== "N/A") {
+            ctx += `\n  Est. Budget:   ${comm.display}`;
         }
 
-        // Contact
         if (inf.contact_no) ctx += `\n  Phone:         ${inf.contact_no}`;
         if (inf.email) ctx += `\n  Email:         ${inf.email}`;
     });
@@ -621,14 +469,12 @@ export function formatForSearchAPI(results) {
         const indiaPct = parseIndiaSplit(inf.india_split);
         const { male: mPct, female: fPct } = parseMfSplit(inf.mf_split);
 
-        // Clean Instagram handle
         const rawHandle = (inf.instagram || "")
             .replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//, "")
             .replace(/\/$/, "")
             .replace(/^@/, "");
 
-        // Generate a better fallback ID using timestamp and handle/name
-        const fallbackId = inf.id || `inf_${Date.now()}_${idx}_${(rawHandle || inf.name || 'unknown').replace(/[^a-z0-9]/gi, '_').substring(0, 20)}`;
+        const fallbackId = inf.id || `inf_${Date.now()}_${idx}_${(rawHandle || inf.name || "unknown").replace(/[^a-z0-9]/gi, "_").substring(0, 20)}`;
 
         return {
             id: fallbackId,
@@ -658,6 +504,7 @@ export function formatForSearchAPI(results) {
                 display: price ? `₹${price.toLocaleString("en-IN")}` : null,
                 raw: inf.commercials || null,
             },
+            estimated_commercial: inf.estimated_commercial || { min: 0, max: 0, raw: 0, display: "N/A" },
             contact: {
                 phone: inf.contact_no || null,
                 email: inf.email || null,
@@ -665,7 +512,6 @@ export function formatForSearchAPI(results) {
             match: {
                 score: inf.match_score || 0,
                 tier: inf.tier_rank || "C",
-                confidence: inf.match_confidence || "low",
             },
             score_breakdown: inf.score_breakdown || {},
         };

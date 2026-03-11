@@ -12,12 +12,22 @@ import influencersRouter from "../src/api/influencers.js";
 
 const app = express();
 
-const allowedOrigins = [
-    "https://campnai.com",
-    "https://www.campnai.com",
-    "http://localhost:5173",
-    "http://localhost:8080",
-];
+app.set("trust proxy", process.env.TRUST_PROXY === "true" || process.env.TRUST_PROXY === "1" ? 1 : false);
+
+const allowedOrigins = process.env.NODE_ENV === "production"
+    ? [
+        "https://campnai.com",
+        "https://www.campnai.com",
+        process.env.FRONTEND_URL
+    ].filter(Boolean)
+    : [
+        "https://campnai.com",
+        "https://www.campnai.com",
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://localhost:3000",
+        process.env.FRONTEND_URL
+    ].filter(Boolean);
 
 const corsOptions = {
     origin: function (origin, callback) {

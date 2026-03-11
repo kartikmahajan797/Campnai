@@ -3,24 +3,29 @@ import { auth } from '../../firebaseConfig';
 
 export interface AnalysisResult {
   brand_name: string;
-  industry: string;
-  products: string[];
-  target_audience: {
+  // New simplified fields (v5 India-City model)
+  brand_category?: string;
+  target_gender?: string;
+  target_cities?: string[];
+  // Legacy fields (kept for backward compat with existing campaigns)
+  industry?: string;
+  products?: string[];
+  target_audience?: {
     age_range: string;
     interests: string[];
     lifestyle: string;
   };
-  primary_regions: string[];
-  price_segment: string;
-  brand_tone: string;
-  marketing_goal: string;
-  best_platforms: string[];
-  recommended_influencer_type: string;
-  content_formats: string[];
-  hashtags: string[];
-  competitor_types: string[];
-  campaign_hooks: string[];
-  ready_for_next_pipeline: boolean;
+  primary_regions?: string[];
+  price_segment?: string;
+  brand_tone?: string;
+  marketing_goal?: string;
+  best_platforms?: string[];
+  recommended_influencer_type?: string;
+  content_formats?: string[];
+  hashtags?: string[];
+  competitor_types?: string[];
+  campaign_hooks?: string[];
+  ready_for_next_pipeline?: boolean;
 }
 
 export interface CampaignPreferences {
@@ -60,6 +65,7 @@ export interface InfluencerSuggestion {
   email?: string | null;
   instagramUrl?: string | null;
   scoreBreakdown?: Record<string, any> | null;
+  estimatedCommercial?: { min: number; max: number; raw: number; display: string } | null;
 }
 
 import { CampaignService } from '../../services/CampaignService';

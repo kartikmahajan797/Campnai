@@ -114,10 +114,12 @@ export const verifyRefreshToken = async (refreshToken) => {
 
 // ─── Revoke Refresh Token (Logout) ──────────────────────────────────
 export const revokeRefreshToken = async (userId, currentSessionId = null) => {
-  console.log(`[Logout] Revoking all sessions for userId: ${userId}`);
-  
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`[Logout] Revoking all sessions for userId: ${userId}`);
+  }
+
   const activeSessionId = await redisClient.get(REDIS_KEYS.activeSession(userId));
-  
+
   // Delete all user-level keys
   await redisClient.del(REDIS_KEYS.refreshToken(userId));
   await redisClient.del(REDIS_KEYS.activeSession(userId));
@@ -125,17 +127,14 @@ export const revokeRefreshToken = async (userId, currentSessionId = null) => {
   // Delete active session data
   if (activeSessionId) {
     await redisClient.del(REDIS_KEYS.session(activeSessionId));
-    console.log(`[Logout] Deleted active session: ${activeSessionId}`);
   }
 
   // Also delete the current request's session if different from active
   if (currentSessionId && currentSessionId !== activeSessionId) {
     await redisClient.del(REDIS_KEYS.session(currentSessionId));
-    console.log(`[Logout] Deleted current session: ${currentSessionId}`);
   }
 
   await revokeCSRFToken(userId);
-  console.log(`[Logout] All Redis keys cleared for userId: ${userId}`);
 };
 
 // ─── Check if Session is Active ─────────────────────────────────────

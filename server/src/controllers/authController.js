@@ -13,6 +13,7 @@ import {
 } from "../config/tokenService.js";
 import { generateCSRFToken } from "../config/csrfService.js";
 import { firebaseAdmin } from "../core/config.js";
+import { logAuditEvent, AuditEventType } from "../services/auditLogger.js";
 
 // ─── Zod Validation Schemas ─────────────────────────────────────────
 const registerSchema = z.object({
@@ -34,6 +35,14 @@ const resetPasswordSchema = z.object({
   token: z.string().min(1, "Reset token is required"),
   password: z.string().min(8, "Password must be at least 8 characters long"),
 });
+
+const verifyOtpSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  otp: z.string().length(6, "OTP must be 6 digits"),
+});
+
+// ─── Constants for Encryption ───────────────────────────────────────
+const ENCRYPTION_KEY = crypto.createHash("sha256").update(process.env.JWT_SECRET || "fallback-key").digest();
 
 // ─── Helper: Parse Zod Errors ───────────────────────────────────────
 function parseZodError(zodError) {
@@ -84,14 +93,25 @@ export const register = TryCatch(async (req, res) => {
   const hashPassword = await bcrypt.hash(password, 10);
 
   // Store pending verification in Redis
-  // NOTE: We store the raw password (not hash) because Firebase Admin SDK
-  // expects a plaintext password in createUser() and handles hashing internally.
+  // Securely encrypt the plaintext password before placing it in Redis
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", ENCRYPTION_KEY, iv);
+  const encryptedPassword = Buffer.concat([cipher.update(password, "utf8"), cipher.final()]).toString("hex");
+  const authTag = cipher.getAuthTag().toString("hex");
+
   const verifyToken = crypto.randomBytes(32).toString("hex");
   const verifyKey = REDIS_KEYS.verify(verifyToken);
 
   await redisClient.set(
     verifyKey,
-    JSON.stringify({ name, email, password, hashPassword }),
+    JSON.stringify({
+      name,
+      email,
+      encryptedPassword,
+      iv: iv.toString("hex"),
+      authTag,
+      hashPassword
+    }),
     { EX: 300 }
   );
 
@@ -121,13 +141,30 @@ export const verifyRegistration = TryCatch(async (req, res) => {
   await redisClient.del(verifyKey);
   const userData = JSON.parse(userDataJson);
 
+  // Decrypt password
+  let plainPassword;
+  try {
+    const decipher = crypto.createDecipheriv(
+      "aes-256-gcm",
+      ENCRYPTION_KEY,
+      Buffer.from(userData.iv, "hex")
+    );
+    decipher.setAuthTag(Buffer.from(userData.authTag, "hex"));
+    plainPassword = Buffer.concat([
+      decipher.update(Buffer.from(userData.encryptedPassword, "hex")),
+      decipher.final()
+    ]).toString("utf8");
+  } catch (err) {
+    return res.status(400).json({ message: "Invalid or corrupted verification data." });
+  }
+
   // Create user in Firebase
   let firebaseUser;
   try {
     firebaseUser = await firebaseAdmin.auth().createUser({
       email: userData.email,
       displayName: userData.name,
-      password: userData.password, // Firebase will hash this
+      password: plainPassword, // Firebase will hash this
     });
   } catch (err) {
     if (err.code === "auth/email-already-exists") {
@@ -180,6 +217,13 @@ export const login = TryCatch(async (req, res) => {
     console.log(`📧 OTP for ${email}: ${otp}`);
   }
 
+  // Audit log
+  await logAuditEvent(AuditEventType.OTP_SENT, {
+    req,
+    metadata: { email },
+    severity: "info",
+  });
+
   res.json({
     message: "If your email is valid, an OTP has been sent. It will be valid for 5 minutes.",
   });
@@ -187,11 +231,15 @@ export const login = TryCatch(async (req, res) => {
 
 // ─── Verify OTP (Step 2: Issue Tokens) ──────────────────────────────
 export const verifyOtp = TryCatch(async (req, res) => {
-  const { email, otp } = req.body;
+  const sanitizedBody = sanitize(req.body);
+  const validation = verifyOtpSchema.safeParse(sanitizedBody);
 
-  if (!email || !otp) {
-    return res.status(400).json({ message: "Please provide all details" });
+  if (!validation.success) {
+    const { firstErrorMessage, allErrors } = parseZodError(validation.error);
+    return res.status(400).json({ message: firstErrorMessage, errors: allErrors });
   }
+
+  const { email, otp } = validation.data;
 
   const otpKey = REDIS_KEYS.otp(email);
   const storedOtpString = await redisClient.get(otpKey);
@@ -201,7 +249,16 @@ export const verifyOtp = TryCatch(async (req, res) => {
   }
 
   const storedOtp = JSON.parse(storedOtpString);
-  if (storedOtp !== otp) {
+  const otpBuffer = Buffer.from(String(otp));
+  const storedOtpBuffer = Buffer.from(String(storedOtp));
+
+  if (otpBuffer.length !== storedOtpBuffer.length || !crypto.timingSafeEqual(otpBuffer, storedOtpBuffer)) {
+    // Audit log failed OTP attempt
+    await logAuditEvent(AuditEventType.OTP_FAILED, {
+      req,
+      metadata: { email },
+      severity: "warning",
+    });
     return res.status(400).json({ message: "Invalid OTP" });
   }
 
@@ -230,6 +287,13 @@ export const verifyOtp = TryCatch(async (req, res) => {
     TOKEN_EXPIRY.USER_CACHE_S,
     JSON.stringify(userData)
   );
+
+  // Audit log successful OTP verification
+  await logAuditEvent(AuditEventType.OTP_VERIFIED, {
+    user: userData,
+    req,
+    severity: "info",
+  });
 
   res.status(200).json({
     message: `Welcome ${userData.name}`,
@@ -334,7 +398,9 @@ export const logout = TryCatch(async (req, res) => {
   const userId = req.user._id || req.user.uid;
   const currentSessionId = req.sessionId || null;
 
-  console.log(`[Logout] User ${userId} logging out (sessionId: ${currentSessionId})`);
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`[Logout] User ${userId} logging out (sessionId: ${currentSessionId})`);
+  }
 
   await revokeRefreshToken(userId, currentSessionId);
 
@@ -346,7 +412,14 @@ export const logout = TryCatch(async (req, res) => {
   // Clear user cache
   await redisClient.del(REDIS_KEYS.userCache(userId));
 
-  console.log(`[Logout] ✅ Logout complete for user ${userId}`);
+  // Audit log successful logout
+  await logAuditEvent(AuditEventType.LOGOUT, {
+    user: req.user,
+    req,
+    metadata: { sessionId: currentSessionId },
+    severity: "info",
+  });
+
   res.json({ message: "Logged out successfully" });
 });
 
@@ -414,7 +487,16 @@ export const forgotPassword = TryCatch(async (req, res) => {
       { EX: 900 } // 15 minutes
     );
     // In production, send reset email here
-    console.log(`📧 Password reset token for ${email}: ${resetToken}`);
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`📧 Password reset token for ${email}: ${resetToken}`);
+    }
+
+    // Audit log password reset request
+    await logAuditEvent(AuditEventType.PASSWORD_RESET_REQUEST, {
+      req,
+      metadata: { email },
+      severity: "info",
+    });
   } catch (err) {
     // User not found — still respond generically (timing attack prevention)
   }

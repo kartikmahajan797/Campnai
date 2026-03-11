@@ -1,17 +1,30 @@
 import { env } from "../config/env.js";
+import { sanitizeErrorMessage, sanitizeString, createSafeErrorResponse } from "../utils/sanitization.js";
+import { logAuditEvent, AuditEventType } from "../services/auditLogger.js";
 
 /**
  * Centralized error handler middleware.
  * Must be registered LAST (after all routes).
  */
-export const errorHandler = (err, _req, res, _next) => {
-  // Log full error in all environments
+export const errorHandler = (err, req, res, _next) => {
+  // Log full error securely (no sensitive data)
   console.error("❌ Unhandled Error:", {
-    message: err.message,
-    stack: env.isProduction ? undefined : err.stack,
+    message: sanitizeString(err.message),
+    stack: env.isProduction ? undefined : err.stack?.split("\n").slice(0, 5).join("\n"),
     code: err.code,
     statusCode: err.statusCode,
   });
+
+  // Audit log critical errors
+  const statusCode = err.statusCode || 500;
+  if (statusCode >= 500) {
+    logAuditEvent(AuditEventType.SUSPICIOUS_ACTIVITY, {
+      user: req.user,
+      req,
+      metadata: { errorMessage: sanitizeString(err.message), statusCode },
+      severity: "error",
+    });
+  }
 
   // Handle specific error types
   if (err.code === "LIMIT_FILE_SIZE") {
@@ -42,16 +55,15 @@ export const errorHandler = (err, _req, res, _next) => {
     });
   }
 
-  // Default error response
-  const statusCode = err.statusCode || 500;
+  // Default error response - sanitized
   const message = env.isProduction
     ? "Internal server error"
-    : err.message || "Internal server error";
+    : sanitizeString(err.message) || "Internal server error";
 
   res.status(statusCode).json({
     message,
     code: err.code || "INTERNAL_ERROR",
-    ...(env.isProduction ? {} : { stack: err.stack }),
+    ...(env.isProduction ? {} : { stack: err.stack?.split("\n").slice(0, 10).join("\n") }),
   });
 };
 
