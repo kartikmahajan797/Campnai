@@ -27,7 +27,7 @@
         "jsonwebtoken": "^9.0.3",
         "langchain": "^1.2.24",
         "mongo-sanitize": "^1.1.0",
-        "multer": "^1.4.5-lts.1",
+        "multer": "^2.1.1",
         "node-cron": "^4.2.1",
         "nodemailer": "^8.0.1",
         "redis": "^5.11.0",
