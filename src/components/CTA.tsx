@@ -1,46 +1,38 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@phosphor-icons/react";
 
 const CTA = () => {
   return (
-    <section className="py-24 bg-background relative overflow-hidden">
-      {/* Space Background Effects */}
-      <div className="absolute inset-0 w-full h-full pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-primary/5 rounded-full blur-[120px]" />
-
-      </div>
-
+    <section className="py-24 relative overflow-hidden bg-gradient-to-br from-[#f0f4ff] via-white to-[#ffeef6] dark:from-[#111118] dark:via-background dark:to-[#1a1118]">
       <div className="container mx-auto px-6 relative z-10">
-        <div className="relative max-w-5xl mx-auto rounded-3xl overflow-hidden border border-border shadow-2xl shadow-primary/5">
-          {/* Card Background */}
-          <div className="absolute inset-0 bg-card/80 backdrop-blur-xl" />
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5" />
-
+        <div className="relative max-w-5xl mx-auto rounded-[2.5rem] md:rounded-[3rem] overflow-hidden bg-[#fdfdff] dark:bg-[#111118]/80 backdrop-blur-xl border border-gray-200/60 dark:border-white/5 shadow-2xl py-16 md:py-24 px-8 md:px-16 text-center">
+          
           {/* Content */}
-          <div className="relative px-8 py-16 md:px-16 md:py-20 text-center">
-            <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6 tracking-tight">
+          <div className="relative z-10 max-w-3xl mx-auto">
+            <h2 className="text-[2.5rem] md:text-[3.5rem] font-semibold text-gray-900 dark:text-gray-100 mb-6 tracking-tight leading-[1.15]">
               Ready to automate your{" "}
-              <span className="text-primary underline decoration-primary/30 underline-offset-8">influencer marketing?</span>
+              <span className="inline-block border-b-[3px] border-gray-300 dark:border-gray-600 pb-1">
+                influencer marketing?
+              </span>
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+            <p className="text-lg md:text-[1.15rem] text-gray-500 dark:text-gray-400 max-w-xl mx-auto mb-10 leading-relaxed font-medium">
               Join thousands of brands using Campnai to run smarter campaigns with less effort and better results.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button size="xl" className="h-14 px-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold transition-all hover:scale-105">
-                Get started free
-                <ArrowRight className="ml-2 w-5 h-5" />
+              <Button className="h-14 px-8 rounded-full bg-[#111] hover:bg-[#333] dark:bg-white dark:hover:bg-gray-200 text-white dark:text-black font-semibold text-base shadow-sm transition-all focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
+                Get started free 
+                <ArrowRight weight="bold" className="ml-2 w-5 h-5" />
               </Button>
               <Button
                 variant="outline"
-                size="xl"
-                className="h-14 px-8 rounded-full border-border text-foreground hover:bg-muted/50 backdrop-blur-sm"
+                className="h-14 px-8 rounded-full border border-gray-300/80 dark:border-gray-700 bg-[#f8f9fa] dark:bg-transparent text-gray-900 dark:text-white hover:bg-[#e9ecef] dark:hover:bg-gray-800 font-semibold text-base shadow-sm transition-all focus:ring-2 focus:ring-offset-2 focus:ring-gray-300"
               >
                 Schedule a demo
               </Button>
             </div>
 
-            <p className="text-muted-foreground text-sm mt-8 font-medium">
+            <p className="text-gray-400 dark:text-gray-500 text-sm mt-10 font-medium">
               14-day free trial • No credit card required • Cancel anytime
             </p>
           </div>

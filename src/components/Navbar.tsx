@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { List, X, CaretDown } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ModeToggle } from "@/components/mode-toggle";
 import campnaiLogo from "@/assets/campnailogo.png";
@@ -20,7 +20,7 @@ const Navbar = () => {
 
   const navLinks = [
     { name: "Creators", href: "#creators" },
-    { name: "How it works", href: "#how-it-works" },
+    { name: "Workflow", href: "#how-it-works" },
     { name: "Pricing", href: "#pricing" },
     { name: "FAQ", href: "#faq" },
   ];
@@ -94,7 +94,7 @@ const Navbar = () => {
               className={`p-2 transition-colors ${scrolled ? "text-foreground" : "text-foreground"}`}
               onClick={() => setIsOpen(!isOpen)}
             >
-              {isOpen ? <X size={28} /> : <Menu size={28} />}
+              {isOpen ? <X size={28} /> : <List size={28} />}
             </button>
           </div>
         </div>

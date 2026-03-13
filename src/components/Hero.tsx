@@ -1,108 +1,128 @@
 import { motion } from "framer-motion";
+import { TestimonialSlider } from "@/components/ui/testimonial-slider-1";
 import scoutImg from "../assets/scout.jpeg";
 import closerImg from "../assets/closer.jpeg";
 import producerImg from "../assets/producer.jpeg";
 import accountantImg from "../assets/accountant.jpeg";
 
-const employees = [
+const aiEmployees = [
   {
-    // name: "Scout",
-    // role: "Influencer Discovery",
-    image: scoutImg,
-    color: "text-white",
+    id: 1,
+    name: "Scout",
+    affiliation: "Influencer Discovery",
+    quote:
+      "Scout finds the perfect influencers for your brand using AI-powered search across niches, engagement rates, and audience demographics.",
+    imageSrc: scoutImg,
+    thumbnailSrc: scoutImg,
   },
   {
-    // name: "Closer",
-    // role: "Outreach & Deals",
-    image: closerImg,
-    color: "text-white",
+    id: 2,
+    name: "Closer",
+    affiliation: "Outreach & Deals",
+    quote:
+      "Closer handles all influencer negotiations autonomously — from initial outreach to finalizing contracts and rates.",
+    imageSrc: closerImg,
+    thumbnailSrc: closerImg,
   },
   {
-    // name: "Producer",
-    // role: "Campaign Control",
-    image: producerImg,
-    color: "text-white",
+    id: 3,
+    name: "Producer",
+    affiliation: "Campaign Control",
+    quote:
+      "Producer manages your entire campaign lifecycle — content approvals, timelines, deliverables, and real-time tracking.",
+    imageSrc: producerImg,
+    thumbnailSrc: producerImg,
   },
   {
-    // name: "Accountant",
-    // role: "Payments & ROI",
-    image: accountantImg,
-    color: "text-white",
-  }
+    id: 4,
+    name: "Accountant",
+    affiliation: "Payments & ROI",
+    quote:
+      "Accountant automates influencer payouts, tracks campaign ROI, and generates financial reports — all in one place.",
+    imageSrc: accountantImg,
+    thumbnailSrc: accountantImg,
+  },
 ];
 
 const Hero = () => {
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background pt-24 pb-20">
+    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background pt-28 pb-24">
 
-      {/* Background Gradient Effects - Neon Style */}
+      {/* Background Gradient Effects */}
       <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden">
-        {/* Purple Neon Glow - Top Right */}
         <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-purple-600/30 rounded-full blur-[150px]" />
-
-        {/* Blue Neon Glow - Bottom Left */}
         <div className="absolute bottom-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-600/25 rounded-full blur-[140px]" />
-
-        {/* Pink/Magenta Accent - Center */}
         <div className="absolute top-[30%] left-[50%] -translate-x-1/2 w-[50%] h-[50%] bg-fuchsia-600/20 rounded-full blur-[120px]" />
-
-        {/* Subtle overlay for depth */}
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background z-0" />
       </div>
 
-      <div className="container relative mx-auto px-4 z-10 flex flex-col items-center text-center mt-20">
+      <div className="container relative mx-auto px-4 z-10 flex flex-col items-center text-center mt-10">
 
-        {/* Text Content */}
+        {/* Badge */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
+          <span className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-primary/20 bg-primary/5 text-primary text-sm font-semibold tracking-wide">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            India's First Agentic Influencer Platform
+          </span>
+        </motion.div>
+
+        {/* Heading */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="max-w-5xl mx-auto mb-12"
+          transition={{ duration: 0.8, delay: 0.1 }}
+          className="max-w-5xl mx-auto mb-10"
         >
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground leading-[1.1]">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1]">
             Meet Your AI Employees<br />
-            for Influencer Marketing
+            for{" "}
+            <span className="bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
+              Influencer Marketing
+            </span>
           </h1>
 
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-light mt-10">
-            From discovery to payouts, CampnAI runs your entire influencer workflow autonomously.
+          <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto font-light mt-10 leading-relaxed">
+            From discovery to payouts, CampnAI runs your entire influencer workflow autonomously. 
+            No spreadsheets. No chaos. Just results.
           </p>
         </motion.div>
 
-        {/* Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 w-full max-w-6xl mx-auto">
-          {employees.map((employee, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="flex flex-col items-center group cursor-pointer"
-            >
-              {/* Image Container */}
-              <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden mb-6 border border-border shadow-2xl transition-transform duration-300 group-hover:-translate-y-2">
-                <img
-                  src={employee.image}
-                  // alt={employee.name}
-                  className="w-full h-full object-cover"
-                />
-
-                {/* Subtle Inner Border/Glow */}
-                <div className="absolute inset-0 ring-1 ring-border/10 rounded-2xl" />
-              </div>
-
-              {/* Text Below Image */}
-              {/* <div className="text-center">
-                <h3 className="text-2xl font-bold text-white mb-1">
-                  {employee.name}
-                </h3>
-                <p className="text-sm text-gray-400 font-medium">
-                  {employee.role}
-                </p>
-              </div> */}
-            </motion.div>
+        {/* Stats Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="flex flex-wrap items-center justify-center gap-8 md:gap-16 mb-14"
+        >
+          {[
+            { value: "10x", label: "Less Manual Effort" },
+            { value: "90%", label: "Time Saved" },
+            { value: "70%", label: "Faster Setup" },
+          ].map((stat, i) => (
+            <div key={i} className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-foreground">{stat.value}</div>
+              <div className="text-sm text-muted-foreground font-medium mt-1">{stat.label}</div>
+            </div>
           ))}
-        </div>
+        </motion.div>
+
+        {/* AI Employee Slider */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="w-full max-w-6xl mx-auto mt-4"
+        >
+          <TestimonialSlider
+            reviews={aiEmployees}
+            className="rounded-2xl border border-border/50 shadow-xl bg-background/80 backdrop-blur-sm"
+          />
+        </motion.div>
 
       </div>
     </section>

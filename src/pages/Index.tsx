@@ -3,8 +3,8 @@ import Hero from "@/components/Hero";
 import ManagerShowcase from "@/components/ManagerShowcase";
 import TrustedBy from "@/components/TrustedBy";
 import CreatorNetwork from "@/components/CreatorNetwork";
-import HowItWorks from "@/components/HowItWorks";
-import Features from "@/components/Features";
+// import HowItWorks from "@/components/HowItWorks";
+import ScrollCard from "@/components/ui/scroll-card";
 import Pricing from "@/components/Pricing";
 import FAQ from "@/components/FAQ";
 import CTA from "@/components/CTA";
@@ -19,8 +19,8 @@ const Index = () => {
         <ManagerShowcase />
         <TrustedBy />
         <CreatorNetwork />
-        <HowItWorks />
-        <Features />
+        {/* <HowItWorks /> */}
+        <ScrollCard />
         <Pricing />
         <FAQ />
         <CTA />

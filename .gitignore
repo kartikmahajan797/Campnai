@@ -36,3 +36,4 @@ backend/*.pyc
 __pycache__/
 
 ENTERPRISE_SYSTEM_DOCS.md
+notes
